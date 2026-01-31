@@ -3,6 +3,7 @@ import { UserProfile, LoanRequest, LoanOffer, LoanType, Charity, KYCTier, KYCSta
 import { UserProfileCard } from './components/UserProfileCard';
 import { Marketplace } from './components/Marketplace';
 import { Button } from './components/Button';
+import { Logo } from './components/Logo';
 import { analyzeReputation } from './services/geminiService';
 import { KYCVerificationModal } from './components/KYCVerificationModal';
 
@@ -18,7 +19,7 @@ const INITIAL_USER: UserProfile = {
   id: 'u1',
   name: 'Alex Mercer',
   income: 65000,
-  employmentStatus: 'Full-time Software Engineer (3 yrs)',
+  employmentStatus: 'Software Engineer',
   financialHistory: 'Paid off student loans in 2022. currently have a car lease.',
   reputationScore: 50,
   riskAnalysis: 'History suggests stability, but limited on-chain history.',
@@ -32,10 +33,10 @@ const INITIAL_USER: UserProfile = {
 };
 
 const MOCK_OFFERS: LoanOffer[] = [
-  { id: 'o1', lenderId: 'l1', lenderName: 'Vanguard Ventures', maxAmount: 10000, interestRate: 5.5, minReputationScore: 80, terms: 'Standard 12 months' },
-  { id: 'o2', lenderId: 'l2', lenderName: 'Community DAO', maxAmount: 5000, interestRate: 7.2, minReputationScore: 60, terms: 'Flexible repayment' },
-  { id: 'o3', lenderId: 'l3', lenderName: 'RapidFi', maxAmount: 2000, interestRate: 12.0, minReputationScore: 40, terms: 'Immediate release' },
-  { id: 'o4', lenderId: 'l4', lenderName: 'SafeHarbor', maxAmount: 15000, interestRate: 4.8, minReputationScore: 85, terms: 'Strict collateral' },
+  { id: 'o1', lenderId: 'l1', lenderName: 'Vanguard Ventures', maxAmount: 10000, interestRate: 5.5, minReputationScore: 80, terms: '12 Months' },
+  { id: 'o2', lenderId: 'l2', lenderName: 'Community DAO', maxAmount: 5000, interestRate: 7.2, minReputationScore: 60, terms: 'Flexible' },
+  { id: 'o3', lenderId: 'l3', lenderName: 'RapidFi', maxAmount: 2000, interestRate: 12.0, minReputationScore: 40, terms: 'Immediate' },
+  { id: 'o4', lenderId: 'l4', lenderName: 'SafeHarbor', maxAmount: 15000, interestRate: 4.8, minReputationScore: 85, terms: 'Collateralized' },
 ];
 
 const App: React.FC = () => {
@@ -149,7 +150,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100 font-sans selection:bg-indigo-500/30">
+    <div className="min-h-screen bg-[#0f172a] text-slate-200 font-sans selection:bg-[#667eea]/30">
       
       {showKYCModal && (
         <KYCVerificationModal 
@@ -160,22 +161,28 @@ const App: React.FC = () => {
       )}
 
       {/* Header */}
-      <header className="bg-gray-800 border-b border-gray-700 sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/50">P3</div>
-            <span className="text-xl font-bold tracking-tight">Lending Protocol</span>
-          </div>
-          <div className="flex gap-1 bg-gray-900 p-1 rounded-lg border border-gray-700">
+      <header className="bg-slate-900/50 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+          <Logo />
+          
+          <div className="flex bg-slate-800/50 p-1.5 rounded-full border border-slate-700/50">
             <button 
               onClick={() => setActiveTab('borrow')}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'borrow' ? 'bg-gray-800 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}
+              className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                activeTab === 'borrow' 
+                  ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white shadow-lg' 
+                  : 'text-slate-400 hover:text-white'
+              }`}
             >
               Borrow
             </button>
             <button 
               onClick={() => setActiveTab('lend')}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'lend' ? 'bg-gray-800 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}
+              className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                activeTab === 'lend' 
+                  ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white shadow-lg' 
+                  : 'text-slate-400 hover:text-white'
+              }`}
             >
               Lend
             </button>
@@ -183,17 +190,11 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-6 py-12">
         
         {/* Top Section: Reputation & Charity Impact */}
-        <section className="mb-12 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <section className="mb-16 grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
-            <div className="flex justify-between items-end mb-4">
-              <div>
-                <h2 className="text-xl font-bold text-white">Your Reputation Identity</h2>
-                <p className="text-gray-400 text-sm">Powered by Gemini AI Underwriting</p>
-              </div>
-            </div>
             <UserProfileCard 
               user={user} 
               onUpdate={handleProfileUpdate} 
@@ -203,23 +204,26 @@ const App: React.FC = () => {
           </div>
 
           {/* Charity Impact Dashboard */}
-          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-xl flex flex-col">
-            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <span className="text-pink-500">♥</span> Community Impact
+          <div className="bg-slate-800/40 backdrop-blur-md rounded-3xl p-8 border border-slate-700/50 shadow-xl flex flex-col relative overflow-hidden">
+             {/* Gradient Accent */}
+             <div className="absolute top-0 right-0 w-32 h-32 bg-pink-500/10 rounded-full blur-2xl translate-x-1/2 -translate-y-1/2"></div>
+             
+            <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+              <span className="text-pink-500 drop-shadow-lg">♥</span> P³ Philanthropy
             </h3>
-            <p className="text-xs text-gray-400 mb-4">
-              Platform proceeds directly support these verified charities via smart contract.
+            <p className="text-sm text-slate-400 mb-6 font-light">
+              Portion of fees automatically route to verified causes.
             </p>
-            <div className="space-y-3 flex-1 overflow-y-auto pr-2">
+            <div className="space-y-4 flex-1 overflow-y-auto pr-2 custom-scrollbar z-10">
               {charities.map(charity => (
-                <div key={charity.id} className="flex items-center justify-between p-2 rounded bg-gray-900/50 border border-gray-700">
+                <div key={charity.id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-900/50 border border-slate-800 hover:border-slate-700 transition-colors">
                    <div>
-                     <div className="text-sm font-bold text-white">{charity.name}</div>
-                     <div className="text-xs text-gray-500">{charity.mission}</div>
+                     <div className="text-sm font-bold text-white mb-0.5">{charity.name}</div>
+                     <div className="text-[10px] text-slate-500 uppercase tracking-wider">{charity.mission}</div>
                    </div>
                    <div className="text-right">
-                     <div className="text-sm font-mono text-emerald-400 font-bold">${charity.totalRaised.toFixed(0)}</div>
-                     <div className="text-[10px] text-gray-500 uppercase">Raised</div>
+                     <div className="text-lg font-mono text-[#4facfe] font-bold">${charity.totalRaised.toFixed(0)}</div>
+                     <div className="text-[9px] text-slate-600 uppercase font-bold tracking-widest">Raised</div>
                    </div>
                 </div>
               ))}
@@ -230,92 +234,95 @@ const App: React.FC = () => {
         {/* Main Workspace */}
         {activeTab === 'borrow' ? (
           <div className="animate-fade-in">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-10">
               {/* Create Request Form */}
-              <div className="md:col-span-1">
-                <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 sticky top-24">
-                  <h3 className="text-lg font-bold text-white mb-4">Create Loan Request</h3>
+              <div className="md:col-span-4">
+                <div className="bg-slate-800/40 backdrop-blur-md rounded-3xl p-8 border border-slate-700/50 sticky top-28 shadow-xl">
+                  <h3 className="text-xl font-bold text-white mb-6">Request Funds</h3>
                   
                   {user.kycTier === KYCTier.TIER_0 && (
-                     <div className="mb-4 bg-red-900/20 border border-red-500/30 p-3 rounded-lg text-xs text-red-200">
-                        Verification Required. You must complete Basic KYC (Tier 1) to create loan requests.
+                     <div className="mb-6 bg-red-500/10 border border-red-500/20 p-4 rounded-2xl text-xs text-red-200 leading-relaxed">
+                        <strong className="block mb-1 text-red-400">KYC Required</strong>
+                        Verification needed to unlock borrowing features.
                      </div>
                   )}
 
-                  <form onSubmit={handleCreateRequest} className="space-y-4">
+                  <form onSubmit={handleCreateRequest} className="space-y-6">
                     <div>
-                      <div className="flex justify-between mb-1">
-                         <label className="block text-sm text-gray-400">Amount Needed ($)</label>
-                         {isMicroloan && <span className="text-xs text-emerald-400 font-bold">Microloan Limit: $500</span>}
+                      <div className="flex justify-between mb-2">
+                         <label className="block text-xs uppercase tracking-wider text-slate-400">Amount</label>
+                         {isMicroloan && <span className="text-xs text-emerald-400 font-bold">Max $500</span>}
                       </div>
-                      <input 
-                        type="number" 
-                        min="50" 
-                        max={isMicroloan ? 500 : 50000}
-                        value={loanAmount}
-                        onChange={(e) => setLoanAmount(Number(e.target.value))}
-                        className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                      />
-                      <div className="text-[10px] text-gray-500 mt-1 text-right">
-                        Your Limit: ${user.kycLimit.toLocaleString()}
+                      <div className="relative">
+                        <span className="absolute left-4 top-3.5 text-slate-500">$</span>
+                        <input 
+                          type="number" 
+                          min="50" 
+                          max={isMicroloan ? 500 : 50000}
+                          value={loanAmount}
+                          onChange={(e) => setLoanAmount(Number(e.target.value))}
+                          className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-3 pl-8 pr-4 text-white focus:border-[#667eea] outline-none transition-all font-mono text-lg"
+                        />
+                      </div>
+                      <div className="text-[10px] text-slate-500 mt-2 text-right">
+                        Limit: <span className="text-slate-300">${user.kycLimit.toLocaleString()}</span>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2 p-2 rounded bg-gray-900/50 border border-gray-700">
-                      <input 
-                        type="checkbox" 
-                        id="microloan"
-                        checked={isMicroloan}
-                        onChange={(e) => {
-                          setIsMicroloan(e.target.checked);
-                          if(e.target.checked) setLoanAmount(200);
-                        }}
-                        className="w-4 h-4 text-indigo-600 rounded bg-gray-800 border-gray-600 focus:ring-indigo-500"
-                      />
-                      <label htmlFor="microloan" className="text-sm text-gray-300 cursor-pointer">
-                        Microloan (Credit Builder)
-                        <p className="text-xs text-gray-500">No collateral. Best for new users.</p>
-                      </label>
+                    <div 
+                      className={`
+                        flex items-center gap-3 p-4 rounded-xl border transition-all cursor-pointer
+                        ${isMicroloan ? 'bg-[#667eea]/10 border-[#667eea]/50' : 'bg-slate-900/30 border-slate-700'}
+                      `}
+                      onClick={() => {
+                        setIsMicroloan(!isMicroloan);
+                        if(!isMicroloan) setLoanAmount(200);
+                      }}
+                    >
+                      <div className={`w-5 h-5 rounded flex items-center justify-center border ${isMicroloan ? 'bg-[#667eea] border-[#667eea]' : 'border-slate-500'}`}>
+                        {isMicroloan && <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>}
+                      </div>
+                      <div>
+                        <span className={`text-sm font-semibold ${isMicroloan ? 'text-white' : 'text-slate-300'}`}>Microloan Mode</span>
+                        <p className="text-[10px] text-slate-500 mt-0.5">Credit builder. No collateral required.</p>
+                      </div>
                     </div>
 
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">Purpose</label>
+                      <label className="block text-xs uppercase tracking-wider text-slate-400 mb-2">Purpose</label>
                       <input 
                         type="text" 
                         required
                         value={loanPurpose}
                         onChange={(e) => setLoanPurpose(e.target.value)}
-                        placeholder="e.g. Server costs"
-                        className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                        placeholder="e.g. Equipment upgrade"
+                        className="w-full bg-slate-900/50 border border-slate-700 rounded-xl p-3 text-white focus:border-[#667eea] outline-none transition-all"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">Support a Cause (Escrow Yield)</label>
+                      <label className="block text-xs uppercase tracking-wider text-slate-400 mb-2">P³ Charity Allocation</label>
                       <select 
                         value={selectedCharity}
                         onChange={(e) => setSelectedCharity(e.target.value)}
-                        className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                        className="w-full bg-slate-900/50 border border-slate-700 rounded-xl p-3 text-white focus:border-[#667eea] outline-none text-sm appearance-none"
                       >
                         {charities.map(c => (
                           <option key={c.id} value={c.id}>{c.name}</option>
                         ))}
                       </select>
-                      <p className="text-[10px] text-gray-500 mt-1">1% of platform fees will be donated to this charity.</p>
+                      <p className="text-[10px] text-slate-500 mt-2">1% of fees donated upon repayment.</p>
                     </div>
 
-                    <div className="bg-indigo-900/20 p-3 rounded text-xs text-indigo-300 border border-indigo-900/50">
-                      Your current Reputation Score ({user.reputationScore}) will be attached to this request immutable.
-                    </div>
-                    <Button type="submit" className="w-full">
-                       {isMicroloan ? 'Post Microloan Request' : 'Post Request'}
+                    <Button type="submit" className="w-full shadow-lg shadow-[#667eea]/20">
+                       {isMicroloan ? 'Request Microloan' : 'Post Request'}
                     </Button>
                   </form>
                 </div>
               </div>
 
               {/* Marketplace Area */}
-              <div className="md:col-span-2">
+              <div className="md:col-span-8">
                 <Marketplace 
                   activeRequests={myRequests}
                   availableOffers={MOCK_OFFERS}
@@ -330,11 +337,16 @@ const App: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-20 bg-gray-800 rounded-xl border border-gray-700 border-dashed">
-             <div className="text-center">
-                <h3 className="text-xl font-bold text-white mb-2">Liquidity Provider Dashboard</h3>
-                <p className="text-gray-400 mb-4">View and fund pending microloans to earn community badges.</p>
-                <Button variant="secondary" onClick={() => alert("Lender functionality coming in V2")}>Connect Wallet</Button>
+          <div className="flex flex-col items-center justify-center py-32 bg-slate-800/20 rounded-3xl border border-slate-800 border-dashed">
+             <div className="text-center max-w-md">
+                <div className="w-20 h-20 bg-slate-800 rounded-full mx-auto mb-6 flex items-center justify-center">
+                   <span className="text-4xl">💎</span>
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">Liquidity Provider</h3>
+                <p className="text-slate-400 mb-8 font-light leading-relaxed">
+                  Earn yields by funding microloans and support community causes through the P³ protocol.
+                </p>
+                <Button variant="outline" className="px-8" onClick={() => alert("Lender functionality coming in V2")}>Connect Wallet</Button>
              </div>
           </div>
         )}

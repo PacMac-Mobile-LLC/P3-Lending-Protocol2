@@ -36,11 +36,11 @@ export const Marketplace: React.FC<Props> = ({
 
   const getStatusColor = (status: string) => {
     switch(status) {
-      case 'MATCHED': return 'bg-green-900 text-green-300';
-      case 'ESCROW_LOCKED': return 'bg-orange-900 text-orange-300';
-      case 'ACTIVE': return 'bg-indigo-900 text-indigo-300';
-      case 'REPAID': return 'bg-emerald-900 text-emerald-300';
-      default: return 'bg-gray-700 text-gray-300';
+      case 'MATCHED': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+      case 'ESCROW_LOCKED': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      case 'ACTIVE': return 'bg-[#667eea]/10 text-[#667eea] border-[#667eea]/20';
+      case 'REPAID': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+      default: return 'bg-slate-700/30 text-slate-400 border-slate-700';
     }
   };
 
@@ -49,52 +49,69 @@ export const Marketplace: React.FC<Props> = ({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-12">
       {/* Active Requests Column */}
-      <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden flex flex-col h-[600px]">
-        <div className="p-4 border-b border-gray-700 bg-gray-900/50">
-          <h3 className="font-bold text-white flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+      <div className="bg-slate-800/30 backdrop-blur-md rounded-3xl border border-slate-700/50 flex flex-col h-[650px] shadow-2xl overflow-hidden">
+        <div className="p-6 border-b border-slate-700/50 bg-slate-900/20">
+          <h3 className="font-semibold text-white flex items-center gap-3">
+            <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-[#667eea] to-[#764ba2]"></span>
             My Loan Portfolio
           </h3>
         </div>
-        <div className="overflow-y-auto p-4 space-y-4 flex-1">
+        <div className="overflow-y-auto p-6 space-y-4 flex-1 custom-scrollbar">
           {activeRequests.length === 0 ? (
-            <div className="text-center text-gray-500 mt-10">No active requests.</div>
+            <div className="flex flex-col items-center justify-center h-full text-slate-500 space-y-2">
+              <span className="text-4xl opacity-20">📂</span>
+              <p>No active requests found.</p>
+            </div>
           ) : (
             activeRequests.map(req => (
-              <div key={req.id} className={`border rounded-lg p-4 transition-all ${selectedRequest === req.id ? 'border-indigo-500 bg-indigo-900/10' : 'border-gray-700 bg-gray-800 hover:border-gray-600'}`}>
-                <div className="flex justify-between items-start mb-2">
-                  <span className="text-2xl font-bold text-white">${req.amount.toLocaleString()}</span>
-                  <div className="flex flex-col items-end gap-1">
-                    <span className={`px-2 py-1 rounded text-xs font-bold ${getStatusColor(req.status)}`}>
-                      {req.status === 'ESCROW_LOCKED' ? 'ESCROW SECURED' : req.status}
+              <div 
+                key={req.id} 
+                className={`
+                  relative rounded-2xl p-5 border transition-all duration-300
+                  ${selectedRequest === req.id 
+                    ? 'bg-[#667eea]/5 border-[#667eea]/50 shadow-[0_0_20px_rgba(102,126,234,0.1)]' 
+                    : 'bg-slate-900/40 border-slate-700/50 hover:border-slate-600'}
+                `}
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <span className="text-3xl font-bold text-white tracking-tight">
+                      ${req.amount.toLocaleString()}
+                    </span>
+                    <p className="text-xs text-slate-400 font-medium mt-1 uppercase tracking-wider">{req.purpose}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold border uppercase tracking-widest ${getStatusColor(req.status)}`}>
+                      {req.status === 'ESCROW_LOCKED' ? 'ESCROW' : req.status}
                     </span>
                     {req.charityId && (
-                      <span className="text-[10px] text-pink-400 flex items-center gap-1 bg-pink-900/20 px-1.5 py-0.5 rounded border border-pink-900/50">
-                        ♥ {getCharityName(req.charityId)}
+                      <span className="text-[10px] text-pink-300 flex items-center gap-1.5 px-2 py-0.5">
+                        <span className="text-pink-500">♥</span> {getCharityName(req.charityId)}
                       </span>
                     )}
                   </div>
                 </div>
-                <div className="text-sm text-gray-400 mb-3 space-y-1">
-                  <p>Purpose: <span className="text-gray-300">{req.purpose}</span></p>
-                  <p>Type: <span className="text-gray-300">{req.type}</span></p>
-                  {req.status === 'ESCROW_LOCKED' && (
-                     <div className="bg-orange-900/20 text-orange-200 text-xs p-2 rounded border border-orange-900/50 flex items-center gap-2">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                        Funds held in P3 Escrow Vault.
-                     </div>
-                  )}
-                </div>
                 
-                <div className="flex gap-2">
+                {req.status === 'ESCROW_LOCKED' && (
+                  <div className="mb-4 bg-amber-500/5 border border-amber-500/10 rounded-xl p-3 flex items-start gap-3">
+                    <div className="mt-0.5 text-amber-500">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                    </div>
+                    <p className="text-xs text-amber-200/80 leading-relaxed">
+                      Funds are currently held in the P³ Escrow Vault awaiting contract fulfillment.
+                    </p>
+                  </div>
+                )}
+                
+                <div className="flex gap-3 mt-2">
                   {req.status === 'PENDING' && (
                      <>
                       <Button 
                         size="sm" 
-                        className="flex-1 text-sm py-1" 
                         variant="outline"
+                        className="flex-1"
                         onClick={() => handleFindMatches(req)}
                         isLoading={isMatching && selectedRequest === req.id}
                       >
@@ -102,36 +119,35 @@ export const Marketplace: React.FC<Props> = ({
                       </Button>
                       <Button 
                         size="sm" 
-                        className="flex-1 text-sm py-1" 
                         variant="secondary"
+                        className="flex-1"
                         onClick={() => onFundRequest(req)}
                       >
-                        Simulate Funding
+                        Simulate Fund
                       </Button>
                      </>
                   )}
                   {req.status === 'ESCROW_LOCKED' && (
                     <Button 
                       size="sm" 
-                      className="w-full text-sm py-1 bg-orange-600 hover:bg-orange-500 shadow-orange-500/20" 
+                      className="w-full bg-amber-600 hover:bg-amber-500 text-white shadow-lg shadow-amber-500/20 border-none" 
                       onClick={() => onReleaseEscrow(req)}
                     >
-                      Release Funds to Borrower (Simulate Contract)
+                      Release Escrow
                     </Button>
                   )}
                   {req.status === 'ACTIVE' && (
                     <Button 
                       size="sm" 
-                      className="w-full text-sm py-1 bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20" 
+                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 border-none" 
                       onClick={() => onRepayLoan(req)}
                     >
-                      Repay Loan + Charity Donation
+                      Repay + Donate
                     </Button>
                   )}
                    {req.status === 'REPAID' && (
-                    <div className="w-full flex justify-between items-center text-xs bg-emerald-900/20 py-2 px-3 rounded border border-emerald-900">
-                      <span className="text-emerald-400 font-bold">Repaid</span>
-                      <span className="text-pink-400 font-medium">Donation Sent ♥</span>
+                    <div className="w-full flex justify-center items-center gap-2 text-xs text-emerald-400 font-medium bg-emerald-500/5 py-2 rounded-lg border border-emerald-500/10">
+                      <span>✓ Repayment Complete</span>
                     </div>
                   )}
                 </div>
@@ -142,18 +158,20 @@ export const Marketplace: React.FC<Props> = ({
       </div>
 
       {/* Matches/Offers Column */}
-      <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden flex flex-col h-[600px]">
-        <div className="p-4 border-b border-gray-700 bg-gray-900/50">
-          <h3 className="font-bold text-white flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            Lender Offers
+      <div className="bg-slate-800/30 backdrop-blur-md rounded-3xl border border-slate-700/50 flex flex-col h-[650px] shadow-2xl overflow-hidden">
+        <div className="p-6 border-b border-slate-700/50 bg-slate-900/20">
+          <h3 className="font-semibold text-white flex items-center gap-3">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#4facfe]"></span>
+            Marketplace Matches
           </h3>
         </div>
-        <div className="overflow-y-auto p-4 flex-1">
+        <div className="overflow-y-auto p-6 flex-1 custom-scrollbar">
           {!selectedRequest ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-500 space-y-4">
-              <svg className="w-16 h-16 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-              <p>Select a PENDING request to find matches.</p>
+            <div className="flex flex-col items-center justify-center h-full text-slate-500 space-y-4">
+              <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center">
+                 <svg className="w-6 h-6 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              </div>
+              <p className="font-light">Select a pending request to view AI matches.</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -162,27 +180,47 @@ export const Marketplace: React.FC<Props> = ({
                   const offer = availableOffers.find(o => o.id === match.offerId);
                   if (!offer) return null;
                   return (
-                    <div key={idx} className="bg-gray-900 rounded-lg p-4 border border-gray-700 relative overflow-hidden group">
-                      <div className="absolute top-0 right-0 p-2 opacity-50">
-                         <div className="text-xs font-bold text-emerald-400 border border-emerald-900 bg-emerald-900/30 px-2 py-0.5 rounded">
+                    <div key={idx} className="bg-slate-900/60 rounded-2xl p-5 border border-slate-700/50 hover:border-[#667eea]/30 transition-all group">
+                      <div className="flex justify-between items-start mb-3">
+                        <h4 className="text-white font-bold">{offer.lenderName}</h4>
+                        <div className="text-xs font-bold text-[#4facfe] border border-[#4facfe]/30 bg-[#4facfe]/10 px-2 py-1 rounded-full">
                            {match.matchScore}% Match
                          </div>
                       </div>
-                      <h4 className="text-white font-bold mb-1">{offer.lenderName}</h4>
-                      <div className="flex gap-4 text-sm mb-3">
-                        <div className="text-emerald-400 font-mono font-bold">{offer.interestRate}% APR</div>
-                        <div className="text-gray-400">Up to ${offer.maxAmount}</div>
+                      
+                      <div className="flex gap-6 text-sm mb-4">
+                        <div>
+                          <p className="text-[10px] text-slate-500 uppercase tracking-wider">APR</p>
+                          <p className="text-white font-mono">{offer.interestRate}%</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-500 uppercase tracking-wider">Max</p>
+                          <p className="text-white font-mono">${offer.maxAmount}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-500 uppercase tracking-wider">Term</p>
+                          <p className="text-slate-300">{offer.terms}</p>
+                        </div>
                       </div>
-                      <p className="text-xs text-gray-400 italic mb-3 border-l-2 border-indigo-500 pl-2">
-                        "{match.reasoning}"
-                      </p>
-                      <Button className="w-full text-sm">Accept & Escrow Funds</Button>
+                      
+                      <div className="mb-4 pl-3 border-l-2 border-[#667eea]/50">
+                        <p className="text-xs text-slate-400 italic">
+                          "{match.reasoning}"
+                        </p>
+                      </div>
+                      
+                      <Button size="sm" className="w-full">Accept Offer</Button>
                     </div>
                   );
                 })
               ) : (
-                <div className="text-center text-gray-500 mt-10">
-                   {isMatching && selectedRequest ? 'AI is analyzing marketplace...' : 'No matching offers found. Try improving your Reputation Score.'}
+                <div className="flex flex-col items-center justify-center h-40 text-slate-500 text-sm">
+                   {isMatching && selectedRequest ? (
+                     <div className="flex flex-col items-center gap-2">
+                       <div className="w-6 h-6 border-2 border-[#667eea] border-t-transparent rounded-full animate-spin"></div>
+                       <span>AI Analysis in progress...</span>
+                     </div>
+                   ) : 'No matching offers found.'}
                 </div>
               )}
             </div>

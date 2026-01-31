@@ -1,8 +1,7 @@
 import React from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'danger';
-  // Added size prop to support different button sizes
+  variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
 }
@@ -10,26 +9,26 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 export const Button: React.FC<ButtonProps> = ({ 
   children, 
   variant = 'primary', 
-  size = 'md', // Default size
+  size = 'md', 
   isLoading, 
   className = '', 
   ...props 
 }) => {
-  // Removed padding from baseStyles, moving it to sizes
-  const baseStyles = "rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2";
+  const baseStyles = "rounded-full font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-95";
   
-  // Defined size classes
   const sizes = {
-    sm: "px-3 py-1.5 text-sm",
-    md: "px-4 py-2",
-    lg: "px-6 py-3 text-lg"
+    sm: "px-4 py-1.5 text-xs",
+    md: "px-6 py-2.5 text-sm",
+    lg: "px-8 py-3.5 text-base"
   };
   
   const variants = {
-    primary: "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/30",
-    secondary: "bg-gray-700 hover:bg-gray-600 text-white",
-    outline: "border border-gray-600 text-gray-300 hover:border-gray-400 hover:text-white",
-    danger: "bg-red-600 hover:bg-red-500 text-white"
+    // Brand Gradient: #667eea -> #764ba2
+    primary: "bg-gradient-to-r from-[#667eea] to-[#764ba2] hover:shadow-[0_0_20px_rgba(118,75,162,0.5)] text-white border border-transparent",
+    secondary: "bg-slate-800 hover:bg-slate-700 text-white border border-slate-700",
+    outline: "bg-transparent border border-slate-600 text-slate-300 hover:border-[#667eea] hover:text-[#667eea]",
+    danger: "bg-red-500/10 text-red-400 border border-red-500/50 hover:bg-red-500/20",
+    ghost: "bg-transparent hover:bg-white/5 text-slate-400 hover:text-white"
   };
 
   return (
@@ -44,7 +43,7 @@ export const Button: React.FC<ButtonProps> = ({
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          Processing...
+          <span className="opacity-80">Processing...</span>
         </>
       ) : children}
     </button>

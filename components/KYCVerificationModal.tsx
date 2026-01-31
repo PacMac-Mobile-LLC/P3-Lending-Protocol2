@@ -52,7 +52,6 @@ export const KYCVerificationModal: React.FC<Props> = ({ currentTier, onClose, on
       });
 
       if (result.passed) {
-         // Fake delay for "scanning" effect
          setTimeout(() => {
             const newLimit = nextTier === KYCTier.TIER_1 ? 1000 : nextTier === KYCTier.TIER_2 ? 50000 : 1000000;
             onUpgradeComplete(nextTier, newLimit);
@@ -69,85 +68,90 @@ export const KYCVerificationModal: React.FC<Props> = ({ currentTier, onClose, on
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-      <div className="bg-gray-800 border border-gray-600 rounded-xl max-w-lg w-full shadow-2xl overflow-hidden animate-fade-in">
-        <div className="bg-gray-900 p-4 border-b border-gray-700 flex justify-between items-center">
+    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-[100] p-4">
+      <div className="bg-[#0f172a] border border-slate-700 rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden animate-fade-in">
+        <div className="bg-slate-900/50 p-6 border-b border-slate-800 flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-bold text-white">Identity Verification</h2>
-            <p className="text-xs text-gray-400">Compliance per Nebraska & Federal Regulations</p>
+            <h2 className="text-xl font-bold text-white tracking-tight">Identity Verification</h2>
+            <p className="text-xs text-slate-400 mt-1">Compliance per Nebraska & Federal Regulations</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white">✕</button>
+          <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
         </div>
 
-        <div className="p-6">
-          <div className="mb-6 bg-indigo-900/20 border border-indigo-500/30 rounded-lg p-4">
-            <h3 className="text-indigo-400 font-bold uppercase text-xs tracking-wider mb-1">Upgrading to</h3>
+        <div className="p-8">
+          <div className="mb-8 bg-gradient-to-br from-[#667eea]/10 to-[#764ba2]/10 border border-[#667eea]/20 rounded-2xl p-5">
+            <h3 className="text-[#667eea] font-bold uppercase text-[10px] tracking-widest mb-2">Upgrading to</h3>
             <div className="flex justify-between items-end">
                <span className="text-2xl font-bold text-white">{targetInfo.title}</span>
-               <span className="text-emerald-400 font-mono font-bold">{targetInfo.limit} Limit</span>
+               <span className="text-emerald-400 font-mono font-bold bg-emerald-500/10 px-2 py-0.5 rounded text-sm">{targetInfo.limit} Limit</span>
             </div>
-            <p className="text-sm text-gray-400 mt-2">Requires: {targetInfo.req}</p>
+            <p className="text-xs text-slate-400 mt-3 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#667eea]"></span>
+              Requires: {targetInfo.req}
+            </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {step === 1 && (
               <>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-5">
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">First Name</label>
+                    <label className="block text-xs text-slate-400 mb-2 uppercase tracking-wide">First Name</label>
                     <input 
                       required
                       type="text" 
-                      className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm focus:border-indigo-500 outline-none"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white text-sm focus:border-[#667eea] outline-none transition-colors"
                       value={formData.firstName}
                       onChange={e => setFormData({...formData, firstName: e.target.value})}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Last Name</label>
+                    <label className="block text-xs text-slate-400 mb-2 uppercase tracking-wide">Last Name</label>
                     <input 
                       required
                       type="text" 
-                      className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm focus:border-indigo-500 outline-none"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white text-sm focus:border-[#667eea] outline-none transition-colors"
                       value={formData.lastName}
                       onChange={e => setFormData({...formData, lastName: e.target.value})}
                     />
                   </div>
                 </div>
                 <div>
-                   <label className="block text-xs text-gray-500 mb-1">Date of Birth</label>
+                   <label className="block text-xs text-slate-400 mb-2 uppercase tracking-wide">Date of Birth</label>
                    <input 
                       required
                       type="date" 
-                      className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm focus:border-indigo-500 outline-none"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white text-sm focus:border-[#667eea] outline-none transition-colors"
                       value={formData.dob}
                       onChange={e => setFormData({...formData, dob: e.target.value})}
                     />
                 </div>
                 <div>
-                   <label className="block text-xs text-gray-500 mb-1">Residential Address</label>
+                   <label className="block text-xs text-slate-400 mb-2 uppercase tracking-wide">Residential Address</label>
                    <input 
                       required
                       type="text" 
-                      className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm focus:border-indigo-500 outline-none"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white text-sm focus:border-[#667eea] outline-none transition-colors"
                       value={formData.address}
                       onChange={e => setFormData({...formData, address: e.target.value})}
                     />
                 </div>
                 <div>
-                   <label className="block text-xs text-gray-500 mb-1">SSN / TIN (Last 4 Digits)</label>
+                   <label className="block text-xs text-slate-400 mb-2 uppercase tracking-wide">SSN / TIN (Last 4)</label>
                    <input 
                       required
                       type="password" 
                       maxLength={4}
                       placeholder="••••"
-                      className="w-24 bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm focus:border-indigo-500 outline-none tracking-widest"
+                      className="w-32 bg-slate-900 border border-slate-700 rounded-xl p-3 text-white text-sm focus:border-[#667eea] outline-none tracking-[0.5em] text-center"
                       value={formData.ssn}
                       onChange={e => setFormData({...formData, ssn: e.target.value})}
                     />
                 </div>
                 
-                <p className="text-[10px] text-gray-500 mt-2">
+                <p className="text-[10px] text-slate-500 mt-4 text-center">
                   Your data is encrypted and used solely for CIP (Customer Identification Program) compliance checks.
                 </p>
               </>
@@ -155,10 +159,10 @@ export const KYCVerificationModal: React.FC<Props> = ({ currentTier, onClose, on
 
             <Button 
                type="submit" 
-               className="w-full mt-4" 
+               className="w-full mt-6" 
                isLoading={isProcessing}
             >
-              {isProcessing ? 'Running OFAC & Identity Checks...' : 'Verify & Upgrade'}
+              {isProcessing ? 'Verifying Identity...' : 'Confirm & Upgrade'}
             </Button>
           </form>
         </div>
