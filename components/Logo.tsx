@@ -20,7 +20,7 @@ export const Logo: React.FC<LogoProps> = ({ className = '', showText = true }) =
       {showText && (
         <div className="flex flex-col justify-center h-full">
           <span className="font-sans text-lg font-semibold tracking-tight text-white">
-            P3 <span className="text-zinc-500">Lending</span>
+            Lending
           </span>
         </div>
       )}
