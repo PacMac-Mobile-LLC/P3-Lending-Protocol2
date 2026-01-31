@@ -46,13 +46,13 @@ export const CONFIG = {
 
 #### Command 1: Loan Status
 - **Command**: `/loan-status`
-- **Request URL**: `https://p3lending.space/slack/webhook`
+- **Request URL**: `https://p3lending.netlify.app/slack/webhook`
 - **Short Description**: `Check loan status and details`
 - **Usage Hint**: `[loan-id]`
 
 #### Command 2: Tip
 - **Command**: `/tip`
-- **Request URL**: `https://p3lending.space/slack/webhook`
+- **Request URL**: `https://p3lending.netlify.app/slack/webhook`
 - **Short Description**: `Send micro-transaction tip to another user`
 - **Usage Hint**: `[@user] [amount] [message]`
 

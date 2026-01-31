@@ -38,6 +38,7 @@ const MOCK_COMMUNITY_REQUESTS: LoanRequest[] = [
 const App: React.FC = () => {
   const [appReady, setAppReady] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isVerifyingEmail, setIsVerifyingEmail] = useState(false); // New state for email verification
   const [user, setUser] = useState<UserProfile | null>(null);
   
   const [charities, setCharities] = useState<Charity[]>(MOCK_CHARITIES);
@@ -74,12 +75,18 @@ const App: React.FC = () => {
 
   // Initialize Netlify Identity & Load Data
   useEffect(() => {
+    // Check for confirmation token in URL immediately
+    if (window.location.hash.includes('confirmation_token')) {
+      setIsVerifyingEmail(true);
+    }
+
     AuthService.init();
 
     // Handler for successful login
     const handleLogin = (netlifyUser: any) => {
       console.log("Logged in:", netlifyUser);
       setIsAuthenticated(true);
+      setIsVerifyingEmail(false); // Stop verifying loading state
       const p3User = PersistenceService.loadUser(netlifyUser);
       setUser(p3User);
       setMyRequests(PersistenceService.getMyRequests(p3User.id));
@@ -354,23 +361,34 @@ const App: React.FC = () => {
            <div className="transform scale-150 mb-8">
              <Logo showText={false} />
            </div>
-           <h1 className="text-4xl font-bold text-white tracking-tighter">
-             P<span className="text-[#00e599]">3</span> Lending Dashboard
-           </h1>
-           <p className="text-zinc-400 max-w-md mx-auto">
-             The future of reputation-based finance. Sign in to access your dashboard, build your score, and secure funding.
-           </p>
            
-           <div className="flex flex-col gap-4 items-center">
-             <Button 
-               size="lg" 
-               onClick={() => AuthService.open('login')}
-               className="min-w-[200px] shadow-[0_0_30px_rgba(0,229,153,0.3)]"
-             >
-               Connect Identity
-             </Button>
-             <p className="text-xs text-zinc-600">Powered by Netlify Identity & Google OAuth</p>
-           </div>
+           {isVerifyingEmail ? (
+             <div className="flex flex-col items-center gap-4 animate-pulse">
+               <div className="w-12 h-12 border-4 border-[#00e599] border-t-transparent rounded-full animate-spin"></div>
+               <h2 className="text-2xl font-bold text-white">Verifying Email...</h2>
+               <p className="text-zinc-400">Please wait while we confirm your identity.</p>
+             </div>
+           ) : (
+             <>
+               <h1 className="text-4xl font-bold text-white tracking-tighter">
+                 P<span className="text-[#00e599]">3</span> Lending Dashboard
+               </h1>
+               <p className="text-zinc-400 max-w-md mx-auto">
+                 The future of reputation-based finance. Sign in to access your dashboard, build your score, and secure funding.
+               </p>
+               
+               <div className="flex flex-col gap-4 items-center">
+                 <Button 
+                   size="lg" 
+                   onClick={() => AuthService.open('login')}
+                   className="min-w-[200px] shadow-[0_0_30px_rgba(0,229,153,0.3)]"
+                 >
+                   Connect Identity
+                 </Button>
+                 <p className="text-xs text-zinc-600">Powered by Netlify Identity & Google OAuth</p>
+               </div>
+             </>
+           )}
          </div>
       </div>
     );
