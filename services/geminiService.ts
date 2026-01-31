@@ -1,13 +1,22 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { UserProfile, LoanRequest, LoanOffer, MatchResult, RiskReport } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Helper to safely get the API Key without crashing the app on load
+const getAI = () => {
+  // According to guidelines, we must exclusively use process.env.API_KEY.
+  // We assume it is pre-configured and accessible.
+  // We provide a fallback to avoid crash during initialization if key is missing,
+  // letting the API call fail gracefully with a specific error if needed.
+  const apiKey = process.env.API_KEY;
+  return new GoogleGenAI({ apiKey: apiKey || 'MISSING_KEY' });
+};
 
 // AI Compliance Officer: Simulates regulatory checks (OFAC, PEP, Identity Verification)
 export const performComplianceCheck = async (
   data: { name: string; dob: string; address: string; ssnLast4: string; docType?: string }
 ): Promise<{ passed: boolean; riskLevel: string; reasoning: string }> => {
   try {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Act as a KYC/AML Compliance Officer for a Nebraska-based lending platform subject to the Bank Secrecy Act (BSA) and USA PATRIOT Act.
@@ -54,6 +63,7 @@ export const performComplianceCheck = async (
 // AI Underwriter: Analyzes profile text AND quantitative metrics
 export const analyzeReputation = async (profile: UserProfile): Promise<{ score: number; analysis: string; newBadges: string[] }> => {
   try {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Analyze the financial reputation of this user for the P3 Lending Protocol with an emphasis on **Equal Opportunity**.
@@ -110,6 +120,7 @@ export const matchLoanOffers = async (request: LoanRequest, offers: LoanOffer[])
   if (offers.length === 0) return [];
 
   try {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Act as a P3 Lending Matchmaker. Evaluate these loan offers against the borrower's request.
@@ -162,6 +173,7 @@ export const matchLoanOffers = async (request: LoanRequest, offers: LoanOffer[])
 // NEW: Real-time Risk Engine with Search Grounding
 export const analyzeRiskProfile = async (profile: UserProfile): Promise<RiskReport> => {
   try {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Conduct a comprehensive Risk Assessment for this user on the P3 Lending Protocol.
@@ -196,12 +208,7 @@ export const analyzeRiskProfile = async (profile: UserProfile): Promise<RiskRepo
     });
 
     const text = response.text;
-    // Note: With Search Grounding, the response might contain grounding metadata.
-    // The model typically returns valid JSON if requested, but we handle the parsing carefully.
     
-    // Extract URLs from grounding metadata if available (optional enhancement)
-    // const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-
     if (!text) throw new Error("No response from AI Risk Engine");
     
     // Sometimes search results add markdown or extra text, ensure we extract the JSON
