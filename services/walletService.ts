@@ -1,4 +1,5 @@
 import { BrowserProvider, formatEther } from 'ethers';
+import { SiweMessage } from 'siwe'; // You need to: npm install siwe in frontend
 import { WalletState, WalletProvider } from '../types';
 
 // Declare global ethereum property on window
@@ -8,19 +9,63 @@ declare global {
   }
 }
 
-export const connectMetamask = async (): Promise<WalletState> => {
-  if (!window.ethereum) {
-    throw new Error("MetaMask is not installed!");
+const BACKEND_URL = 'http://localhost:3001'; // Update for production
+
+export const authenticateWithBackend = async (signer: any, address: string, chainId: number) => {
+  try {
+    // 1. Get Nonce from Backend
+    const nonceRes = await fetch(`${BACKEND_URL}/api/nonce`);
+    const nonce = await nonceRes.text();
+
+    // 2. Create SIWE Message
+    const message = new SiweMessage({
+      domain: window.location.host,
+      address,
+      statement: 'Sign in with Ethereum to P3 Lending Protocol',
+      uri: window.location.origin,
+      version: '1',
+      chainId,
+      nonce,
+    });
+
+    const preparedMessage = message.prepareMessage();
+
+    // 3. Ask User to Sign
+    const signature = await signer.signMessage(preparedMessage);
+
+    // 4. Send to Backend for Verification
+    const verifyRes = await fetch(`${BACKEND_URL}/api/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: preparedMessage, signature }),
+    });
+
+    const data = await verifyRes.json();
+    if (!data.ok) throw new Error('Backend verification failed');
+
+    // 5. Store JWT
+    localStorage.setItem('p3_jwt', data.token);
+    return true;
+
+  } catch (error) {
+    console.error("SIWE Error:", error);
+    return false;
   }
+};
+
+export const connectMetamask = async (): Promise<WalletState> => {
+  if (!window.ethereum) throw new Error("MetaMask is not installed!");
 
   try {
     const provider = new BrowserProvider(window.ethereum);
-    // Request account access
-    const accounts = await provider.send("eth_requestAccounts", []);
+    await provider.send("eth_requestAccounts", []);
     const signer = await provider.getSigner();
     const address = await signer.getAddress();
     const network = await provider.getNetwork();
     const balance = await provider.getBalance(address);
+
+    // Perform SIWE Authentication
+    await authenticateWithBackend(signer, address, Number(network.chainId));
 
     return {
       isConnected: true,
@@ -36,21 +81,18 @@ export const connectMetamask = async (): Promise<WalletState> => {
 };
 
 export const connectCoinbase = async (): Promise<WalletState> => {
-  // Coinbase Wallet Extension also injects into window.ethereum, 
-  // often with isCoinbaseWallet = true
-  if (!window.ethereum) {
-    throw new Error("No wallet detected");
-  }
+  if (!window.ethereum) throw new Error("No wallet detected");
 
   try {
-    // Note: If both MetaMask and Coinbase are installed, window.ethereum might handle conflict
-    // or provide window.ethereum.providers
     const provider = new BrowserProvider(window.ethereum);
-    const accounts = await provider.send("eth_requestAccounts", []);
+    await provider.send("eth_requestAccounts", []);
     const signer = await provider.getSigner();
     const address = await signer.getAddress();
     const network = await provider.getNetwork();
     const balance = await provider.getBalance(address);
+
+    // Perform SIWE Authentication
+    await authenticateWithBackend(signer, address, Number(network.chainId));
 
     return {
       isConnected: true,
@@ -65,10 +107,7 @@ export const connectCoinbase = async (): Promise<WalletState> => {
   }
 };
 
-// Simplified WalletConnect simulation for this environment
-// Full WalletConnect v2 requires significant bundled dependencies usually
 export const connectWalletConnect = async (): Promise<WalletState> => {
-  // This is a placeholder. In a real CRA/Vite app, you would import { EthereumProvider } from '@walletconnect/ethereum-provider'
   throw new Error("WalletConnect requires a build step with polyfills in this environment. Please use MetaMask.");
 };
 

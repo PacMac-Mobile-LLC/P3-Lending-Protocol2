@@ -14,7 +14,8 @@
     "recharts": "^3.7.0",
     "react-dom": "^19.2.4",
     "ethers": "6.11.1",
-    "netlify-identity-widget": "^1.9.2"
+    "netlify-identity-widget": "^1.9.2",
+    "siwe": "^3.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
