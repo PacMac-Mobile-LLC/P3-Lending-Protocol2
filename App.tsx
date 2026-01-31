@@ -8,6 +8,7 @@ import { Button } from './components/Button';
 import { Logo } from './components/Logo';
 import { analyzeReputation, analyzeRiskProfile } from './services/geminiService';
 import { shortenAddress } from './services/walletService';
+import { PersistenceService } from './services/persistence';
 import { KYCVerificationModal } from './components/KYCVerificationModal';
 import { WalletConnectModal } from './components/WalletConnectModal';
 import { RiskDashboard } from './components/RiskDashboard';
@@ -20,27 +21,6 @@ const MOCK_CHARITIES: Charity[] = [
   { id: 'c2', name: 'Code for Kids', mission: 'STEM Education', totalRaised: 890, color: 'bg-blue-500' },
   { id: 'c3', name: 'MediCare', mission: 'Medical Supplies', totalRaised: 2100, color: 'bg-red-500' },
 ];
-
-const INITIAL_USER: UserProfile = {
-  id: 'u1',
-  name: 'Alex Mercer',
-  income: 65000,
-  balance: 12450.75,
-  avatarUrl: undefined,
-  employmentStatus: 'Software Engineer',
-  financialHistory: 'Paid off student loans in 2022. currently have a car lease.',
-  reputationScore: 50,
-  riskAnalysis: 'History suggests stability, but limited on-chain history.',
-  successfulRepayments: 0,
-  currentStreak: 0,
-  badges: [],
-  kycTier: KYCTier.TIER_0,
-  kycStatus: KYCStatus.UNVERIFIED,
-  kycLimit: 0,
-  mentorshipsCount: 0,
-  walletAgeDays: 120, 
-  txCount: 45
-};
 
 const MOCK_OFFERS: LoanOffer[] = [
   { id: 'o1', lenderId: 'l1', lenderName: 'Vanguard Ventures', maxAmount: 10000, interestRate: 5.5, minReputationScore: 80, terms: '12 Months' },
@@ -55,9 +35,13 @@ const MOCK_COMMUNITY_REQUESTS: LoanRequest[] = [
 ];
 
 const App: React.FC = () => {
-  const [user, setUser] = useState<UserProfile>(INITIAL_USER);
+  const [appReady, setAppReady] = useState(false);
+  // Initialize with null/template, but immediately load in useEffect
+  const [user, setUser] = useState<UserProfile>(PersistenceService.getUser());
+  
   const [charities, setCharities] = useState<Charity[]>(MOCK_CHARITIES);
   const [activeView, setActiveView] = useState<'borrow' | 'lend' | 'mentorship' | 'profile'>('borrow');
+  
   const [myRequests, setMyRequests] = useState<LoanRequest[]>([]);
   const [communityRequests, setCommunityRequests] = useState<LoanRequest[]>(MOCK_COMMUNITY_REQUESTS);
   
@@ -86,6 +70,15 @@ const App: React.FC = () => {
   const [isMicroloan, setIsMicroloan] = useState(false);
   const [isCharityGuaranteed, setIsCharityGuaranteed] = useState(false);
   const [selectedCharity, setSelectedCharity] = useState<string>(MOCK_CHARITIES[0].id);
+
+  // Load Persistence
+  useEffect(() => {
+    const loadedUser = PersistenceService.getUser();
+    const loadedRequests = PersistenceService.getMyRequests();
+    setUser(loadedUser);
+    setMyRequests(loadedRequests);
+    setAppReady(true);
+  }, []);
 
   // Easter Egg Listener
   useEffect(() => {
@@ -134,24 +127,39 @@ const App: React.FC = () => {
   // Handlers
   const handleProfileUpdate = async (updatedUser: UserProfile) => {
     setIsAnalyzing(true);
+    
+    // 1. Optimistic Update
     setUser(updatedUser); 
+    PersistenceService.saveUser(updatedUser);
+
+    // 2. AI Analysis
     const result = await analyzeReputation(updatedUser);
-    setUser(prev => ({
-      ...prev,
-      reputationScore: result.score,
-      riskAnalysis: result.analysis,
-      badges: [...new Set([...prev.badges, ...(result.newBadges || [])])]
-    }));
+    
+    // 3. Update with AI results
+    setUser(prev => {
+      const finalUser = {
+        ...prev,
+        reputationScore: result.score,
+        riskAnalysis: result.analysis,
+        badges: [...new Set([...prev.badges, ...(result.newBadges || [])])]
+      };
+      PersistenceService.saveUser(finalUser);
+      return finalUser;
+    });
+    
     setIsAnalyzing(false);
     
-    // If we were on profile page, maybe show a success toast?
     if (activeView === 'profile') {
-      // alert('Profile updated!'); // Optional
+      // alert('Profile updated!');
     }
   };
 
   const handleKYCUpgrade = (newTier: KYCTier, limit: number) => {
-    setUser(prev => ({ ...prev, kycTier: newTier, kycStatus: KYCStatus.VERIFIED, kycLimit: limit }));
+    setUser(prev => {
+      const updated = { ...prev, kycTier: newTier, kycStatus: KYCStatus.VERIFIED, kycLimit: limit };
+      PersistenceService.saveUser(updated);
+      return updated;
+    });
     setShowKYCModal(false);
   };
 
@@ -198,7 +206,13 @@ const App: React.FC = () => {
       charityId: selectedCharity,
       isCharityGuaranteed: isCharityGuaranteed
     };
-    setMyRequests([newRequest, ...myRequests]);
+    
+    setMyRequests(prev => {
+      const updated = [newRequest, ...prev];
+      PersistenceService.saveMyRequests(updated);
+      return updated;
+    });
+
     setLoanPurpose('');
     setLoanAmount(1000);
   };
@@ -208,32 +222,52 @@ const App: React.FC = () => {
       setShowWalletModal(true);
       return;
     }
-    setMyRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'ESCROW_LOCKED' } : r));
+    setMyRequests(prev => {
+      const updated = prev.map(r => r.id === req.id ? { ...r, status: 'ESCROW_LOCKED' as const } : r);
+      PersistenceService.saveMyRequests(updated);
+      return updated;
+    });
   };
 
   const handleReleaseEscrow = (req: LoanRequest) => {
-    setMyRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'ACTIVE' } : r));
+    setMyRequests(prev => {
+      const updated = prev.map(r => r.id === req.id ? { ...r, status: 'ACTIVE' as const } : r);
+      PersistenceService.saveMyRequests(updated);
+      return updated;
+    });
   };
 
   const handleRepayLoan = async (req: LoanRequest) => {
     const platformFee = req.amount * 0.02;
     const charityDonation = platformFee * 0.5;
 
-    setMyRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'REPAID' } : r));
+    setMyRequests(prev => {
+      const updated = prev.map(r => r.id === req.id ? { ...r, status: 'REPAID' as const } : r);
+      PersistenceService.saveMyRequests(updated);
+      return updated;
+    });
+
     if (req.charityId) {
       setCharities(prev => prev.map(c => c.id === req.charityId ? { ...c, totalRaised: c.totalRaised + charityDonation } : c));
     }
 
     const updatedUser = { ...user, successfulRepayments: user.successfulRepayments + 1, currentStreak: user.currentStreak + 1 };
+    // Optimistic Save
     setUser(updatedUser);
+    PersistenceService.saveUser(updatedUser);
+
     setIsAnalyzing(true);
     const result = await analyzeReputation(updatedUser);
-    setUser(prev => ({
-      ...prev,
-      reputationScore: result.score,
-      riskAnalysis: result.analysis,
-      badges: [...new Set([...prev.badges, ...(result.newBadges || [])])]
-    }));
+    setUser(prev => {
+      const final = {
+        ...prev,
+        reputationScore: result.score,
+        riskAnalysis: result.analysis,
+        badges: [...new Set([...prev.badges, ...(result.newBadges || [])])]
+      };
+      PersistenceService.saveUser(final);
+      return final;
+    });
     setIsAnalyzing(false);
   };
 
@@ -245,19 +279,32 @@ const App: React.FC = () => {
     setCommunityRequests(prev => prev.filter(r => r.id !== req.id));
     const updatedUser = { ...user, mentorshipsCount: (user.mentorshipsCount || 0) + 1, totalSponsored: (user.totalSponsored || 0) + req.amount };
     setUser(updatedUser);
+    PersistenceService.saveUser(updatedUser);
     
     setIsAnalyzing(true);
     const result = await analyzeReputation(updatedUser);
-    setUser(prev => ({
-      ...prev,
-      reputationScore: result.score,
-      riskAnalysis: result.analysis,
-      badges: [...new Set([...prev.badges, ...(result.newBadges || [])])]
-    }));
+    setUser(prev => {
+      const final = {
+        ...prev,
+        reputationScore: result.score,
+        riskAnalysis: result.analysis,
+        badges: [...new Set([...prev.badges, ...(result.newBadges || [])])]
+      };
+      PersistenceService.saveUser(final);
+      return final;
+    });
     setIsAnalyzing(false);
   };
 
-  const boostScore = () => setUser(prev => ({ ...prev, reputationScore: 85, successfulRepayments: 12, currentStreak: 5 }));
+  const boostScore = () => {
+    setUser(prev => {
+      const updated = { ...prev, reputationScore: 85, successfulRepayments: 12, currentStreak: 5 };
+      PersistenceService.saveUser(updated);
+      return updated;
+    });
+  };
+
+  if (!appReady) return <div className="h-screen bg-[#050505] flex items-center justify-center text-white">Loading P3 Protocol...</div>;
 
   // Render Sidebar Item
   const NavItem = ({ view, label, icon }: { view: typeof activeView, label: string, icon: React.ReactNode }) => (
@@ -333,6 +380,11 @@ const App: React.FC = () => {
              <span className="w-2 h-2 rounded-full bg-zinc-700 mr-2"></span>
              v1.0.4-beta
            </Button>
+           <div className="mt-2 text-[8px] text-zinc-600 text-center">
+             <button onClick={() => { if(confirm('Reset all data?')) PersistenceService.clearAll(); }} className="hover:text-red-500">
+               Reset Demo Data
+             </button>
+           </div>
         </div>
       </aside>
 
