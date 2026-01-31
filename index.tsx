@@ -15,5 +15,5 @@ root.render(
   </React.StrictMode>
 );
 
-// Register the service worker to enable PWA features and offline capabilities
-serviceWorkerRegistration.register();
+// Unregister the service worker to avoid "document in invalid state" errors
+serviceWorkerRegistration.unregister();

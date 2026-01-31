@@ -34,6 +34,7 @@ export interface Charity {
 export interface UserProfile {
   id: string;
   name: string;
+  avatarUrl?: string; // New field for Profile Pic
   income: number;
   balance: number; // Platform balance
   employmentStatus: string;

@@ -1,0 +1,158 @@
+import React, { useState, useRef } from 'react';
+import { UserProfile } from '../types';
+import { Button } from './Button';
+
+interface Props {
+  user: UserProfile;
+  onSave: (updatedUser: UserProfile) => void;
+}
+
+export const ProfileSettings: React.FC<Props> = ({ user, onSave }) => {
+  const [formData, setFormData] = useState(user);
+  const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleChange = (field: keyof UserProfile, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, avatarUrl: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 800));
+    onSave(formData);
+    setIsSaving(false);
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto animate-fade-in space-y-8 pb-10">
+      
+      {/* Header */}
+      <div>
+        <h2 className="text-3xl font-bold text-white tracking-tight">Profile Settings</h2>
+        <p className="text-zinc-500 mt-1">Manage your identity, appearance, and personal details.</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-8">
+        
+        {/* Avatar Section */}
+        <div className="glass-panel p-8 rounded-2xl flex flex-col md:flex-row items-center gap-8 border border-zinc-800/50">
+          <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+            <div className="w-32 h-32 rounded-full overflow-hidden border-2 border-zinc-700 group-hover:border-[#00e599] transition-all relative">
+              {formData.avatarUrl ? (
+                <img src={formData.avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-zinc-900 flex items-center justify-center text-zinc-600">
+                  <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                </div>
+              )}
+              <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="text-xs font-bold text-white uppercase tracking-wider">Change</span>
+              </div>
+            </div>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*"
+              onChange={handleImageUpload}
+            />
+          </div>
+          
+          <div className="text-center md:text-left">
+            <h3 className="text-lg font-bold text-white">Profile Picture</h3>
+            <p className="text-sm text-zinc-400 mt-1 max-w-xs mb-4">
+              Upload a high-resolution image to build trust with lenders.
+            </p>
+            <div className="flex gap-3 justify-center md:justify-start">
+               <Button type="button" size="sm" variant="secondary" onClick={() => fileInputRef.current?.click()}>
+                 Upload New
+               </Button>
+               {formData.avatarUrl && (
+                 <Button type="button" size="sm" variant="ghost" onClick={() => setFormData({...formData, avatarUrl: undefined})}>
+                   Remove
+                 </Button>
+               )}
+            </div>
+          </div>
+        </div>
+
+        {/* Details Section */}
+        <div className="glass-panel p-8 rounded-2xl space-y-6 border border-zinc-800/50">
+           <h3 className="text-lg font-bold text-white border-b border-zinc-800 pb-4 mb-6">Personal Information</h3>
+           
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <div>
+               <label className="block text-xs text-zinc-500 uppercase tracking-wider font-bold mb-2">Display Name</label>
+               <input 
+                 type="text" 
+                 value={formData.name}
+                 onChange={e => handleChange('name', e.target.value)}
+                 className="w-full bg-black border border-zinc-800 rounded-xl p-3 text-white focus:border-[#00e599] outline-none transition-colors"
+               />
+             </div>
+             <div>
+               <label className="block text-xs text-zinc-500 uppercase tracking-wider font-bold mb-2">Employment Title</label>
+               <input 
+                 type="text" 
+                 value={formData.employmentStatus}
+                 onChange={e => handleChange('employmentStatus', e.target.value)}
+                 className="w-full bg-black border border-zinc-800 rounded-xl p-3 text-white focus:border-[#00e599] outline-none transition-colors"
+               />
+             </div>
+             <div>
+               <label className="block text-xs text-zinc-500 uppercase tracking-wider font-bold mb-2">Annual Income ($)</label>
+               <input 
+                 type="number" 
+                 value={formData.income}
+                 onChange={e => handleChange('income', parseInt(e.target.value))}
+                 className="w-full bg-black border border-zinc-800 rounded-xl p-3 text-white focus:border-[#00e599] outline-none transition-colors"
+               />
+             </div>
+             <div>
+               <label className="block text-xs text-zinc-500 uppercase tracking-wider font-bold mb-2">Wallet Address (Linked)</label>
+               <input 
+                 type="text" 
+                 disabled
+                 value="0x71C...9A21" 
+                 className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 text-zinc-500 cursor-not-allowed"
+               />
+             </div>
+           </div>
+
+           <div>
+              <label className="block text-xs text-zinc-500 uppercase tracking-wider font-bold mb-2">Financial Narrative / Bio</label>
+              <textarea 
+                rows={4}
+                value={formData.financialHistory}
+                onChange={e => handleChange('financialHistory', e.target.value)}
+                className="w-full bg-black border border-zinc-800 rounded-xl p-3 text-white focus:border-[#00e599] outline-none transition-colors text-sm leading-relaxed"
+                placeholder="Explain your financial situation and goals..."
+              />
+              <p className="text-[10px] text-zinc-500 mt-2">
+                This narrative is analyzed by our AI to help determine your reputation score context.
+              </p>
+           </div>
+        </div>
+
+        <div className="flex justify-end gap-4">
+           <Button type="button" variant="ghost" onClick={() => setFormData(user)}>Reset Changes</Button>
+           <Button type="submit" isLoading={isSaving} className="min-w-[120px]">Save Profile</Button>
+        </div>
+
+      </form>
+    </div>
+  );
+};

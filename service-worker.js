@@ -2,10 +2,10 @@
 
 const CACHE_NAME = 'p3-lending-v1';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/logo.svg',
-  '/manifest.json'
+  './',
+  './index.html',
+  './logo.svg',
+  './manifest.json'
 ];
 
 // Install SW
@@ -23,7 +23,7 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request)
       .then(() => {
-        return fetch(event.request).catch(() => caches.match('index.html'));
+        return fetch(event.request).catch(() => caches.match('./index.html'));
       })
   );
 });
@@ -69,6 +69,6 @@ self.addEventListener('notificationclick', function(event) {
   event.notification.close();
   event.waitUntil(
     // eslint-disable-next-line no-undef
-    clients.openWindow('/')
+    clients.openWindow('./')
   );
 });

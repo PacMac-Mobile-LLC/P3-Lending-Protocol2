@@ -3,6 +3,7 @@ import { UserProfile, LoanRequest, LoanOffer, LoanType, Charity, KYCTier, KYCSta
 import { UserProfileCard } from './components/UserProfileCard';
 import { Marketplace } from './components/Marketplace';
 import { MentorshipDashboard } from './components/MentorshipDashboard';
+import { ProfileSettings } from './components/ProfileSettings';
 import { Button } from './components/Button';
 import { Logo } from './components/Logo';
 import { analyzeReputation, analyzeRiskProfile } from './services/geminiService';
@@ -25,6 +26,7 @@ const INITIAL_USER: UserProfile = {
   name: 'Alex Mercer',
   income: 65000,
   balance: 12450.75,
+  avatarUrl: undefined,
   employmentStatus: 'Software Engineer',
   financialHistory: 'Paid off student loans in 2022. currently have a car lease.',
   reputationScore: 50,
@@ -55,7 +57,7 @@ const MOCK_COMMUNITY_REQUESTS: LoanRequest[] = [
 const App: React.FC = () => {
   const [user, setUser] = useState<UserProfile>(INITIAL_USER);
   const [charities, setCharities] = useState<Charity[]>(MOCK_CHARITIES);
-  const [activeView, setActiveView] = useState<'borrow' | 'lend' | 'mentorship'>('borrow');
+  const [activeView, setActiveView] = useState<'borrow' | 'lend' | 'mentorship' | 'profile'>('borrow');
   const [myRequests, setMyRequests] = useState<LoanRequest[]>([]);
   const [communityRequests, setCommunityRequests] = useState<LoanRequest[]>(MOCK_COMMUNITY_REQUESTS);
   
@@ -141,6 +143,11 @@ const App: React.FC = () => {
       badges: [...new Set([...prev.badges, ...(result.newBadges || [])])]
     }));
     setIsAnalyzing(false);
+    
+    // If we were on profile page, maybe show a success toast?
+    if (activeView === 'profile') {
+      // alert('Profile updated!'); // Optional
+    }
   };
 
   const handleKYCUpgrade = (newTier: KYCTier, limit: number) => {
@@ -298,6 +305,11 @@ const App: React.FC = () => {
             label="Mentorship" 
             icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>} 
           />
+          <NavItem 
+            view="profile" 
+            label="Profile" 
+            icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>} 
+          />
         </nav>
 
         {/* Charity Widget in Sidebar */}
@@ -333,7 +345,7 @@ const App: React.FC = () => {
         <header className="h-16 border-b border-zinc-800/50 backdrop-blur-sm flex items-center justify-between px-8 z-10 bg-[#050505]/80">
            <div className="flex items-center gap-4">
               <h1 className="text-xl font-bold text-white tracking-tight">
-                {activeView === 'borrow' ? 'My Dashboard' : activeView === 'lend' ? 'Lending Marketplace' : 'Mentorship Hub'}
+                {activeView === 'borrow' ? 'My Dashboard' : activeView === 'lend' ? 'Lending Marketplace' : activeView === 'mentorship' ? 'Mentorship Hub' : 'Profile Settings'}
               </h1>
            </div>
            
@@ -385,6 +397,7 @@ const App: React.FC = () => {
                   onUpdate={handleProfileUpdate} 
                   onVerifyClick={() => setShowKYCModal(true)}
                   onAnalyzeRisk={handleRiskAnalysis}
+                  onEditClick={() => setActiveView('profile')}
                   isAnalyzing={isAnalyzing}
                 />
 
@@ -498,6 +511,10 @@ const App: React.FC = () => {
              <div className="max-w-5xl mx-auto">
                <MentorshipDashboard user={user} communityRequests={communityRequests} onSponsor={handleSponsorRequest} />
              </div>
+           )}
+
+           {activeView === 'profile' && (
+             <ProfileSettings user={user} onSave={handleProfileUpdate} />
            )}
 
         </div>

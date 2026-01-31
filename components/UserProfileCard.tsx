@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { UserProfile, KYCTier } from '../types';
 import { ScoreGauge } from './ScoreGauge';
 import { Button } from './Button';
@@ -8,38 +8,11 @@ interface Props {
   onUpdate: (user: UserProfile) => void;
   onVerifyClick: () => void;
   onAnalyzeRisk: () => void;
+  onEditClick: () => void;
   isAnalyzing: boolean;
 }
 
-export const UserProfileCard: React.FC<Props> = ({ user, onUpdate, onVerifyClick, onAnalyzeRisk, isAnalyzing }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState(user);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onUpdate(formData);
-    setIsEditing(false);
-  };
-
-  if (isEditing) {
-    return (
-      <div className="glass-panel rounded-2xl p-6">
-        <h3 className="text-lg font-bold text-white mb-4">Edit Identity</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input 
-            type="text" 
-            value={formData.name}
-            onChange={e => setFormData({...formData, name: e.target.value})}
-            className="w-full bg-black/50 border border-zinc-800 rounded-lg p-3 text-white focus:border-[#00e599] outline-none"
-          />
-           <div className="flex gap-3 justify-end pt-2">
-            <Button type="button" variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>
-            <Button type="submit">Save</Button>
-          </div>
-        </form>
-      </div>
-    );
-  }
+export const UserProfileCard: React.FC<Props> = ({ user, onUpdate, onVerifyClick, onAnalyzeRisk, onEditClick, isAnalyzing }) => {
 
   return (
     <div className="glass-panel rounded-2xl p-6 relative overflow-hidden group">
@@ -68,11 +41,16 @@ export const UserProfileCard: React.FC<Props> = ({ user, onUpdate, onVerifyClick
         {/* Right: Data Grid */}
         <div className="flex-1 w-full space-y-5">
            <div className="flex justify-between items-start">
-              <div>
-                <h2 className="text-3xl font-bold text-white tracking-tight">{user.name}</h2>
-                <p className="text-zinc-500 text-sm font-mono mt-1">{user.employmentStatus} • {user.id}</p>
+              <div className="flex items-center gap-4">
+                {user.avatarUrl && (
+                  <img src={user.avatarUrl} alt="Avatar" className="w-16 h-16 rounded-full object-cover border-2 border-zinc-800" />
+                )}
+                <div>
+                  <h2 className="text-3xl font-bold text-white tracking-tight">{user.name}</h2>
+                  <p className="text-zinc-500 text-sm font-mono mt-1">{user.employmentStatus} • {user.id}</p>
+                </div>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)} className="text-xs border border-zinc-800">
+              <Button variant="ghost" size="sm" onClick={onEditClick} className="text-xs border border-zinc-800">
                 Edit Profile
               </Button>
            </div>
