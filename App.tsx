@@ -355,7 +355,7 @@ const App: React.FC = () => {
              <Logo showText={false} />
            </div>
            <h1 className="text-4xl font-bold text-white tracking-tighter">
-             P<span className="text-[#00e599]">3</span> Lending Protocol
+             P<span className="text-[#00e599]">3</span> Lending Dashboard
            </h1>
            <p className="text-zinc-400 max-w-md mx-auto">
              The future of reputation-based finance. Sign in to access your dashboard, build your score, and secure funding.
