@@ -5,28 +5,30 @@ import { UserProfile, LoanRequest, LoanOffer, MatchResult, RiskReport } from "..
 const getAI = () => {
   let apiKey = '';
   try {
-    // We access process.env.API_KEY directly as required.
-    // The vite.config.ts will replace this string with the actual key during build.
-    // We add a try-catch block here as a safety net for local dev environments 
-    // that might not have the build step configured correctly.
+    // process.env.API_KEY is replaced by Vite during build
     apiKey = process.env.API_KEY || '';
   } catch (e) {
     console.error("Config Error: 'process' is not defined. Ensure vite.config.ts is active.");
   }
   
-  if (!apiKey || apiKey === 'undefined') {
-    console.warn("API Key is missing. AI features will run in offline/mock mode.");
+  if (!apiKey || apiKey === 'undefined' || apiKey === '') {
+    console.warn("Gemini API Key is missing or empty. Please check your Netlify Environment Variables.");
+    return null;
   }
 
-  return new GoogleGenAI({ apiKey: apiKey || 'MISSING_KEY' });
+  return new GoogleGenAI({ apiKey: apiKey });
 };
 
 // AI Compliance Officer: Simulates regulatory checks (OFAC, PEP, Identity Verification)
 export const performComplianceCheck = async (
   data: { name: string; dob: string; address: string; ssnLast4: string; docType?: string }
 ): Promise<{ passed: boolean; riskLevel: string; reasoning: string }> => {
+  const ai = getAI();
+  if (!ai) {
+    return { passed: true, riskLevel: 'Manual Review', reasoning: 'Demo Mode: API Key missing. Provisional approval.' };
+  }
+
   try {
-    const ai = getAI();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Act as a KYC/AML Compliance Officer for a Nebraska-based lending platform subject to the Bank Secrecy Act (BSA) and USA PATRIOT Act.
@@ -65,15 +67,18 @@ export const performComplianceCheck = async (
     return JSON.parse(text);
   } catch (error) {
     console.error("Compliance Check Error:", error);
-    // Default to passing in dev/demo mode if API fails, but flag as manual review
-    return { passed: true, riskLevel: 'Manual Review', reasoning: 'Automated check service unavailable. Provisional approval.' };
+    return { passed: true, riskLevel: 'Error', reasoning: 'Automated check failed. Provisional approval given for testing.' };
   }
 };
 
 // AI Underwriter: Analyzes profile text AND quantitative metrics
 export const analyzeReputation = async (profile: UserProfile): Promise<{ score: number; analysis: string; newBadges: string[] }> => {
+  const ai = getAI();
+  if (!ai) {
+     return { score: 50, analysis: "Demo Mode: AI analysis unavailable (Missing API Key).", newBadges: [] };
+  }
+
   try {
-    const ai = getAI();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Analyze the financial reputation of this user for the P3 Lending Protocol with an emphasis on **Equal Opportunity**.
@@ -121,16 +126,17 @@ export const analyzeReputation = async (profile: UserProfile): Promise<{ score: 
     return JSON.parse(text);
   } catch (error) {
     console.error("Reputation Analysis Error:", error);
-    return { score: 50, analysis: "AI analysis unavailable.", newBadges: [] };
+    return { score: 50, analysis: "AI Service Error. Please check logs.", newBadges: [] };
   }
 };
 
 // AI Matchmaker: Finds the best loan offers for a request
 export const matchLoanOffers = async (request: LoanRequest, offers: LoanOffer[]): Promise<MatchResult[]> => {
   if (offers.length === 0) return [];
+  const ai = getAI();
+  if (!ai) return [];
 
   try {
-    const ai = getAI();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Act as a P3 Lending Matchmaker. Evaluate these loan offers against the borrower's request.
@@ -182,8 +188,19 @@ export const matchLoanOffers = async (request: LoanRequest, offers: LoanOffer[])
 
 // NEW: Real-time Risk Engine with Search Grounding
 export const analyzeRiskProfile = async (profile: UserProfile): Promise<RiskReport> => {
+  const ai = getAI();
+  if (!ai) {
+    return {
+      compositeScore: 50,
+      macroScore: 50,
+      walletScore: 50,
+      factors: [{ category: 'MACRO', severity: 'MEDIUM', description: 'Demo Mode: API Key missing.' }],
+      summary: "Risk assessment unavailable in demo mode. Please configure API_KEY.",
+      timestamp: new Date().toISOString()
+    };
+  }
+
   try {
-    const ai = getAI();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Conduct a comprehensive Risk Assessment for this user on the P3 Lending Protocol.

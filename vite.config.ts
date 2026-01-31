@@ -4,16 +4,18 @@ import react from '@vitejs/plugin-react';
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
-  // This allows the build to access local .env files or Netlify Environment Variables.
+  // The third parameter '' ensures we load all env vars, not just those prefixed with VITE_
   const env = loadEnv(mode, process.cwd(), '');
   
+  // Fallback to process.env for systems where loadEnv might miss system vars (though loadEnv usually catches them)
+  const apiKey = env.API_KEY || process.env.API_KEY || '';
+
   return {
     plugins: [react()],
     define: {
-      // CRITICAL FIX: This replaces 'process.env.API_KEY' in your source code
-      // with the actual string value of the variable during the build.
-      // This prevents "ReferenceError: process is not defined" in the browser.
-      'process.env.API_KEY': JSON.stringify(env.API_KEY),
+      // CRITICAL FIX: Securely inject the API Key during build.
+      // If the key is missing, it injects an empty string to prevent ReferenceErrors.
+      'process.env.API_KEY': JSON.stringify(apiKey),
     },
     build: {
       outDir: 'dist',

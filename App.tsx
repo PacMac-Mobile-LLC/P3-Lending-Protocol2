@@ -83,7 +83,7 @@ const App: React.FC = () => {
     AuthService.init();
 
     // Handler for successful login
-    const handleLogin = (netlifyUser: any) => {
+    const handleLogin = async (netlifyUser: any) => {
       console.log("Logged in:", netlifyUser);
       setIsAuthenticated(true);
       setIsVerifyingEmail(false); // Stop verifying loading state
@@ -91,6 +91,25 @@ const App: React.FC = () => {
       setUser(p3User);
       setMyRequests(PersistenceService.getMyRequests(p3User.id));
       AuthService.close(); // Close widget if open
+
+      // Check if user has "unavailable" analysis from a previous failed run and retry automatically
+      if (p3User.riskAnalysis?.includes("unavailable") || p3User.reputationScore === 50) {
+        console.log("Retrying AI Analysis...");
+        setIsAnalyzing(true);
+        const result = await analyzeReputation(p3User);
+        setUser(prev => {
+          if (!prev) return null;
+          const finalUser = {
+            ...prev,
+            reputationScore: result.score,
+            riskAnalysis: result.analysis,
+            badges: [...new Set([...prev.badges, ...(result.newBadges || [])])]
+          };
+          PersistenceService.saveUser(finalUser);
+          return finalUser;
+        });
+        setIsAnalyzing(false);
+      }
     };
 
     // Handler for logout
