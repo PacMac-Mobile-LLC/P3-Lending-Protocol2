@@ -301,8 +301,9 @@ const App: React.FC = () => {
       </aside>
 
       {/* MAIN CONTENT */}
-      <main className="flex-1 flex flex-col relative overflow-hidden bg-grid-pattern z-10">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black pointer-events-none"></div>
+      <main className="flex-1 flex flex-col relative overflow-hidden z-10">
+        <div className="absolute inset-0 bg-grid-pattern pointer-events-none -z-10"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black pointer-events-none -z-10"></div>
 
         {/* TOP BAR */}
         <header className="h-16 border-b border-zinc-800/50 backdrop-blur-sm flex items-center justify-between px-8 z-10">
