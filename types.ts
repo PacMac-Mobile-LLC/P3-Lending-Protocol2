@@ -1,3 +1,4 @@
+
 export enum LoanType {
   PERSONAL = 'Personal',
   BUSINESS = 'Business',
@@ -34,6 +35,7 @@ export interface UserProfile {
   id: string;
   name: string;
   income: number;
+  balance: number; // Platform balance
   employmentStatus: string;
   financialHistory: string; 
   reputationScore: number; 

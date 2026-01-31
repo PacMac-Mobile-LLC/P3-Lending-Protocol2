@@ -77,7 +77,7 @@ export const UserProfileCard: React.FC<Props> = ({ user, onUpdate, onVerifyClick
               </Button>
            </div>
 
-           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               <div className="bg-black/40 p-3 rounded-lg border border-zinc-800/50">
                  <div className="text-[10px] uppercase text-zinc-500 font-bold mb-1">Repayments</div>
                  <div className="text-xl font-mono text-white">{user.successfulRepayments}</div>
@@ -93,6 +93,16 @@ export const UserProfileCard: React.FC<Props> = ({ user, onUpdate, onVerifyClick
               <div className="bg-black/40 p-3 rounded-lg border border-zinc-800/50">
                  <div className="text-[10px] uppercase text-zinc-500 font-bold mb-1">Income</div>
                  <div className="text-xl font-mono text-white">${user.income.toLocaleString()}</div>
+              </div>
+              
+              {/* Balance with Privacy Effect */}
+              <div className="bg-black/40 p-3 rounded-lg border border-zinc-800/50 relative overflow-hidden group/privacy cursor-pointer">
+                 <div className="text-[10px] uppercase text-zinc-500 font-bold mb-1 flex items-center gap-1">
+                   Balance <span className="text-[8px] bg-zinc-800 px-1 rounded text-zinc-500 group-hover/privacy:text-[#00e599] transition-colors">HIDDEN</span>
+                 </div>
+                 <div className="text-xl font-mono text-white blur-md select-none group-hover/privacy:blur-0 group-hover/privacy:select-auto transition-all duration-300">
+                    ${user.balance.toLocaleString()}
+                 </div>
               </div>
            </div>
 

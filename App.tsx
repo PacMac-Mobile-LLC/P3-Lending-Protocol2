@@ -11,6 +11,7 @@ import { KYCVerificationModal } from './components/KYCVerificationModal';
 import { WalletConnectModal } from './components/WalletConnectModal';
 import { RiskDashboard } from './components/RiskDashboard';
 import { SnowEffect } from './components/SnowEffect';
+import { NewsTicker } from './components/NewsTicker';
 
 // Mock Charities
 const MOCK_CHARITIES: Charity[] = [
@@ -23,6 +24,7 @@ const INITIAL_USER: UserProfile = {
   id: 'u1',
   name: 'Alex Mercer',
   income: 65000,
+  balance: 12450.75,
   employmentStatus: 'Software Engineer',
   financialHistory: 'Paid off student loans in 2022. currently have a car lease.',
   reputationScore: 50,
@@ -328,7 +330,7 @@ const App: React.FC = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black pointer-events-none -z-10"></div>
 
         {/* TOP BAR */}
-        <header className="h-16 border-b border-zinc-800/50 backdrop-blur-sm flex items-center justify-between px-8 z-10">
+        <header className="h-16 border-b border-zinc-800/50 backdrop-blur-sm flex items-center justify-between px-8 z-10 bg-[#050505]/80">
            <div className="flex items-center gap-4">
               <h1 className="text-xl font-bold text-white tracking-tight">
                 {activeView === 'borrow' ? 'My Dashboard' : activeView === 'lend' ? 'Lending Marketplace' : 'Mentorship Hub'}
@@ -369,6 +371,8 @@ const App: React.FC = () => {
               )}
            </div>
         </header>
+
+        <NewsTicker />
 
         {/* SCROLLABLE CONTENT */}
         <div className="flex-1 overflow-y-auto p-8 relative z-0 custom-scrollbar">
