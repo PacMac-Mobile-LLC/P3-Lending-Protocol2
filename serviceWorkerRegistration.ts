@@ -18,13 +18,10 @@ type Config = {
 
 export function register(config?: Config) {
   if ('serviceWorker' in navigator) {
-    // The URL constructor is available in all browsers that support SW.
-    // We removed the check for PUBLIC_URL origin validation to avoid constructor errors 
-    // when process.env is not fully polyfilled or empty.
+    // Construct the SW URL relative to the current origin
+    const swUrl = `${window.location.origin}/service-worker.js`;
 
-    window.addEventListener('load', () => {
-      const swUrl = `/service-worker.js`;
-
+    const registerLogic = () => {
       if (isLocalhost) {
         checkValidServiceWorker(swUrl, config);
         navigator.serviceWorker.ready.then(() => {
@@ -35,7 +32,13 @@ export function register(config?: Config) {
       } else {
         registerValidSW(swUrl, config);
       }
-    });
+    };
+
+    if (document.readyState === 'complete') {
+      registerLogic();
+    } else {
+      window.addEventListener('load', registerLogic);
+    }
   }
 }
 
