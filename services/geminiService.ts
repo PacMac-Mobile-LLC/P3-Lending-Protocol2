@@ -3,11 +3,21 @@ import { UserProfile, LoanRequest, LoanOffer, MatchResult, RiskReport } from "..
 
 // Helper to safely get the API Key without crashing the app on load
 const getAI = () => {
-  // According to guidelines, we must exclusively use process.env.API_KEY.
-  // We assume it is pre-configured and accessible.
-  // We provide a fallback to avoid crash during initialization if key is missing,
-  // letting the API call fail gracefully with a specific error if needed.
-  const apiKey = process.env.API_KEY;
+  let apiKey = '';
+  try {
+    // We access process.env.API_KEY directly as required.
+    // The vite.config.ts will replace this string with the actual key during build.
+    // We add a try-catch block here as a safety net for local dev environments 
+    // that might not have the build step configured correctly.
+    apiKey = process.env.API_KEY || '';
+  } catch (e) {
+    console.error("Config Error: 'process' is not defined. Ensure vite.config.ts is active.");
+  }
+  
+  if (!apiKey || apiKey === 'undefined') {
+    console.warn("API Key is missing. AI features will run in offline/mock mode.");
+  }
+
   return new GoogleGenAI({ apiKey: apiKey || 'MISSING_KEY' });
 };
 
@@ -194,16 +204,23 @@ export const analyzeRiskProfile = async (profile: UserProfile): Promise<RiskRepo
       - Verified KYC reduces risk significantly.
 
       OUTPUT FORMAT:
-      Return a JSON object with:
-      - compositeScore (0-100)
-      - macroScore (0-100 based on news)
-      - walletScore (0-100 based on history)
-      - factors: Array of { category, severity, description, sourceUrl }
-      - summary: Brief narrative.
+      You must strictly return a valid JSON object starting with { and ending with }.
+      Do not include markdown code blocks.
+      
+      JSON Structure:
+      {
+        "compositeScore": number,
+        "macroScore": number,
+        "walletScore": number,
+        "factors": [{ "category": "MACRO"|"ON-CHAIN", "severity": "LOW"|"MEDIUM"|"HIGH", "description": "string", "sourceUrl": "string (optional)" }],
+        "summary": "string"
+      }
       `,
       config: {
         tools: [{ googleSearch: {} }], // ENABLE GOOGLE SEARCH GROUNDING
-        responseMimeType: "application/json",
+        // IMPORTANT: We do NOT use responseMimeType: "application/json" here 
+        // because Google Search grounding sometimes conflicts with rigid JSON enforcement.
+        // We parse the text output manually below.
       }
     });
 
@@ -211,7 +228,7 @@ export const analyzeRiskProfile = async (profile: UserProfile): Promise<RiskRepo
     
     if (!text) throw new Error("No response from AI Risk Engine");
     
-    // Sometimes search results add markdown or extra text, ensure we extract the JSON
+    // Extract JSON from the text response (handling potential markdown wrapping or search sources)
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     const cleanJson = jsonMatch ? jsonMatch[0] : text;
     
@@ -221,12 +238,12 @@ export const analyzeRiskProfile = async (profile: UserProfile): Promise<RiskRepo
 
   } catch (error) {
     console.error("Risk Analysis Error:", error);
-    // Fallback if search fails
+    // Fallback if search fails or API Key is missing
     return {
       compositeScore: 50,
       macroScore: 50,
       walletScore: 50,
-      factors: [{ category: 'MACRO', severity: 'MEDIUM', description: 'Real-time market data unavailable.' }],
+      factors: [{ category: 'MACRO', severity: 'MEDIUM', description: 'Risk assessment unavailable. Please check your API Key configuration.' }],
       summary: "Risk assessment running in offline mode due to connection error.",
       timestamp: new Date().toISOString()
     };

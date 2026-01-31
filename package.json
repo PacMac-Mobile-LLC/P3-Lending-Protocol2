@@ -15,7 +15,9 @@
     "react-dom": "^19.2.4",
     "ethers": "6.11.1",
     "netlify-identity-widget": "^1.9.2",
-    "siwe": "^3.0.0"
+    "siwe": "^3.0.0",
+    "vite": "^7.3.1",
+    "@vitejs/plugin-react": "^5.1.2"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
