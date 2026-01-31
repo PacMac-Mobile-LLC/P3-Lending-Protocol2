@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { UserProfile, LoanRequest, LoanOffer, LoanType, Charity, KYCTier, KYCStatus, WalletState } from './types';
+import { UserProfile, LoanRequest, LoanOffer, LoanType, Charity, KYCTier, KYCStatus, WalletState, RiskReport } from './types';
 import { UserProfileCard } from './components/UserProfileCard';
 import { Marketplace } from './components/Marketplace';
 import { MentorshipDashboard } from './components/MentorshipDashboard';
 import { Button } from './components/Button';
 import { Logo } from './components/Logo';
-import { analyzeReputation } from './services/geminiService';
+import { analyzeReputation, analyzeRiskProfile } from './services/geminiService';
 import { shortenAddress } from './services/walletService';
 import { KYCVerificationModal } from './components/KYCVerificationModal';
 import { WalletConnectModal } from './components/WalletConnectModal';
+import { RiskDashboard } from './components/RiskDashboard';
 
 // Mock Charities
 const MOCK_CHARITIES: Charity[] = [
@@ -33,7 +34,10 @@ const INITIAL_USER: UserProfile = {
   kycTier: KYCTier.TIER_0,
   kycStatus: KYCStatus.UNVERIFIED,
   kycLimit: 0,
-  mentorshipsCount: 0
+  mentorshipsCount: 0,
+  // Simulated Blockchain Data
+  walletAgeDays: 120, 
+  txCount: 45
 };
 
 const MOCK_OFFERS: LoanOffer[] = [
@@ -60,8 +64,12 @@ const App: React.FC = () => {
   const [isMatching, setIsMatching] = useState(false);
   const [showKYCModal, setShowKYCModal] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
+  const [showRiskModal, setShowRiskModal] = useState(false);
   
-  // Wallet State
+  // Risk & Wallet State
+  const [riskReport, setRiskReport] = useState<RiskReport | null>(null);
+  const [isRiskLoading, setIsRiskLoading] = useState(false);
+
   const [wallet, setWallet] = useState<WalletState>({
     isConnected: false,
     address: null,
@@ -101,6 +109,23 @@ const App: React.FC = () => {
       kycLimit: limit
     }));
     setShowKYCModal(false);
+  };
+
+  const handleRiskAnalysis = async () => {
+    setShowRiskModal(true);
+    if (!riskReport) {
+      setIsRiskLoading(true);
+      const report = await analyzeRiskProfile(user);
+      setRiskReport(report);
+      setIsRiskLoading(false);
+    }
+  };
+
+  const refreshRiskAnalysis = async () => {
+    setIsRiskLoading(true);
+    const report = await analyzeRiskProfile(user);
+    setRiskReport(report);
+    setIsRiskLoading(false);
   };
 
   const handleCreateRequest = (e: React.FormEvent) => {
@@ -231,6 +256,15 @@ const App: React.FC = () => {
         />
       )}
 
+      {showRiskModal && (
+        <RiskDashboard 
+          report={riskReport} 
+          isLoading={isRiskLoading} 
+          onRefresh={refreshRiskAnalysis} 
+          onClose={() => setShowRiskModal(false)} 
+        />
+      )}
+
       <WalletConnectModal 
         isOpen={showWalletModal} 
         onClose={() => setShowWalletModal(false)} 
@@ -265,6 +299,10 @@ const App: React.FC = () => {
                  Lend (Mentor)
                </button>
              </div>
+
+             <Button size="sm" variant="ghost" className="hidden lg:flex" onClick={handleRiskAnalysis}>
+                <span className="mr-1">🛡️</span> Risk Check
+             </Button>
 
              {/* Connect Wallet Button */}
              {wallet.isConnected ? (

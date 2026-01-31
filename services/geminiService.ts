@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { UserProfile, LoanRequest, LoanOffer, MatchResult } from "../types";
+import { UserProfile, LoanRequest, LoanOffer, MatchResult, RiskReport } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -156,5 +156,72 @@ export const matchLoanOffers = async (request: LoanRequest, offers: LoanOffer[])
   } catch (error) {
     console.error("Matching Error:", error);
     return [];
+  }
+};
+
+// NEW: Real-time Risk Engine with Search Grounding
+export const analyzeRiskProfile = async (profile: UserProfile): Promise<RiskReport> => {
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `Conduct a comprehensive Risk Assessment for this user on the P3 Lending Protocol.
+      
+      USER ON-CHAIN DATA:
+      - Wallet Age: ${profile.walletAgeDays || 30} days
+      - Transaction Count: ${profile.txCount || 5} lifetime txs
+      - Repayment History: ${profile.successfulRepayments} successful, Streak: ${profile.currentStreak}
+      - KYC Status: ${profile.kycStatus}
+      
+      TASK:
+      1. Use Google Search to find **current** crypto market conditions (volatility, recent major DeFi hacks, regulatory crackdowns in the US/EU).
+      2. Combine this "Macro" data with the "User On-Chain" data to calculate a Composite Risk Score.
+      
+      SCORING (0 = Safe, 100 = Extremely Risky):
+      - Low Wallet Age (< 90 days) increases risk significantly.
+      - High Global Market Volatility increases risk slightly for everyone.
+      - Verified KYC reduces risk significantly.
+
+      OUTPUT FORMAT:
+      Return a JSON object with:
+      - compositeScore (0-100)
+      - macroScore (0-100 based on news)
+      - walletScore (0-100 based on history)
+      - factors: Array of { category, severity, description, sourceUrl }
+      - summary: Brief narrative.
+      `,
+      config: {
+        tools: [{ googleSearch: {} }], // ENABLE GOOGLE SEARCH GROUNDING
+        responseMimeType: "application/json",
+      }
+    });
+
+    const text = response.text;
+    // Note: With Search Grounding, the response might contain grounding metadata.
+    // The model typically returns valid JSON if requested, but we handle the parsing carefully.
+    
+    // Extract URLs from grounding metadata if available (optional enhancement)
+    // const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+
+    if (!text) throw new Error("No response from AI Risk Engine");
+    
+    // Sometimes search results add markdown or extra text, ensure we extract the JSON
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const cleanJson = jsonMatch ? jsonMatch[0] : text;
+    
+    const report = JSON.parse(cleanJson) as RiskReport;
+    report.timestamp = new Date().toISOString();
+    return report;
+
+  } catch (error) {
+    console.error("Risk Analysis Error:", error);
+    // Fallback if search fails
+    return {
+      compositeScore: 50,
+      macroScore: 50,
+      walletScore: 50,
+      factors: [{ category: 'MACRO', severity: 'MEDIUM', description: 'Real-time market data unavailable.' }],
+      summary: "Risk assessment running in offline mode due to connection error.",
+      timestamp: new Date().toISOString()
+    };
   }
 };

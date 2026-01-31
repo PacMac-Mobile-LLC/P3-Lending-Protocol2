@@ -50,6 +50,10 @@ export interface UserProfile {
   // Mentorship Stats
   mentorshipsCount?: number;
   totalSponsored?: number;
+  
+  // Blockchain Data (Simulated for Risk Engine)
+  walletAgeDays?: number;
+  txCount?: number;
 }
 
 export interface LoanRequest {
@@ -94,4 +98,21 @@ export interface WalletState {
   provider: WalletProvider;
   chainId: number | null;
   balance: string; // Formatted ETH balance
+}
+
+// Risk Analysis
+export interface RiskFactor {
+  category: 'MACRO' | 'ON-CHAIN' | 'BEHAVIORAL';
+  severity: 'LOW' | 'MEDIUM' | 'HIGH';
+  description: string;
+  sourceUrl?: string; // If sourced from Google Search
+}
+
+export interface RiskReport {
+  compositeScore: number; // 0 (Safe) to 100 (High Risk)
+  macroScore: number; // External market conditions
+  walletScore: number; // Internal history
+  factors: RiskFactor[];
+  summary: string;
+  timestamp: string;
 }
