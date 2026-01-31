@@ -1,0 +1,16 @@
+{
+  "short_name": "P3 Lending",
+  "name": "P3 Lending Protocol",
+  "icons": [
+    {
+      "src": "logo.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512 192x192 64x64"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#050505",
+  "orientation": "portrait"
+}

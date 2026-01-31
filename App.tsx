@@ -66,6 +66,7 @@ const App: React.FC = () => {
   
   const [riskReport, setRiskReport] = useState<RiskReport | null>(null);
   const [isRiskLoading, setIsRiskLoading] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
   const [wallet, setWallet] = useState<WalletState>({
     isConnected: false,
@@ -104,6 +105,27 @@ const App: React.FC = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      setNotificationsEnabled(true);
+    }
+  }, []);
+
+  const requestNotificationPermission = async () => {
+    if (!('Notification' in window)) {
+      alert("This browser does not support desktop notifications");
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      setNotificationsEnabled(true);
+      new Notification("Notifications Enabled", {
+        body: "You will now receive updates on loan matches and statuses.",
+        icon: "/logo.svg"
+      });
+    }
+  };
 
   // Handlers
   const handleProfileUpdate = async (updatedUser: UserProfile) => {
@@ -314,6 +336,18 @@ const App: React.FC = () => {
            </div>
            
            <div className="flex items-center gap-4">
+              <button 
+                onClick={requestNotificationPermission}
+                className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all ${notificationsEnabled ? 'bg-[#00e599]/10 text-[#00e599] border-[#00e599]/50' : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'}`}
+                title={notificationsEnabled ? 'Notifications On' : 'Enable Notifications'}
+              >
+                {notificationsEnabled ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path><circle cx="19" cy="5" r="2" fill="#ef4444" stroke="none" /></svg>
+                )}
+              </button>
+           
               <Button size="sm" variant="secondary" onClick={handleRiskAnalysis} className="border border-zinc-700">
                 <span className="mr-1">🛡️</span> Risk Profile
               </Button>
