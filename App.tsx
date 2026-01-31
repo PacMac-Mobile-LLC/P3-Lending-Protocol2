@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserProfile, LoanRequest, LoanOffer, LoanType, Charity, KYCTier, KYCStatus, WalletState, RiskReport } from './types';
 import { UserProfileCard } from './components/UserProfileCard';
 import { Marketplace } from './components/Marketplace';
@@ -10,6 +10,7 @@ import { shortenAddress } from './services/walletService';
 import { KYCVerificationModal } from './components/KYCVerificationModal';
 import { WalletConnectModal } from './components/WalletConnectModal';
 import { RiskDashboard } from './components/RiskDashboard';
+import { SnowEffect } from './components/SnowEffect';
 
 // Mock Charities
 const MOCK_CHARITIES: Charity[] = [
@@ -61,6 +62,7 @@ const App: React.FC = () => {
   const [showKYCModal, setShowKYCModal] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [showRiskModal, setShowRiskModal] = useState(false);
+  const [showSnow, setShowSnow] = useState(false);
   
   const [riskReport, setRiskReport] = useState<RiskReport | null>(null);
   const [isRiskLoading, setIsRiskLoading] = useState(false);
@@ -79,6 +81,29 @@ const App: React.FC = () => {
   const [isMicroloan, setIsMicroloan] = useState(false);
   const [isCharityGuaranteed, setIsCharityGuaranteed] = useState(false);
   const [selectedCharity, setSelectedCharity] = useState<string>(MOCK_CHARITIES[0].id);
+
+  // Easter Egg Listener
+  useEffect(() => {
+    const sequence = "make it snow";
+    let history = "";
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Append current key and slice to keep history length manageable
+      history += e.key.toLowerCase();
+      if (history.length > 50) {
+        history = history.slice(-sequence.length * 2); 
+      }
+      
+      // Check if history ends with the magic sequence
+      if (history.endsWith(sequence)) {
+        setShowSnow(prev => !prev);
+        history = ""; // Reset after toggle
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Handlers
   const handleProfileUpdate = async (updatedUser: UserProfile) => {
@@ -219,7 +244,9 @@ const App: React.FC = () => {
   );
 
   return (
-    <div className="flex h-screen bg-[#050505] text-zinc-200 font-sans selection:bg-[#00e599] selection:text-black overflow-hidden">
+    <div className="flex h-screen bg-[#050505] text-zinc-200 font-sans selection:bg-[#00e599] selection:text-black overflow-hidden relative">
+      
+      {showSnow && <SnowEffect />}
       
       {showKYCModal && <KYCVerificationModal currentTier={user.kycTier} onClose={() => setShowKYCModal(false)} onUpgradeComplete={handleKYCUpgrade} />}
       {showRiskModal && <RiskDashboard report={riskReport} isLoading={isRiskLoading} onRefresh={refreshRiskAnalysis} onClose={() => setShowRiskModal(false)} />}
@@ -274,7 +301,7 @@ const App: React.FC = () => {
       </aside>
 
       {/* MAIN CONTENT */}
-      <main className="flex-1 flex flex-col relative overflow-hidden bg-grid-pattern">
+      <main className="flex-1 flex flex-col relative overflow-hidden bg-grid-pattern z-10">
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black pointer-events-none"></div>
 
         {/* TOP BAR */}
