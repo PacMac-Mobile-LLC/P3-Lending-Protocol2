@@ -9,6 +9,7 @@ import { Logo } from './components/Logo';
 import { analyzeReputation, analyzeRiskProfile } from './services/geminiService';
 import { shortenAddress } from './services/walletService';
 import { PersistenceService } from './services/persistence';
+import { AuthService } from './services/netlifyAuth'; // New Service
 import { KYCVerificationModal } from './components/KYCVerificationModal';
 import { WalletConnectModal } from './components/WalletConnectModal';
 import { RiskDashboard } from './components/RiskDashboard';
@@ -36,8 +37,8 @@ const MOCK_COMMUNITY_REQUESTS: LoanRequest[] = [
 
 const App: React.FC = () => {
   const [appReady, setAppReady] = useState(false);
-  // Initialize with null/template, but immediately load in useEffect
-  const [user, setUser] = useState<UserProfile>(PersistenceService.getUser());
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<UserProfile | null>(null);
   
   const [charities, setCharities] = useState<Charity[]>(MOCK_CHARITIES);
   const [activeView, setActiveView] = useState<'borrow' | 'lend' | 'mentorship' | 'profile'>('borrow');
@@ -71,13 +72,48 @@ const App: React.FC = () => {
   const [isCharityGuaranteed, setIsCharityGuaranteed] = useState(false);
   const [selectedCharity, setSelectedCharity] = useState<string>(MOCK_CHARITIES[0].id);
 
-  // Load Persistence
+  // Initialize Netlify Identity & Load Data
   useEffect(() => {
-    const loadedUser = PersistenceService.getUser();
-    const loadedRequests = PersistenceService.getMyRequests();
-    setUser(loadedUser);
-    setMyRequests(loadedRequests);
+    AuthService.init();
+
+    // Handler for successful login
+    const handleLogin = (netlifyUser: any) => {
+      console.log("Logged in:", netlifyUser);
+      setIsAuthenticated(true);
+      const p3User = PersistenceService.loadUser(netlifyUser);
+      setUser(p3User);
+      setMyRequests(PersistenceService.getMyRequests(p3User.id));
+      AuthService.close(); // Close widget if open
+    };
+
+    // Handler for logout
+    const handleLogout = () => {
+      console.log("Logged out");
+      setIsAuthenticated(false);
+      setUser(null);
+      setMyRequests([]);
+    };
+
+    // Check if already logged in on load
+    const currentUser = AuthService.currentUser();
+    if (currentUser) {
+      handleLogin(currentUser);
+    } else {
+      // Not logged in
+      setIsAuthenticated(false);
+    }
+
+    // Subscribe to events
+    AuthService.on('login', handleLogin);
+    AuthService.on('logout', handleLogout);
+    
     setAppReady(true);
+
+    // Cleanup
+    return () => {
+      AuthService.off('login', handleLogin);
+      AuthService.off('logout', handleLogout);
+    };
   }, []);
 
   // Easter Egg Listener
@@ -86,16 +122,13 @@ const App: React.FC = () => {
     let history = "";
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Append current key and slice to keep history length manageable
       history += e.key.toLowerCase();
       if (history.length > 50) {
         history = history.slice(-sequence.length * 2); 
       }
-      
-      // Check if history ends with the magic sequence
       if (history.endsWith(sequence)) {
         setShowSnow(prev => !prev);
-        history = ""; // Reset after toggle
+        history = ""; 
       }
     };
 
@@ -126,17 +159,16 @@ const App: React.FC = () => {
 
   // Handlers
   const handleProfileUpdate = async (updatedUser: UserProfile) => {
+    if (!user) return;
     setIsAnalyzing(true);
     
-    // 1. Optimistic Update
     setUser(updatedUser); 
     PersistenceService.saveUser(updatedUser);
 
-    // 2. AI Analysis
     const result = await analyzeReputation(updatedUser);
     
-    // 3. Update with AI results
     setUser(prev => {
+      if (!prev) return null;
       const finalUser = {
         ...prev,
         reputationScore: result.score,
@@ -148,14 +180,11 @@ const App: React.FC = () => {
     });
     
     setIsAnalyzing(false);
-    
-    if (activeView === 'profile') {
-      // alert('Profile updated!');
-    }
   };
 
   const handleKYCUpgrade = (newTier: KYCTier, limit: number) => {
     setUser(prev => {
+      if (!prev) return null;
       const updated = { ...prev, kycTier: newTier, kycStatus: KYCStatus.VERIFIED, kycLimit: limit };
       PersistenceService.saveUser(updated);
       return updated;
@@ -165,7 +194,7 @@ const App: React.FC = () => {
 
   const handleRiskAnalysis = async () => {
     setShowRiskModal(true);
-    if (!riskReport) {
+    if (!riskReport && user) {
       setIsRiskLoading(true);
       const report = await analyzeRiskProfile(user);
       setRiskReport(report);
@@ -174,6 +203,7 @@ const App: React.FC = () => {
   };
 
   const refreshRiskAnalysis = async () => {
+    if (!user) return;
     setIsRiskLoading(true);
     const report = await analyzeRiskProfile(user);
     setRiskReport(report);
@@ -182,6 +212,8 @@ const App: React.FC = () => {
 
   const handleCreateRequest = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
+
     if (!wallet.isConnected) {
       alert("Please connect your wallet first.");
       setShowWalletModal(true);
@@ -209,7 +241,7 @@ const App: React.FC = () => {
     
     setMyRequests(prev => {
       const updated = [newRequest, ...prev];
-      PersistenceService.saveMyRequests(updated);
+      PersistenceService.saveMyRequests(user.id, updated);
       return updated;
     });
 
@@ -222,28 +254,32 @@ const App: React.FC = () => {
       setShowWalletModal(true);
       return;
     }
+    if (!user) return;
+
     setMyRequests(prev => {
       const updated = prev.map(r => r.id === req.id ? { ...r, status: 'ESCROW_LOCKED' as const } : r);
-      PersistenceService.saveMyRequests(updated);
+      PersistenceService.saveMyRequests(user.id, updated);
       return updated;
     });
   };
 
   const handleReleaseEscrow = (req: LoanRequest) => {
+    if (!user) return;
     setMyRequests(prev => {
       const updated = prev.map(r => r.id === req.id ? { ...r, status: 'ACTIVE' as const } : r);
-      PersistenceService.saveMyRequests(updated);
+      PersistenceService.saveMyRequests(user.id, updated);
       return updated;
     });
   };
 
   const handleRepayLoan = async (req: LoanRequest) => {
+    if (!user) return;
     const platformFee = req.amount * 0.02;
     const charityDonation = platformFee * 0.5;
 
     setMyRequests(prev => {
       const updated = prev.map(r => r.id === req.id ? { ...r, status: 'REPAID' as const } : r);
-      PersistenceService.saveMyRequests(updated);
+      PersistenceService.saveMyRequests(user.id, updated);
       return updated;
     });
 
@@ -252,13 +288,13 @@ const App: React.FC = () => {
     }
 
     const updatedUser = { ...user, successfulRepayments: user.successfulRepayments + 1, currentStreak: user.currentStreak + 1 };
-    // Optimistic Save
     setUser(updatedUser);
     PersistenceService.saveUser(updatedUser);
 
     setIsAnalyzing(true);
     const result = await analyzeReputation(updatedUser);
     setUser(prev => {
+      if (!prev) return null;
       const final = {
         ...prev,
         reputationScore: result.score,
@@ -272,6 +308,7 @@ const App: React.FC = () => {
   };
 
   const handleSponsorRequest = async (req: LoanRequest) => {
+    if (!user) return;
     if (!wallet.isConnected) {
       setShowWalletModal(true);
       return;
@@ -284,6 +321,7 @@ const App: React.FC = () => {
     setIsAnalyzing(true);
     const result = await analyzeReputation(updatedUser);
     setUser(prev => {
+      if (!prev) return null;
       const final = {
         ...prev,
         reputationScore: result.score,
@@ -298,6 +336,7 @@ const App: React.FC = () => {
 
   const boostScore = () => {
     setUser(prev => {
+      if (!prev) return null;
       const updated = { ...prev, reputationScore: 85, successfulRepayments: 12, currentStreak: 5 };
       PersistenceService.saveUser(updated);
       return updated;
@@ -305,6 +344,39 @@ const App: React.FC = () => {
   };
 
   if (!appReady) return <div className="h-screen bg-[#050505] flex items-center justify-center text-white">Loading P3 Protocol...</div>;
+
+  // --- LOGIN VIEW ---
+  if (!isAuthenticated || !user) {
+    return (
+      <div className="h-screen bg-[#050505] flex flex-col items-center justify-center relative overflow-hidden">
+         <div className="absolute inset-0 bg-grid-pattern pointer-events-none opacity-20"></div>
+         <div className="z-10 text-center space-y-8 animate-fade-in">
+           <div className="transform scale-150 mb-8">
+             <Logo showText={false} />
+           </div>
+           <h1 className="text-4xl font-bold text-white tracking-tighter">
+             P<span className="text-[#00e599]">3</span> Lending Protocol
+           </h1>
+           <p className="text-zinc-400 max-w-md mx-auto">
+             The future of reputation-based finance. Sign in to access your dashboard, build your score, and secure funding.
+           </p>
+           
+           <div className="flex flex-col gap-4 items-center">
+             <Button 
+               size="lg" 
+               onClick={() => AuthService.open('login')}
+               className="min-w-[200px] shadow-[0_0_30px_rgba(0,229,153,0.3)]"
+             >
+               Connect Identity
+             </Button>
+             <p className="text-xs text-zinc-600">Powered by Netlify Identity & Google OAuth</p>
+           </div>
+         </div>
+      </div>
+    );
+  }
+
+  // --- MAIN APP VIEW ---
 
   // Render Sidebar Item
   const NavItem = ({ view, label, icon }: { view: typeof activeView, label: string, icon: React.ReactNode }) => (
@@ -376,13 +448,13 @@ const App: React.FC = () => {
         </div>
 
         <div className="p-4 border-t border-zinc-900">
-           <Button variant="ghost" size="sm" className="w-full justify-start text-zinc-500" onClick={boostScore}>
-             <span className="w-2 h-2 rounded-full bg-zinc-700 mr-2"></span>
-             v1.0.4-beta
+           <Button variant="ghost" size="sm" className="w-full justify-start text-zinc-500 hover:text-red-400" onClick={() => AuthService.logout()}>
+             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+             Log Out
            </Button>
            <div className="mt-2 text-[8px] text-zinc-600 text-center">
-             <button onClick={() => { if(confirm('Reset all data?')) PersistenceService.clearAll(); }} className="hover:text-red-500">
-               Reset Demo Data
+             <button onClick={() => { if(confirm('Reset all data?')) PersistenceService.clearAll(user.id); }} className="hover:text-red-500">
+               Reset My Data
              </button>
            </div>
         </div>

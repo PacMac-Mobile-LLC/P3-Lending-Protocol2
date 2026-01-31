@@ -1,15 +1,15 @@
 import { UserProfile, LoanRequest, LoanType, KYCTier, KYCStatus } from '../types';
 
-const KEYS = {
-  USER: 'p3_user_v1',
-  MY_REQUESTS: 'p3_my_requests_v1',
-  THEME: 'p3_theme'
-};
+// We now generate keys dynamically based on the User ID
+const getKeys = (userId: string) => ({
+  USER: `p3_user_${userId}`,
+  MY_REQUESTS: `p3_my_requests_${userId}`,
+});
 
 // Fallback data if no local data exists
 const INITIAL_USER_TEMPLATE: UserProfile = {
-  id: 'u1',
-  name: 'Alex Mercer',
+  id: 'guest',
+  name: 'Guest User',
   income: 65000,
   balance: 12450.75,
   avatarUrl: undefined,
@@ -30,10 +30,29 @@ const INITIAL_USER_TEMPLATE: UserProfile = {
 
 export const PersistenceService = {
   // --- User Profile ---
-  getUser: (): UserProfile => {
+  // Now accepts a Netlify User object to seed/load data
+  loadUser: (netlifyUser: any): UserProfile => {
     try {
-      const data = localStorage.getItem(KEYS.USER);
-      return data ? JSON.parse(data) : INITIAL_USER_TEMPLATE;
+      if (!netlifyUser) return INITIAL_USER_TEMPLATE;
+
+      const keys = getKeys(netlifyUser.id);
+      const data = localStorage.getItem(keys.USER);
+
+      if (data) {
+        return JSON.parse(data);
+      } else {
+        // Create new profile based on Netlify Data
+        const newUser: UserProfile = {
+          ...INITIAL_USER_TEMPLATE,
+          id: netlifyUser.id,
+          name: netlifyUser.user_metadata?.full_name || netlifyUser.email.split('@')[0],
+          avatarUrl: netlifyUser.user_metadata?.avatar_url || undefined,
+          // Reset reputation for new users
+          reputationScore: 50, 
+        };
+        PersistenceService.saveUser(newUser);
+        return newUser;
+      }
     } catch (e) {
       console.error("Failed to load user", e);
       return INITIAL_USER_TEMPLATE;
@@ -42,7 +61,8 @@ export const PersistenceService = {
 
   saveUser: (user: UserProfile) => {
     try {
-      localStorage.setItem(KEYS.USER, JSON.stringify(user));
+      const keys = getKeys(user.id);
+      localStorage.setItem(keys.USER, JSON.stringify(user));
     } catch (e) {
       console.error("Failed to save user (likely QuotaExceeded for image)", e);
       alert("Storage limit reached. Try using a smaller profile image.");
@@ -50,37 +70,40 @@ export const PersistenceService = {
   },
 
   // --- Loan Requests ---
-  getMyRequests: (): LoanRequest[] => {
+  getMyRequests: (userId: string): LoanRequest[] => {
     try {
-      const data = localStorage.getItem(KEYS.MY_REQUESTS);
+      const keys = getKeys(userId);
+      const data = localStorage.getItem(keys.MY_REQUESTS);
       return data ? JSON.parse(data) : [];
     } catch (e) {
       return [];
     }
   },
 
-  saveMyRequests: (requests: LoanRequest[]) => {
-    localStorage.setItem(KEYS.MY_REQUESTS, JSON.stringify(requests));
+  saveMyRequests: (userId: string, requests: LoanRequest[]) => {
+    const keys = getKeys(userId);
+    localStorage.setItem(keys.MY_REQUESTS, JSON.stringify(requests));
   },
 
-  addRequest: (req: LoanRequest) => {
-    const current = PersistenceService.getMyRequests();
+  addRequest: (userId: string, req: LoanRequest) => {
+    const current = PersistenceService.getMyRequests(userId);
     const updated = [req, ...current];
-    PersistenceService.saveMyRequests(updated);
+    PersistenceService.saveMyRequests(userId, updated);
     return updated;
   },
 
-  updateRequest: (updatedReq: LoanRequest) => {
-    const current = PersistenceService.getMyRequests();
+  updateRequest: (userId: string, updatedReq: LoanRequest) => {
+    const current = PersistenceService.getMyRequests(userId);
     const updated = current.map(r => r.id === updatedReq.id ? updatedReq : r);
-    PersistenceService.saveMyRequests(updated);
+    PersistenceService.saveMyRequests(userId, updated);
     return updated;
   },
 
   // --- Reset ---
-  clearAll: () => {
-    localStorage.removeItem(KEYS.USER);
-    localStorage.removeItem(KEYS.MY_REQUESTS);
+  clearAll: (userId: string) => {
+    const keys = getKeys(userId);
+    localStorage.removeItem(keys.USER);
+    localStorage.removeItem(keys.MY_REQUESTS);
     window.location.reload();
   }
 };
