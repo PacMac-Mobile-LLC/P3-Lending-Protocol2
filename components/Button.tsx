@@ -14,7 +14,7 @@ export const Button: React.FC<ButtonProps> = ({
   className = '', 
   ...props 
 }) => {
-  const baseStyles = "rounded-full font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-95";
+  const baseStyles = "rounded-full font-bold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-[0.98]";
   
   const sizes = {
     sm: "px-4 py-1.5 text-xs",
@@ -23,12 +23,16 @@ export const Button: React.FC<ButtonProps> = ({
   };
   
   const variants = {
-    // Brand Gradient: #667eea -> #764ba2
-    primary: "bg-gradient-to-r from-[#667eea] to-[#764ba2] hover:shadow-[0_0_20px_rgba(118,75,162,0.5)] text-white border border-transparent",
-    secondary: "bg-slate-800 hover:bg-slate-700 text-white border border-slate-700",
-    outline: "bg-transparent border border-slate-600 text-slate-300 hover:border-[#667eea] hover:text-[#667eea]",
+    // Neon Green with Black text (High Contrast)
+    primary: "bg-[#00e599] hover:bg-[#00cc88] text-black border border-transparent shadow-[0_0_10px_rgba(0,229,153,0.2)]",
+    // Dark Zinc
+    secondary: "bg-zinc-800 hover:bg-zinc-700 text-white border border-transparent",
+    // Outline
+    outline: "bg-transparent border border-zinc-700 text-zinc-300 hover:border-zinc-500 hover:text-white",
+    // Danger
     danger: "bg-red-500/10 text-red-400 border border-red-500/50 hover:bg-red-500/20",
-    ghost: "bg-transparent hover:bg-white/5 text-slate-400 hover:text-white"
+    // Ghost
+    ghost: "bg-transparent hover:bg-zinc-800 text-zinc-400 hover:text-white"
   };
 
   return (

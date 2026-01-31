@@ -17,22 +17,22 @@
       
       /* Custom Scrollbar for dark theme */
       ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
+        width: 6px;
+        height: 6px;
       }
       ::-webkit-scrollbar-track {
-        background: #111827; 
+        background: #000000; 
       }
       ::-webkit-scrollbar-thumb {
-        background: #374151; 
-        border-radius: 4px;
+        background: #27272a; 
+        border-radius: 3px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #4B5563; 
+        background: #3f3f46; 
       }
       
       .animate-fade-in {
-        animation: fadeIn 0.5s ease-out forwards;
+        animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
       }
       
       @keyframes fadeIn {
@@ -53,7 +53,7 @@
 }
 </script>
 </head>
-  <body class="bg-gray-900 text-white">
+  <body class="bg-black text-white antialiased">
     <div id="root"></div>
   </body>
 </html>
