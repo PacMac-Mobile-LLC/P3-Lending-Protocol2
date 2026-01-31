@@ -300,8 +300,8 @@ const App: React.FC = () => {
                </button>
              </div>
 
-             <Button size="sm" variant="ghost" className="hidden lg:flex" onClick={handleRiskAnalysis}>
-                <span className="mr-1">🛡️</span> Risk
+             <Button size="sm" variant="secondary" className="hidden lg:flex" onClick={handleRiskAnalysis}>
+                <span className="mr-1">🛡️</span> Analyze Risk Profile
              </Button>
 
              {/* Connect Wallet Button */}
