@@ -29,6 +29,8 @@ export const UserProfileCard: React.FC<Props> = ({ user, onUpdate, onVerifyClick
     }
   };
 
+  const isRedemptionArc = user.currentStreak > 0 && user.reputationScore < 60;
+
   if (isEditing) {
     return (
       <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl p-6 border border-slate-700 shadow-xl">
@@ -69,6 +71,7 @@ export const UserProfileCard: React.FC<Props> = ({ user, onUpdate, onVerifyClick
               value={formData.financialHistory}
               onChange={e => setFormData({...formData, financialHistory: e.target.value})}
               className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-3 text-white h-24 focus:border-[#667eea] outline-none resize-none transition-colors"
+              placeholder="Explain any past hardships here. The AI is trained to respect honesty and fresh starts."
             />
           </div>
           <div className="flex gap-3 justify-end pt-2">
@@ -96,6 +99,12 @@ export const UserProfileCard: React.FC<Props> = ({ user, onUpdate, onVerifyClick
                 <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider ${getTierBadgeColor(user.kycTier)}`}>
                   {user.kycTier}
                 </span>
+                {isRedemptionArc && (
+                   <span className="px-2.5 py-1 rounded-full text-[10px] font-bold border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                     Redemption Arc
+                   </span>
+                )}
               </div>
               <p className="text-slate-400 font-light">{user.employmentStatus}</p>
             </div>

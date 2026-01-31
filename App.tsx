@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { UserProfile, LoanRequest, LoanOffer, LoanType, Charity, KYCTier, KYCStatus } from './types';
+import { UserProfile, LoanRequest, LoanOffer, LoanType, Charity, KYCTier, KYCStatus, WalletState } from './types';
 import { UserProfileCard } from './components/UserProfileCard';
 import { Marketplace } from './components/Marketplace';
+import { MentorshipDashboard } from './components/MentorshipDashboard';
 import { Button } from './components/Button';
 import { Logo } from './components/Logo';
 import { analyzeReputation } from './services/geminiService';
+import { shortenAddress } from './services/walletService';
 import { KYCVerificationModal } from './components/KYCVerificationModal';
+import { WalletConnectModal } from './components/WalletConnectModal';
 
 // Mock Charities
 const MOCK_CHARITIES: Charity[] = [
@@ -29,7 +32,8 @@ const INITIAL_USER: UserProfile = {
   // KYC Default State
   kycTier: KYCTier.TIER_0,
   kycStatus: KYCStatus.UNVERIFIED,
-  kycLimit: 0 
+  kycLimit: 0,
+  mentorshipsCount: 0
 };
 
 const MOCK_OFFERS: LoanOffer[] = [
@@ -39,19 +43,38 @@ const MOCK_OFFERS: LoanOffer[] = [
   { id: 'o4', lenderId: 'l4', lenderName: 'SafeHarbor', maxAmount: 15000, interestRate: 4.8, minReputationScore: 85, terms: 'Collateralized' },
 ];
 
+const MOCK_COMMUNITY_REQUESTS: LoanRequest[] = [
+  { id: 'cr1', borrowerId: 'new1', borrowerName: 'Sarah J.', amount: 200, purpose: 'Textbooks for semester', type: LoanType.MICROLOAN, maxInterestRate: 0, status: 'PENDING', reputationScoreSnapshot: 20, isSponsorship: true },
+  { id: 'cr2', borrowerId: 'new2', borrowerName: 'Mike D.', amount: 450, purpose: 'Bike repair for delivery job', type: LoanType.MICROLOAN, maxInterestRate: 0, status: 'PENDING', reputationScoreSnapshot: 35, isSponsorship: true },
+  { id: 'cr3', borrowerId: 'new3', borrowerName: 'Elena R.', amount: 150, purpose: 'Online course certification', type: LoanType.MICROLOAN, maxInterestRate: 0, status: 'PENDING', reputationScoreSnapshot: 15, isSponsorship: true },
+];
+
 const App: React.FC = () => {
   const [user, setUser] = useState<UserProfile>(INITIAL_USER);
   const [charities, setCharities] = useState<Charity[]>(MOCK_CHARITIES);
   const [activeTab, setActiveTab] = useState<'borrow' | 'lend'>('borrow');
   const [myRequests, setMyRequests] = useState<LoanRequest[]>([]);
+  const [communityRequests, setCommunityRequests] = useState<LoanRequest[]>(MOCK_COMMUNITY_REQUESTS);
+  
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isMatching, setIsMatching] = useState(false);
   const [showKYCModal, setShowKYCModal] = useState(false);
+  const [showWalletModal, setShowWalletModal] = useState(false);
+  
+  // Wallet State
+  const [wallet, setWallet] = useState<WalletState>({
+    isConnected: false,
+    address: null,
+    provider: null,
+    chainId: null,
+    balance: '0'
+  });
 
   // Form State
   const [loanAmount, setLoanAmount] = useState(1000);
   const [loanPurpose, setLoanPurpose] = useState('');
   const [isMicroloan, setIsMicroloan] = useState(false);
+  const [isCharityGuaranteed, setIsCharityGuaranteed] = useState(false);
   const [selectedCharity, setSelectedCharity] = useState<string>(MOCK_CHARITIES[0].id);
 
   // Handle Profile Update & AI Re-scoring
@@ -82,6 +105,11 @@ const App: React.FC = () => {
 
   const handleCreateRequest = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!wallet.isConnected) {
+      alert("Please connect your wallet to post a loan request on-chain.");
+      setShowWalletModal(true);
+      return;
+    }
     
     // KYC Limit Check
     if (loanAmount > user.kycLimit) {
@@ -100,15 +128,22 @@ const App: React.FC = () => {
       maxInterestRate: isMicroloan ? 0 : 15,
       status: 'PENDING',
       reputationScoreSnapshot: user.reputationScore,
-      charityId: selectedCharity
+      charityId: selectedCharity,
+      isCharityGuaranteed: isCharityGuaranteed
     };
     setMyRequests([newRequest, ...myRequests]);
     setLoanPurpose('');
     setLoanAmount(1000);
     setIsMicroloan(false);
+    setIsCharityGuaranteed(false);
   };
 
   const handleFundRequest = (req: LoanRequest) => {
+     if (!wallet.isConnected) {
+      alert("Please connect your wallet to fund this request.");
+      setShowWalletModal(true);
+      return;
+    }
     setMyRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'ESCROW_LOCKED' } : r));
   };
 
@@ -149,6 +184,42 @@ const App: React.FC = () => {
     setIsAnalyzing(false);
   };
 
+  // Mentor Actions
+  const handleSponsorRequest = async (req: LoanRequest) => {
+    if (!wallet.isConnected) {
+      alert("Please connect your wallet to sponsor a microloan.");
+      setShowWalletModal(true);
+      return;
+    }
+
+    // 1. Remove from available list
+    setCommunityRequests(prev => prev.filter(r => r.id !== req.id));
+    
+    // 2. Update user stats
+    const updatedUser = {
+       ...user,
+       mentorshipsCount: (user.mentorshipsCount || 0) + 1,
+       totalSponsored: (user.totalSponsored || 0) + req.amount
+    };
+    setUser(updatedUser);
+
+    // 3. Trigger AI analysis for potential badge
+    setIsAnalyzing(true);
+    const result = await analyzeReputation(updatedUser);
+    setUser(prev => ({
+      ...prev,
+      reputationScore: result.score,
+      riskAnalysis: result.analysis,
+      badges: [...new Set([...prev.badges, ...(result.newBadges || [])])]
+    }));
+    setIsAnalyzing(false);
+  };
+
+  // Dev Tool
+  const boostScore = () => {
+    setUser(prev => ({ ...prev, reputationScore: 85, successfulRepayments: 12, currentStreak: 5 }));
+  };
+
   return (
     <div className="min-h-screen bg-[#0f172a] text-slate-200 font-sans selection:bg-[#667eea]/30">
       
@@ -160,32 +231,60 @@ const App: React.FC = () => {
         />
       )}
 
+      <WalletConnectModal 
+        isOpen={showWalletModal} 
+        onClose={() => setShowWalletModal(false)} 
+        onConnect={(walletInfo) => setWallet(walletInfo)}
+      />
+
       {/* Header */}
       <header className="bg-slate-900/50 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <Logo />
           
-          <div className="flex bg-slate-800/50 p-1.5 rounded-full border border-slate-700/50">
-            <button 
-              onClick={() => setActiveTab('borrow')}
-              className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-                activeTab === 'borrow' 
-                  ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white shadow-lg' 
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Borrow
-            </button>
-            <button 
-              onClick={() => setActiveTab('lend')}
-              className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-                activeTab === 'lend' 
-                  ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white shadow-lg' 
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Lend
-            </button>
+          <div className="flex items-center gap-4">
+             <div className="flex bg-slate-800/50 p-1.5 rounded-full border border-slate-700/50">
+               <button 
+                 onClick={() => setActiveTab('borrow')}
+                 className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                   activeTab === 'borrow' 
+                     ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white shadow-lg' 
+                     : 'text-slate-400 hover:text-white'
+                 }`}
+               >
+                 Borrow
+               </button>
+               <button 
+                 onClick={() => setActiveTab('lend')}
+                 className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                   activeTab === 'lend' 
+                     ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white shadow-lg' 
+                     : 'text-slate-400 hover:text-white'
+                 }`}
+               >
+                 Lend (Mentor)
+               </button>
+             </div>
+
+             {/* Connect Wallet Button */}
+             {wallet.isConnected ? (
+               <div className="flex items-center gap-2 pl-4 border-l border-slate-700">
+                  <div className="text-right hidden sm:block">
+                     <div className="text-[10px] text-slate-400 font-mono">{wallet.balance} ETH</div>
+                     <div className="text-sm font-bold text-white font-mono">{shortenAddress(wallet.address || '')}</div>
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-700 border border-emerald-400/50 shadow-lg shadow-emerald-500/20"></div>
+               </div>
+             ) : (
+               <Button 
+                 variant="outline" 
+                 size="sm" 
+                 className="ml-2 border-slate-600 hover:border-emerald-400 hover:text-emerald-400"
+                 onClick={() => setShowWalletModal(true)}
+               >
+                 Connect Wallet
+               </Button>
+             )}
           </div>
         </div>
       </header>
@@ -194,13 +293,17 @@ const App: React.FC = () => {
         
         {/* Top Section: Reputation & Charity Impact */}
         <section className="mb-16 grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 relative group">
             <UserProfileCard 
               user={user} 
               onUpdate={handleProfileUpdate} 
               onVerifyClick={() => setShowKYCModal(true)}
               isAnalyzing={isAnalyzing}
             />
+            {/* Dev Tool: Hidden Boost Button */}
+            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+               <button onClick={boostScore} className="text-[10px] bg-slate-800 p-1 rounded text-slate-500 hover:text-white">Dev: Boost Score</button>
+            </div>
           </div>
 
           {/* Charity Impact Dashboard */}
@@ -277,6 +380,7 @@ const App: React.FC = () => {
                       onClick={() => {
                         setIsMicroloan(!isMicroloan);
                         if(!isMicroloan) setLoanAmount(200);
+                        if(isMicroloan === true) setIsCharityGuaranteed(false); // Reset if toggling off
                       }}
                     >
                       <div className={`w-5 h-5 rounded flex items-center justify-center border ${isMicroloan ? 'bg-[#667eea] border-[#667eea]' : 'border-slate-500'}`}>
@@ -287,6 +391,25 @@ const App: React.FC = () => {
                         <p className="text-[10px] text-slate-500 mt-0.5">Credit builder. No collateral required.</p>
                       </div>
                     </div>
+
+                    {/* Fresh Start / Charity Guarantee Toggle */}
+                    {isMicroloan && (
+                      <div 
+                        className={`
+                          flex items-center gap-3 p-4 rounded-xl border transition-all cursor-pointer
+                          ${isCharityGuaranteed ? 'bg-pink-500/10 border-pink-500/50' : 'bg-slate-900/30 border-slate-700'}
+                        `}
+                        onClick={() => setIsCharityGuaranteed(!isCharityGuaranteed)}
+                      >
+                        <div className={`w-5 h-5 rounded flex items-center justify-center border ${isCharityGuaranteed ? 'bg-pink-500 border-pink-500' : 'border-slate-500'}`}>
+                          {isCharityGuaranteed && <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>}
+                        </div>
+                        <div>
+                          <span className={`text-sm font-semibold ${isCharityGuaranteed ? 'text-pink-400' : 'text-slate-300'}`}>Charity Guarantee</span>
+                          <p className="text-[10px] text-slate-500 mt-0.5">"Fresh Start" protocol. Insurance via charity pool.</p>
+                        </div>
+                      </div>
+                    )}
 
                     <div>
                       <label className="block text-xs uppercase tracking-wider text-slate-400 mb-2">Purpose</label>
@@ -337,17 +460,33 @@ const App: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-32 bg-slate-800/20 rounded-3xl border border-slate-800 border-dashed">
-             <div className="text-center max-w-md">
-                <div className="w-20 h-20 bg-slate-800 rounded-full mx-auto mb-6 flex items-center justify-center">
-                   <span className="text-4xl">💎</span>
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-3">Liquidity Provider</h3>
-                <p className="text-slate-400 mb-8 font-light leading-relaxed">
-                  Earn yields by funding microloans and support community causes through the P³ protocol.
-                </p>
-                <Button variant="outline" className="px-8" onClick={() => alert("Lender functionality coming in V2")}>Connect Wallet</Button>
-             </div>
+          <div className="animate-fade-in">
+             {user.reputationScore >= 70 ? (
+                <MentorshipDashboard 
+                  user={user} 
+                  communityRequests={communityRequests} 
+                  onSponsor={handleSponsorRequest} 
+                />
+             ) : (
+              <div className="flex flex-col items-center justify-center py-32 bg-slate-800/20 rounded-3xl border border-slate-800 border-dashed relative overflow-hidden">
+                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-500/50 to-transparent"></div>
+                 <div className="text-center max-w-md z-10 p-6">
+                    <div className="w-20 h-20 bg-slate-800 rounded-full mx-auto mb-6 flex items-center justify-center border border-slate-700">
+                       <span className="text-4xl grayscale">🔒</span>
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-3">Mentorship Program Locked</h3>
+                    <p className="text-slate-400 mb-6 font-light leading-relaxed">
+                      Only Seasoned Borrowers (Reputation Score 70+) can become Mentors and sponsor microloans. 
+                      Build your trust score by borrowing and repaying successfully.
+                    </p>
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 rounded-lg border border-slate-700 text-sm">
+                      <span className="text-slate-500">Current Score:</span>
+                      <span className="text-white font-bold">{user.reputationScore}</span>
+                      <span className="text-slate-600">/ 70</span>
+                    </div>
+                 </div>
+              </div>
+             )}
           </div>
         )}
       </main>

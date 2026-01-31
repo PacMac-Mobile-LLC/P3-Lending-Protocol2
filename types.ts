@@ -46,6 +46,10 @@ export interface UserProfile {
   kycTier: KYCTier;
   kycStatus: KYCStatus;
   kycLimit: number; // Max loan amount allowed
+
+  // Mentorship Stats
+  mentorshipsCount?: number;
+  totalSponsored?: number;
 }
 
 export interface LoanRequest {
@@ -59,6 +63,9 @@ export interface LoanRequest {
   status: LoanStatus;
   reputationScoreSnapshot: number;
   charityId?: string;
+  isSponsorship?: boolean; // If true, this is a microloan funded by a mentor
+  mentorId?: string;
+  isCharityGuaranteed?: boolean; // Fresh Start protocol
 }
 
 export interface LoanOffer {
@@ -76,4 +83,15 @@ export interface MatchResult {
   requestId: string;
   matchScore: number;
   reasoning: string;
+}
+
+// Wallet Integrations
+export type WalletProvider = 'METAMASK' | 'WALLETCONNECT' | 'COINBASE' | null;
+
+export interface WalletState {
+  isConnected: boolean;
+  address: string | null;
+  provider: WalletProvider;
+  chainId: number | null;
+  balance: string; // Formatted ETH balance
 }

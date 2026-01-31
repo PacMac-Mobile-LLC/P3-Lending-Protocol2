@@ -75,7 +75,13 @@ export const Marketplace: React.FC<Props> = ({
                     : 'bg-slate-900/40 border-slate-700/50 hover:border-slate-600'}
                 `}
               >
-                <div className="flex justify-between items-start mb-4">
+                {req.isCharityGuaranteed && (
+                  <div className="absolute -top-3 right-4 bg-gradient-to-r from-pink-500 to-purple-500 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg border border-pink-400/50 flex items-center gap-1 z-10">
+                    <span>🛡️</span> Charity Guaranteed
+                  </div>
+                )}
+
+                <div className="flex justify-between items-start mb-4 mt-2">
                   <div>
                     <span className="text-3xl font-bold text-white tracking-tight">
                       ${req.amount.toLocaleString()}

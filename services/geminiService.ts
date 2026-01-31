@@ -56,13 +56,14 @@ export const analyzeReputation = async (profile: UserProfile): Promise<{ score: 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Analyze the financial reputation of this user for the P3 Lending Protocol.
+      contents: `Analyze the financial reputation of this user for the P3 Lending Protocol with an emphasis on **Equal Opportunity**.
       
       User Metrics (On-Chain Trust):
       - Successful Repayments: ${profile.successfulRepayments}
       - Current Repayment Streak: ${profile.currentStreak}
       - Existing Badges: ${profile.badges.join(', ')}
       - KYC Tier: ${profile.kycTier}
+      - Mentorships Funded: ${profile.mentorshipsCount || 0}
       
       Self-Reported Profile:
       - Name: ${profile.name}
@@ -70,15 +71,16 @@ export const analyzeReputation = async (profile: UserProfile): Promise<{ score: 
       - Employment: ${profile.employmentStatus}
       - History Narrative: "${profile.financialHistory}"
 
-      SCORING RULES:
-      1. Base score starts low (20-40) for 0 repayments.
-      2. Higher KYC Tiers (Tier 2/3) should provide a small trust boost (+5) as identity is verified.
-      3. Each successful repayment boosts score significantly.
+      SCORING RULES (Fairness Protocol):
+      1. **Redemption Weighting**: If 'Current Repayment Streak' > 0, completely IGNORE any negative past history mentioned in the narrative. Actions on platform > Past social score.
+      2. **Fresh Start**: If the user has 0 repayments but mentions "hardship" or "rebuilding", do not penalize below 40. Give them a "neutral" start.
+      3. **Mentorship Bonus**: If "Mentorships Funded" > 0, boost score by 5-10 points.
+      4. **Consistency**: Each successful repayment is a massive trust signal (+10 points).
       
       TASK:
       1. Assign a P3 Reputation Score (0-100).
-      2. Provide a 1-sentence risk analysis.
-      3. Recommend new badges to award if milestones are met. Return empty array if no new badges.
+      2. Provide a 1-sentence analysis. If they are rebuilding, use encouraging language like "Demonstrating positive redemption arc."
+      3. Recommend new badges (e.g., "Redemption Hero", "Fresh Start", "Trusted Mentor").
       `,
       config: {
         responseMimeType: "application/json",
@@ -116,13 +118,17 @@ export const matchLoanOffers = async (request: LoanRequest, offers: LoanOffer[])
       Amount: $${request.amount}
       Purpose: ${request.purpose}
       Reputation Score: ${request.reputationScoreSnapshot}
+      Is Charity Guaranteed: ${request.isCharityGuaranteed} (If TRUE, risk is mitigated by platform insurance)
       Max Interest: ${request.maxInterestRate}%
 
       Available Offers:
       ${JSON.stringify(offers)}
 
-      Return a list of matches. Only include offers where the lender's minReputationScore <= borrower's score.
-      Rank them by 'matchScore' (0-100) based on interest rate competitiveness and amount alignment.
+      MATCHING LOGIC:
+      1. If 'Is Charity Guaranteed' is TRUE, treat the borrower as if they have a Reputation Score of 80 (High Trust), because the funds are insured.
+      2. Otherwise, enforce the lender's 'minReputationScore'.
+
+      Return a list of matches. Rank them by 'matchScore' (0-100).
       `,
       config: {
         responseMimeType: "application/json",
