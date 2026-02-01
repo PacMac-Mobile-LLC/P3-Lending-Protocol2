@@ -64,17 +64,34 @@ const WaitlistModal = ({ isOpen, onClose, onLaunchApp }: { isOpen: boolean; onCl
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [referralLink, setReferralLink] = useState('');
+  const [waitlistPosition, setWaitlistPosition] = useState(4291);
+  const [hasCopied, setHasCopied] = useState(false);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    // Simulate API call
+    // Simulate API call and Link Generation
     setTimeout(() => {
+      // Create a mock referral code based on email hash simulation
+      const mockCode = btoa(email).substring(0, 8).toUpperCase();
+      setReferralLink(`https://p3lending.space?ref=${mockCode}`);
       setIsSubmitting(false);
       setStep('SUCCESS');
     }, 1500);
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(referralLink);
+    setHasCopied(true);
+    setTimeout(() => setHasCopied(false), 2000);
+  };
+
+  const handleShareTwitter = () => {
+    const text = `I'm skipping the credit check and building my financial reputation on @P3Securities. Join me and ditch the FICO score: ${referralLink}`;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   return (
@@ -139,22 +156,52 @@ const WaitlistModal = ({ isOpen, onClose, onLaunchApp }: { isOpen: boolean; onCl
              </div>
              
              <h2 className="text-3xl font-bold text-white mb-2">You're on the list, <span className="text-[#00e599]">{name.split(' ')[0]}</span>.</h2>
-             <p className="text-zinc-400 text-sm mb-8 leading-relaxed max-w-xs mx-auto">
+             <p className="text-zinc-400 text-sm mb-6 leading-relaxed max-w-xs mx-auto">
                Your spot is secured. We are rewriting the rules of lending by replacing FICO scores with social reputation.
              </p>
 
-             <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 mb-8">
+             <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 mb-6">
                 <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Waitlist Position</div>
-                <div className="text-4xl font-mono font-bold text-white tracking-tighter">#4,291</div>
+                <div className="text-4xl font-mono font-bold text-white tracking-tighter">#{waitlistPosition.toLocaleString()}</div>
+             </div>
+             
+             {/* Gamification / Share Section */}
+             <div className="bg-gradient-to-br from-zinc-900 to-black border border-zinc-800 rounded-xl p-4 mb-6 text-left">
+                <div className="flex items-center gap-2 mb-2">
+                   <span className="text-lg">🔥</span>
+                   <span className="text-xs font-bold text-white uppercase tracking-wider">Boost your position</span>
+                </div>
+                <p className="text-xs text-zinc-400 mb-3">
+                   Share your unique link. Each sign-up bumps you up <strong className="text-[#00e599]">100 spots</strong> in line.
+                </p>
+                <div className="flex gap-2 mb-3">
+                   <div className="flex-1 bg-black border border-zinc-800 rounded px-3 py-2 text-xs text-zinc-300 font-mono truncate">
+                      {referralLink}
+                   </div>
+                   <button 
+                     onClick={handleCopyLink}
+                     className="bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-2 rounded text-xs font-bold transition-colors border border-zinc-700 w-20"
+                   >
+                     {hasCopied ? 'Copied!' : 'Copy'}
+                   </button>
+                </div>
+                <button 
+                  onClick={handleShareTwitter}
+                  className="w-full bg-[#1DA1F2] hover:bg-[#1a91da] text-white py-2 rounded text-xs font-bold transition-colors flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.84 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/></svg>
+                  Share on X
+                </button>
              </div>
 
-             <p className="text-zinc-500 text-xs mb-4">
-               While you wait, you can check out the live beta environment.
-             </p>
-
-             <Button onClick={onLaunchApp} className="w-full py-3 bg-[#00e599] text-black hover:bg-[#00cc88]">
-               View Live Status
-             </Button>
+             <div className="border-t border-zinc-900 pt-4">
+               <p className="text-zinc-500 text-[10px] mb-3">
+                 Want to look around first?
+               </p>
+               <Button onClick={onLaunchApp} variant="outline" className="w-full py-2 text-sm border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600">
+                 View Live Demo Environment
+               </Button>
+             </div>
           </div>
         )}
       </div>
@@ -216,7 +263,12 @@ export const LandingPage: React.FC<Props> = ({ onLaunch, onDevAdminLogin, onOpen
             <Button size="lg" onClick={() => setShowWaitlist(true)} className="h-14 px-10 text-lg shadow-[0_0_30px_rgba(0,229,153,0.3)] hover:scale-105 transition-transform">
               Get Early Access
             </Button>
-            <Button size="lg" variant="secondary" onClick={onOpenDocs} className="h-14 px-10 text-lg border-zinc-800 bg-zinc-900/50 hover:bg-zinc-900">
+            <Button 
+              size="lg" 
+              variant="secondary" 
+              onClick={() => onOpenLegal('MANIFESTO')} 
+              className="h-14 px-10 text-lg border-zinc-800 bg-zinc-900/50 hover:bg-zinc-900"
+            >
               Read Manifesto
             </Button>
           </div>
@@ -224,6 +276,14 @@ export const LandingPage: React.FC<Props> = ({ onLaunch, onDevAdminLogin, onOpen
           <p className="text-xs text-zinc-600 font-mono">
             Limited spots available for Q1 2025.
           </p>
+
+          {/* Scroll Indicator */}
+          <div 
+            className="absolute bottom-10 left-1/2 transform -translate-x-1/2 animate-bounce cursor-pointer text-zinc-600 hover:text-white transition-colors" 
+            onClick={() => scrollToSection('borrowers')}
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+          </div>
         </div>
       </section>
 
@@ -247,7 +307,7 @@ export const LandingPage: React.FC<Props> = ({ onLaunch, onDevAdminLogin, onOpen
       </div>
 
       {/* Borrower Section */}
-      <section className="py-32 px-6 border-b border-zinc-900 bg-black relative">
+      <section id="borrowers" className="py-32 px-6 border-b border-zinc-900 bg-black relative">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-20 items-center">
            <div className="space-y-8">
               <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-2xl border border-blue-500/20">💸</div>
@@ -286,7 +346,7 @@ export const LandingPage: React.FC<Props> = ({ onLaunch, onDevAdminLogin, onOpen
       </section>
 
       {/* Lender Section */}
-      <section className="py-32 px-6 bg-zinc-900/20 relative">
+      <section id="lenders" className="py-32 px-6 bg-zinc-900/20 relative">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-20 items-center">
            <div className="relative order-last md:order-first">
               <div className="absolute inset-0 bg-[#00e599]/10 blur-[100px] rounded-full"></div>

@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type LegalDocType = 'TERMS' | 'PRIVACY' | 'ESIGN' | 'DISCLOSURES' | 'ECOA' | 'SECURITY' | 'SUPPORT' | 'REFERRAL_TERMS';
+export type LegalDocType = 'TERMS' | 'PRIVACY' | 'ESIGN' | 'DISCLOSURES' | 'ECOA' | 'SECURITY' | 'SUPPORT' | 'REFERRAL_TERMS' | 'MANIFESTO';
 
 interface Props {
   type: LegalDocType | null;
@@ -12,6 +12,68 @@ export const LegalModal: React.FC<Props> = ({ type, onClose }) => {
 
   const getContent = () => {
     switch (type) {
+      case 'MANIFESTO':
+        return {
+          title: 'The P3 Manifesto',
+          lastUpdated: 'February 2025',
+          content: (
+            <div className="space-y-10 text-zinc-300 text-sm leading-relaxed max-w-2xl mx-auto py-4">
+              <div className="text-center space-y-6">
+                <h3 className="text-4xl font-bold text-white tracking-tight">Character is Currency.</h3>
+                <p className="text-xl text-zinc-400 italic font-light leading-relaxed">
+                  "The current financial system is designed to exclude. It relies on backward-looking metrics—FICO scores, bank statements, and credit history—that penalize the young, the unbanked, and the unlucky."
+                </p>
+                <div className="w-24 h-1 bg-[#00e599] mx-auto rounded-full my-6"></div>
+                <p className="text-lg text-white font-medium">
+                  We believe that trust is the fundamental unit of value in an economy. Not your balance sheet. Not your zip code. <strong className="text-[#00e599]">Your word.</strong>
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-2xl font-bold text-white flex items-center gap-3">
+                  <span className="flex items-center justify-center w-8 h-8 rounded-full bg-zinc-800 text-xs font-mono">01</span>
+                  The Problem: FICO is Broken
+                </h4>
+                <p className="pl-11 text-base text-zinc-400">
+                  Credit bureaus are black boxes. They profit from your data while keeping you in the dark. A single missed payment can ruin a decade of hard work. They measure compliance, not potential. They measure history, not humanity.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-2xl font-bold text-white flex items-center gap-3">
+                   <span className="flex items-center justify-center w-8 h-8 rounded-full bg-zinc-800 text-xs font-mono">02</span>
+                   The Solution: Social Underwriting
+                </h4>
+                <p className="pl-11 text-base text-zinc-400">
+                  P3 reintroduces the village to finance. Before banks, communities lent to each other based on reputation. If your neighbor vouched for you, you got the loan.
+                </p>
+                <p className="pl-11 text-base text-zinc-400">
+                  We use AI to quantify this social capital. We analyze on-chain behavior, community endorsements, and repayment consistency to build a dynamic, forward-looking Reputation Score.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-2xl font-bold text-white flex items-center gap-3">
+                   <span className="flex items-center justify-center w-8 h-8 rounded-full bg-zinc-800 text-xs font-mono">03</span>
+                   The Protocol: Code is Law, But Humans are Justice
+                </h4>
+                <p className="pl-11 text-base text-zinc-400">
+                  Smart contracts ensure loans are funded instantly and repayments are transparent. But unlike cold DeFi protocols that liquidate you the moment a line crosses a chart, P3 offers redemption arcs.
+                </p>
+                <p className="pl-11 text-base text-zinc-400">
+                  We allow for mentorship. We allow for "Fresh Start" grants. We build technology that serves people, not the other way around.
+                </p>
+              </div>
+
+              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 text-center mt-12">
+                <p className="text-2xl font-serif text-[#00e599] italic mb-4">
+                  "We are building a future where your net worth is determined by your network, and your credit is determined by your character."
+                </p>
+                <p className="text-sm font-bold text-white uppercase tracking-widest">— The P3 DAO</p>
+              </div>
+            </div>
+          )
+        };
       case 'TERMS':
         return {
           title: 'Terms of Service',
@@ -127,7 +189,7 @@ export const LegalModal: React.FC<Props> = ({ type, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in">
-      <div className="bg-[#0a0a0a] border border-zinc-800 rounded-3xl max-w-2xl w-full shadow-2xl relative flex flex-col max-h-[85vh]">
+      <div className="bg-[#0a0a0a] border border-zinc-800 rounded-3xl max-w-2xl w-full shadow-2xl relative flex flex-col max-h-[90vh]">
         {/* Decorative Grid */}
         <div className="absolute inset-0 bg-grid-pattern opacity-10 pointer-events-none rounded-3xl"></div>
 
