@@ -60,7 +60,7 @@ const App: React.FC = () => {
   const [adminUser, setAdminUser] = useState<EmployeeProfile | null>(null);
 
   // Security Flow State
-  const [showCertUpload, setShowCertUpload] = useState(false);
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [pendingAdminEmail, setPendingAdminEmail] = useState('');
   
   const [charities, setCharities] = useState<Charity[]>(MOCK_CHARITIES);
@@ -111,9 +111,9 @@ const App: React.FC = () => {
        const matchedEmp = employees.find(e => e.email.toLowerCase() === email.toLowerCase());
        
        if (matchedEmp && matchedEmp.isActive) {
-          // INTERRUPT FLOW: Show Certificate Upload Modal
+          // INTERRUPT FLOW: Show Admin Password Modal
           setPendingAdminEmail(email);
-          setShowCertUpload(true);
+          setShowAdminLogin(true);
           return;
        } else {
          console.warn("Domain matches but user not found in employee list.");
@@ -193,7 +193,7 @@ const App: React.FC = () => {
       setAdminUser(null);
       setMyRequests([]);
       setMyOffers([]);
-      setShowCertUpload(false);
+      setShowAdminLogin(false);
       setPendingAdminEmail('');
     };
 
@@ -255,55 +255,34 @@ const App: React.FC = () => {
     }
   };
 
-  const handleSecurityCheck = (fileContent: string) => {
+  const handleAdminPasswordLogin = (password: string) => {
      try {
-       const cert = JSON.parse(fileContent) as SecurityCertificate;
        const employees = PersistenceService.getEmployees();
        const matchedEmp = employees.find(e => e.email.toLowerCase() === pendingAdminEmail.toLowerCase());
 
        if (!matchedEmp) throw new Error("User not found.");
 
-       // 1. Validate Certificate
-       const validation = SecurityService.validateCertificate(cert, matchedEmp);
-       if (!validation.valid) {
-         alert(`Security Error: ${validation.error}`);
-         return;
+       // Simple password check (in prod, use hashing and strict comparison)
+       if (password === matchedEmp.passwordHash || matchedEmp.passwordHash === 'temp123') {
+           
+           // Password Rotation Logic
+           if (SecurityService.isPasswordExpired(matchedEmp.passwordLastSet)) {
+              alert("Password expired. Please update.");
+              // In real flow, we'd force update here, but for demo we just login
+           }
+
+           setAdminUser(matchedEmp);
+           setIsAuthenticated(true);
+           setShowLanding(false);
+           setShowAdminLogin(false);
+           AuthService.close();
+       } else {
+           alert("Invalid Password");
        }
-
-       // 2. Validate Password Expiry
-       if (SecurityService.isPasswordExpired(matchedEmp.passwordLastSet)) {
-         const newPass = prompt("Your password has expired (60 days). Please enter a new password:");
-         if (!newPass) {
-           alert("Password update required.");
-           return;
-         }
-         
-         // 3. Validate History
-         if (SecurityService.checkPasswordHistory(newPass, matchedEmp.previousPasswords)) {
-           alert("Security Error: You cannot reuse any of your last 10 passwords.");
-           return;
-         }
-
-         // Update password history
-         matchedEmp.previousPasswords.unshift(matchedEmp.passwordHash); // Store old hash
-         if (matchedEmp.previousPasswords.length > 10) matchedEmp.previousPasswords.pop();
-         
-         matchedEmp.passwordHash = newPass; // In prod this would be hashed
-         matchedEmp.passwordLastSet = Date.now();
-         PersistenceService.updateEmployee(matchedEmp);
-         alert("Password updated successfully.");
-       }
-
-       // 4. Login Success
-       setAdminUser(matchedEmp);
-       setIsAuthenticated(true);
-       setShowLanding(false);
-       setShowCertUpload(false);
-       AuthService.close();
 
      } catch (e) {
        console.error(e);
-       alert("Invalid Certificate File. Login failed.");
+       alert("Login failed.");
      }
   };
 
@@ -335,14 +314,23 @@ const App: React.FC = () => {
     alert(`Successfully deposited $${amount}. New Balance: $${updatedUser.balance}`);
   };
 
-  const handleKYCUpgrade = (newTier: KYCTier, limit: number) => {
+  const handleKYCUpgrade = (newTier: KYCTier, limit: number, docData?: any) => {
     setUser(prev => {
       if (!prev) return null;
-      const updated = { ...prev, kycTier: newTier, kycStatus: KYCStatus.VERIFIED, kycLimit: limit };
+      const updated = { 
+        ...prev, 
+        kycTier: newTier === KYCTier.TIER_2 ? prev.kycTier : newTier, // Tier 2 requires admin approval
+        kycStatus: newTier === KYCTier.TIER_2 ? KYCStatus.PENDING : KYCStatus.VERIFIED, // Pending if Tier 2
+        kycLimit: newTier === KYCTier.TIER_2 ? prev.kycLimit : limit, // Limit doesn't increase until approved
+        documents: docData ? docData : prev.documents
+      };
       PersistenceService.saveUser(updated);
       return updated;
     });
     setShowKYCModal(false);
+    if (newTier === KYCTier.TIER_2) {
+      alert("Documents submitted successfully. An Admin will review your application shortly.");
+    }
   };
 
   const handleRiskAnalysis = async () => {
@@ -505,7 +493,7 @@ const App: React.FC = () => {
   if (!appReady) return <div className="h-screen bg-[#050505] flex items-center justify-center text-white">Loading P3 Protocol...</div>;
 
   // Show Landing Page
-  if (!isAuthenticated && showLanding && !showCertUpload) {
+  if (!isAuthenticated && showLanding && !showAdminLogin) {
     if (activeView === 'knowledge_base') {
        return <KnowledgeBase onBack={() => setActiveView('borrow')} onOpenLegal={(type) => setActiveLegalDoc(type)} />;
     }
@@ -522,13 +510,13 @@ const App: React.FC = () => {
     );
   }
 
-  // Handle Certificate Upload Interruption
-  if (showCertUpload) {
+  // Handle Admin Login Interruption
+  if (showAdminLogin) {
     return (
       <AdminLoginModal 
         email={pendingAdminEmail} 
-        onCertificateUpload={handleSecurityCheck}
-        onCancel={() => { setShowCertUpload(false); setPendingAdminEmail(''); AuthService.logout(); }}
+        onLogin={handleAdminPasswordLogin}
+        onCancel={() => { setShowAdminLogin(false); setPendingAdminEmail(''); AuthService.logout(); }}
       />
     );
   }

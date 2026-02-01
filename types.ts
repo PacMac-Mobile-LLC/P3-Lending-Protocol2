@@ -56,6 +56,12 @@ export interface UserProfile {
   kycTier: KYCTier;
   kycStatus: KYCStatus;
   kycLimit: number; // Max loan amount allowed
+  documents?: {
+    idType: string;
+    idFile?: string; // Base64 or URL
+    faceFile?: string; // Base64 or URL
+    submittedAt: number;
+  };
   isFrozen?: boolean; // Admin action
   adminNotes?: string;
 
@@ -161,4 +167,20 @@ export interface EmployeeProfile {
   passwordLastSet: number; // Timestamp
   previousPasswords: string[]; // History of last 10
   certificateData?: SecurityCertificate; // The active cert required
+}
+
+// Arbitration
+export type DisputeStatus = 'OPEN' | 'RESOLVED' | 'DISMISSED';
+
+export interface Dispute {
+  id: string;
+  reporterId: string;
+  reporterName: string;
+  accusedId: string;
+  accusedName: string;
+  reason: string;
+  evidence?: string;
+  status: DisputeStatus;
+  createdAt: number;
+  resolution?: string;
 }

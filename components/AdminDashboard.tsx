@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Logo } from './Logo';
 import { Button } from './Button';
-import { UserProfile, EmployeeProfile, AdminRole, KYCTier } from '../types';
+import { UserProfile, EmployeeProfile, AdminRole, KYCTier, KYCStatus, Dispute } from '../types';
 import { PersistenceService } from '../services/persistence';
 import { SecurityService } from '../services/security';
 import { ScoreGauge } from './ScoreGauge';
@@ -11,10 +11,16 @@ interface Props {
   onLogout: () => void;
 }
 
+const MOCK_DISPUTES: Dispute[] = [
+  { id: 'disp_1', reporterId: 'usr_8821', reporterName: 'Alex Mercer', accusedId: 'usr_9901', accusedName: 'BotNet 3000', reason: 'User is a bot, never replies', status: 'OPEN', createdAt: Date.now() - 86400000 },
+  { id: 'disp_2', reporterId: 'usr_1234', reporterName: 'Sarah Connor', accusedId: 'usr_5555', accusedName: 'Skynet Inc', reason: 'Loan terms were changed after agreement', status: 'RESOLVED', createdAt: Date.now() - 172800000, resolution: 'Loan voided' }
+];
+
 export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'USERS' | 'TEAM'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'USERS' | 'KYC' | 'DISPUTES' | 'TEAM'>('OVERVIEW');
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [employees, setEmployees] = useState<EmployeeProfile[]>([]);
+  const [disputes, setDisputes] = useState<Dispute[]>(MOCK_DISPUTES);
   
   // User Management State
   const [searchTerm, setSearchTerm] = useState('');
@@ -102,10 +108,38 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
     }
   };
 
+  // KYC Manual Action
+  const handleKYCAction = (userId: string, action: 'APPROVE' | 'REJECT') => {
+    const updatedList = users.map(u => {
+      if (u.id === userId) {
+        const updated = {
+          ...u,
+          kycStatus: action === 'APPROVE' ? KYCStatus.VERIFIED : KYCStatus.REJECTED,
+          kycTier: action === 'APPROVE' ? KYCTier.TIER_2 : u.kycTier, // Bump to Tier 2 on manual approval
+          kycLimit: action === 'APPROVE' ? 50000 : u.kycLimit
+        };
+        PersistenceService.saveUser(updated);
+        if (selectedUser?.id === userId) setSelectedUser(updated);
+        return updated;
+      }
+      return u;
+    });
+    setUsers(updatedList);
+    alert(`KYC ${action === 'APPROVE' ? 'Approved' : 'Rejected'} for User.`);
+  };
+
+  // Dispute Action
+  const handleResolveDispute = (disputeId: string, resolution: string) => {
+    setDisputes(prev => prev.map(d => d.id === disputeId ? { ...d, status: 'RESOLVED', resolution } : d));
+  };
+
   const filteredUsers = users.filter(u => 
     u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     u.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const pendingKYCUsers = users.filter(u => u.kycStatus === KYCStatus.PENDING);
+  const openDisputes = disputes.filter(d => d.status === 'OPEN');
 
   return (
     <div className="flex h-screen bg-[#050505] text-zinc-200 font-sans overflow-hidden">
@@ -113,10 +147,10 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
       <aside className="w-64 bg-[#0a0a0a] border-r border-zinc-900 flex flex-col z-50">
         <div className="p-6">
           <div className="flex items-center gap-2 mb-1">
-            <Logo showText={false} />
+            <Logo showText={false} isAdmin={true} />
             <div>
               <span className="font-bold text-white tracking-tight">P3 Admin</span>
-              <div className="text-[10px] text-[#00e599] font-bold uppercase tracking-wider">{currentAdmin.role} ACCESS</div>
+              <div className="text-[10px] text-red-500 font-bold uppercase tracking-wider">{currentAdmin.role} ACCESS</div>
             </div>
           </div>
         </div>
@@ -134,6 +168,27 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
           >
             <span>👥</span> User Management
           </button>
+          
+          <button 
+            onClick={() => setActiveTab('KYC')}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${activeTab === 'KYC' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-white'}`}
+          >
+            <div className="flex items-center gap-3">
+              <span>🪪</span> KYC Queue
+            </div>
+            {pendingKYCUsers.length > 0 && <span className="bg-amber-500 text-black text-xs font-bold px-1.5 rounded-full">{pendingKYCUsers.length}</span>}
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('DISPUTES')}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${activeTab === 'DISPUTES' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-white'}`}
+          >
+             <div className="flex items-center gap-3">
+              <span>⚖️</span> Alerts & Disputes
+            </div>
+            {openDisputes.length > 0 && <span className="bg-red-500 text-white text-xs font-bold px-1.5 rounded-full">{openDisputes.length}</span>}
+          </button>
+
           {currentAdmin.role === 'ADMIN' && (
             <button 
               onClick={() => setActiveTab('TEAM')}
@@ -168,11 +223,13 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
         <header className="h-16 border-b border-zinc-900 flex items-center justify-between px-8 bg-[#050505]">
           <h1 className="text-lg font-bold text-white">
             {activeTab === 'OVERVIEW' && 'Platform Overview'}
-            {activeTab === 'USERS' && 'Customer Support & Risk Console'}
+            {activeTab === 'USERS' && 'Customer Support'}
+            {activeTab === 'KYC' && 'KYC Compliance Queue'}
+            {activeTab === 'DISPUTES' && 'Arbitration Center'}
             {activeTab === 'TEAM' && 'Employee Onboarding'}
           </h1>
           <div className="text-xs text-zinc-500 font-mono">
-            System Status: <span className="text-[#00e599]">OPERATIONAL</span>
+            System Status: <span className="text-[#00e599]">OPERATIONAL</span> • <span className="text-red-500">ADMIN MODE</span>
           </div>
         </header>
 
@@ -202,63 +259,108 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
             </div>
           )}
 
-          {/* USERS TAB */}
-          {activeTab === 'USERS' && (
+          {/* USERS / KYC TABS - Shared Layout Logic */}
+          {(activeTab === 'USERS' || activeTab === 'KYC') && (
              <div className="flex h-full gap-6 animate-fade-in">
                 {/* User List */}
                 <div className="w-1/3 flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
                    <div className="p-4 border-b border-zinc-800">
                      <input 
                        type="text" 
-                       placeholder="Search by name or ID..." 
+                       placeholder="Search users by name, email, or ID..." 
                        className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2 text-sm text-white focus:border-[#00e599] outline-none"
                        value={searchTerm}
                        onChange={e => setSearchTerm(e.target.value)}
                      />
+                     <div className="flex gap-4 mt-2 text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[#00e599]"></div> Active</div>
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-amber-500"></div> Review</div>
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500"></div> Frozen</div>
+                     </div>
                    </div>
-                   <div className="flex-1 overflow-y-auto custom-scrollbar">
-                     {filteredUsers.map(u => (
+                   <div className="bg-black/40 px-4 py-2 text-[10px] text-zinc-500 font-bold uppercase tracking-wider flex justify-between">
+                      <span>User</span>
+                      <div className="flex gap-8">
+                         <span className="w-12 text-left">Status</span>
+                         <span className="w-12 text-right">Rep</span>
+                         <span className="w-12 text-right">KYC</span>
+                         <span className="w-16 text-right">Balance</span>
+                      </div>
+                   </div>
+                   <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-zinc-800/50">
+                     {(activeTab === 'KYC' ? pendingKYCUsers : filteredUsers).map(u => (
                        <div 
                          key={u.id}
                          onClick={() => setSelectedUser(u)}
-                         className={`p-4 border-b border-zinc-800 cursor-pointer hover:bg-black/50 transition-colors ${selectedUser?.id === u.id ? 'bg-black border-l-2 border-l-[#00e599]' : ''}`}
+                         className={`p-4 cursor-pointer hover:bg-black/50 transition-colors ${selectedUser?.id === u.id ? 'bg-black border-l-2 border-l-[#00e599]' : ''}`}
                        >
-                         <div className="flex justify-between items-start">
-                           <div>
-                             <div className="font-bold text-white">{u.name}</div>
-                             <div className="text-xs text-zinc-500 font-mono">{u.id}</div>
+                         <div className="flex justify-between items-center">
+                           <div className="overflow-hidden pr-2">
+                             <div className="font-bold text-white truncate">{u.name}</div>
+                             <div className="text-[10px] text-zinc-500 font-mono truncate">{u.id}</div>
                            </div>
-                           {u.isFrozen && <span className="bg-red-500/20 text-red-500 text-[10px] px-2 py-0.5 rounded font-bold">FROZEN</span>}
+                           <div className="flex gap-4 text-xs">
+                             <div className="w-16 flex justify-start">
+                                {u.isFrozen ? (
+                                    <span className="text-[10px] border border-red-900 bg-red-900/20 text-red-500 px-1 rounded">FROZEN</span>
+                                ) : u.kycStatus === 'PENDING' ? (
+                                    <span className="text-[10px] border border-amber-900 bg-amber-900/20 text-amber-500 px-1 rounded">UNDER_REVIEW</span>
+                                ) : (
+                                    <span className="text-[10px] border border-green-900 bg-green-900/20 text-green-500 px-1 rounded">ACTIVE</span>
+                                )}
+                             </div>
+                             <div className="w-12 text-right">
+                               <span className={`flex items-center justify-end gap-1 ${u.reputationScore > 70 ? 'text-[#00e599]' : u.reputationScore < 40 ? 'text-red-500' : 'text-amber-500'}`}>
+                                 <span className="w-1.5 h-1.5 rounded-full bg-current"></span> {u.reputationScore}
+                               </span>
+                             </div>
+                             <div className="w-12 text-right text-[10px] font-mono text-zinc-400">
+                                {u.kycStatus === 'VERIFIED' ? 'VERIFIED' : u.kycStatus === 'PENDING' ? 'PENDING' : 'UNVERIFIED'}
+                             </div>
+                             <div className="w-16 text-right font-mono text-white">
+                               ${u.balance.toLocaleString()}
+                             </div>
+                           </div>
                          </div>
                        </div>
                      ))}
+                     {activeTab === 'KYC' && pendingKYCUsers.length === 0 && (
+                        <div className="p-8 text-center text-zinc-500 text-sm">No pending KYC applications.</div>
+                     )}
                    </div>
                 </div>
 
                 {/* User Details Panel */}
                 <div className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl p-6 overflow-y-auto custom-scrollbar">
                    {selectedUser ? (
-                     <div className="space-y-8">
-                       <div className="flex justify-between items-start">
-                          <div className="flex items-center gap-4">
-                             <div className="w-20 h-20 bg-black rounded-full flex items-center justify-center border border-zinc-800">
-                               <div className="w-12 h-12">
-                                  <ScoreGauge score={selectedUser.reputationScore} />
-                               </div>
+                     <div className="space-y-8 animate-fade-in">
+                       
+                       {/* Header Profile */}
+                       <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-6">
+                             <div className="w-24 h-24 bg-black rounded-full flex items-center justify-center border-4 border-zinc-800 relative">
+                                <div className="w-20 h-20">
+                                   <ScoreGauge score={selectedUser.reputationScore} />
+                                </div>
+                                {selectedUser.avatarUrl && <img src={selectedUser.avatarUrl} className="absolute inset-0 w-full h-full object-cover rounded-full opacity-50" />}
                              </div>
                              <div>
-                               <h2 className="text-2xl font-bold text-white">{selectedUser.name}</h2>
-                               <div className="flex gap-2 mt-1">
-                                  <span className="bg-zinc-800 px-2 py-0.5 rounded text-xs text-zinc-400">{selectedUser.kycTier}</span>
-                                  <span className="bg-zinc-800 px-2 py-0.5 rounded text-xs text-zinc-400">{selectedUser.employmentStatus}</span>
+                               <h2 className="text-3xl font-bold text-white tracking-tight">{selectedUser.name}</h2>
+                               <p className="text-zinc-500 font-mono text-xs mb-2">{selectedUser.id}</p>
+                               <div className="flex gap-2">
+                                  <span className="bg-zinc-800 px-2 py-0.5 rounded text-xs text-zinc-400 border border-zinc-700">{selectedUser.kycTier}</span>
+                                  <span className="bg-zinc-800 px-2 py-0.5 rounded text-xs text-zinc-400 border border-zinc-700">{selectedUser.employmentStatus}</span>
                                </div>
                              </div>
                           </div>
+                          
                           <div className="flex gap-2">
+                             <Button size="sm" variant="outline" className="text-xs">View Logs</Button>
                              {(currentAdmin.role === 'RISK_OFFICER' || currentAdmin.role === 'ADMIN') && (
                                <Button 
                                  size="sm" 
                                  variant={selectedUser.isFrozen ? "primary" : "danger"}
+                                 className={selectedUser.isFrozen ? "bg-[#00e599] text-black border-none" : "bg-red-900/30 text-red-400 border-red-900"}
                                  onClick={() => handleFreezeAccount(selectedUser.id)}
                                >
                                  {selectedUser.isFrozen ? "Unfreeze Account" : "Freeze Account"}
@@ -267,10 +369,72 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
                           </div>
                        </div>
                        
+                       {/* KYC Review Section (Only visible if Pending or if manually checking) */}
+                       <div className="bg-black border border-zinc-800 rounded-xl overflow-hidden">
+                          <div className="bg-zinc-900/50 p-4 border-b border-zinc-800 flex justify-between items-center">
+                             <h3 className="font-bold text-white text-sm uppercase tracking-wide">KYC Review</h3>
+                             <span className="text-xs bg-zinc-800 px-2 py-1 rounded text-zinc-400">{selectedUser.kycTier}</span>
+                          </div>
+                          <div className="p-4 grid grid-cols-2 gap-8">
+                             <div>
+                                <div className="flex justify-between text-sm py-2 border-b border-zinc-800">
+                                   <span className="text-zinc-500">Document Type</span>
+                                   <span className="text-white">{selectedUser.documents?.idType || 'None'}</span>
+                                </div>
+                                <div className="flex justify-between text-sm py-2 border-b border-zinc-800">
+                                   <span className="text-zinc-500">Face Match</span>
+                                   <span className="text-[#00e599] font-bold">98.5% Confidence</span>
+                                </div>
+                                <div className="flex justify-between text-sm py-2 border-b border-zinc-800">
+                                   <span className="text-zinc-500">Watchlist Hit</span>
+                                   <span className="text-white">None</span>
+                                </div>
+                             </div>
+                             <div className="flex flex-col gap-2 justify-center">
+                                {selectedUser.documents?.idFile && (
+                                   <div className="bg-zinc-900 p-2 rounded text-xs text-zinc-400 flex items-center gap-2">
+                                     <span>📄</span> ID Document Uploaded
+                                   </div>
+                                )}
+                                {selectedUser.documents?.faceFile && (
+                                   <div className="bg-zinc-900 p-2 rounded text-xs text-zinc-400 flex items-center gap-2">
+                                     <span>🤳</span> Face Scan Uploaded
+                                   </div>
+                                )}
+                                <div className="flex gap-2 mt-2">
+                                   <Button 
+                                      size="sm" 
+                                      className="flex-1 bg-green-600 hover:bg-green-500 text-white border-none"
+                                      onClick={() => handleKYCAction(selectedUser.id, 'APPROVE')}
+                                    >
+                                      Approve
+                                   </Button>
+                                   <Button 
+                                      size="sm" 
+                                      variant="danger" 
+                                      className="flex-1 bg-red-900 hover:bg-red-800 border-none"
+                                      onClick={() => handleKYCAction(selectedUser.id, 'REJECT')}
+                                    >
+                                      Reject
+                                   </Button>
+                                </div>
+                             </div>
+                          </div>
+                       </div>
+
                        {/* Admin Notes */}
                        <div>
                           <div className="flex justify-between items-center mb-2">
-                             <h3 className="font-bold text-white">Admin Notes</h3>
+                             <h3 className="font-bold text-zinc-500 text-xs uppercase tracking-wide">AI Risk Narrative</h3>
+                          </div>
+                          <div className="bg-zinc-900/30 border border-zinc-800 rounded-lg p-4 text-sm text-zinc-400 italic">
+                             "{selectedUser.riskAnalysis || "No risk analysis available."}"
+                          </div>
+                       </div>
+
+                       <div>
+                          <div className="flex justify-between items-center mb-2">
+                             <h3 className="font-bold text-zinc-500 text-xs uppercase tracking-wide">Admin Notes</h3>
                              <Button size="sm" variant="ghost" onClick={() => handleAddAdminNote(selectedUser.id)}>+ Add Note</Button>
                           </div>
                           <div className="bg-black border border-zinc-800 rounded-lg p-4 min-h-[100px] text-sm text-zinc-400 whitespace-pre-wrap font-mono">
@@ -280,10 +444,41 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
                      </div>
                    ) : (
                      <div className="h-full flex flex-col items-center justify-center text-zinc-600">
-                        <span className="text-4xl mb-4">👤</span>
-                        <p>Select a user to view details.</p>
+                        <span className="text-4xl mb-4 opacity-20">
+                           <Logo showText={false} isAdmin={true} />
+                        </span>
+                        <p>Select a user to view details, manage KYC, or freeze assets.</p>
                      </div>
                    )}
+                </div>
+             </div>
+          )}
+
+          {/* DISPUTES TAB */}
+          {activeTab === 'DISPUTES' && (
+             <div className="space-y-6 animate-fade-in">
+                <h3 className="text-xl font-bold text-white mb-6">Open Disputes</h3>
+                <div className="grid grid-cols-1 gap-4">
+                  {disputes.map(dispute => (
+                     <div key={dispute.id} className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl flex justify-between items-start">
+                        <div>
+                           <div className="flex items-center gap-3 mb-2">
+                              <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${dispute.status === 'OPEN' ? 'bg-red-500/20 text-red-500' : 'bg-green-500/20 text-green-500'}`}>{dispute.status}</span>
+                              <span className="text-xs text-zinc-500">Created: {new Date(dispute.createdAt).toLocaleDateString()}</span>
+                           </div>
+                           <h4 className="text-white font-bold text-lg mb-1">{dispute.reason}</h4>
+                           <p className="text-sm text-zinc-400">
+                              Reporter: <span className="text-white">{dispute.reporterName}</span> vs Accused: <span className="text-white">{dispute.accusedName}</span>
+                           </p>
+                        </div>
+                        <div className="flex gap-2">
+                           <Button size="sm" variant="outline">View Evidence</Button>
+                           {dispute.status === 'OPEN' && (
+                              <Button size="sm" onClick={() => handleResolveDispute(dispute.id, 'Resolved by Admin')}>Resolve</Button>
+                           )}
+                        </div>
+                     </div>
+                  ))}
                 </div>
              </div>
           )}
@@ -362,7 +557,7 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
                          <td className="p-4">
                            <div className="flex flex-col gap-1">
                              <div className="text-[10px] text-zinc-500 uppercase">
-                               Certificate: {emp.certificateData ? <span className="text-[#00e599]">Active</span> : <span className="text-red-500">Missing</span>}
+                               Certificate: {emp.certificateData ? <span className="text-[#00e599]">Active</span> : <span className="text-zinc-600">Legacy</span>}
                              </div>
                              <div className="text-[10px] text-zinc-500 uppercase">
                                Password Age: {Math.floor((Date.now() - emp.passwordLastSet) / (1000 * 60 * 60 * 24))} Days
@@ -370,9 +565,6 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
                            </div>
                          </td>
                          <td className="p-4 flex gap-2">
-                           <Button size="sm" variant="outline" onClick={() => handleIssueCertificate(emp)} className="text-xs">
-                             Issue Key
-                           </Button>
                            <Button size="sm" variant="ghost" onClick={() => handleResetPasswordLink(emp)} className="text-xs text-red-400">
                              Reset Pw
                            </Button>

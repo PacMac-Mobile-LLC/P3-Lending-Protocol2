@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from './Button';
 import { performComplianceCheck } from '../services/geminiService';
 import { KYCTier } from '../types';
@@ -6,13 +6,16 @@ import { KYCTier } from '../types';
 interface Props {
   currentTier: KYCTier;
   onClose: () => void;
-  onUpgradeComplete: (newTier: KYCTier, limit: number) => void;
+  onUpgradeComplete: (newTier: KYCTier, limit: number, docData?: any) => void;
 }
 
 export const KYCVerificationModal: React.FC<Props> = ({ currentTier, onClose, onUpgradeComplete }) => {
   const [step, setStep] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
   
+  const idInputRef = useRef<HTMLInputElement>(null);
+  const faceInputRef = useRef<HTMLInputElement>(null);
+
   // Form Data
   const [formData, setFormData] = useState({
     firstName: '',
@@ -20,7 +23,9 @@ export const KYCVerificationModal: React.FC<Props> = ({ currentTier, onClose, on
     dob: '',
     address: '',
     ssn: '',
-    docType: 'drivers_license'
+    docType: 'drivers_license',
+    idFile: null as string | null,
+    faceFile: null as string | null
   });
 
   const nextTier = currentTier === KYCTier.TIER_0 ? KYCTier.TIER_1 : 
@@ -37,6 +42,16 @@ export const KYCVerificationModal: React.FC<Props> = ({ currentTier, onClose, on
 
   const targetInfo = getTierInfo(nextTier);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'idFile' | 'faceFile') => {
+    if (e.target.files && e.target.files[0]) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setFormData(prev => ({ ...prev, [field]: ev.target?.result as string }));
+      };
+      reader.readAsDataURL(e.target.files[0]);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
@@ -48,14 +63,21 @@ export const KYCVerificationModal: React.FC<Props> = ({ currentTier, onClose, on
         dob: formData.dob,
         address: formData.address,
         ssnLast4: formData.ssn.slice(-4),
-        // CRITICAL FIX: Send a valid 'docType' for Tier 1 so the AI doesn't reject it as 'missing documentation'.
-        docType: nextTier === KYCTier.TIER_2 ? 'Simulated ID Upload' : 'Public Records Match (eIDV)'
+        docType: nextTier === KYCTier.TIER_2 ? 'ID Uploaded (Manual Review Queued)' : 'Public Records Match (eIDV)'
       });
 
       if (result.passed) {
          setTimeout(() => {
             const newLimit = nextTier === KYCTier.TIER_1 ? 1000 : nextTier === KYCTier.TIER_2 ? 50000 : 1000000;
-            onUpgradeComplete(nextTier, newLimit);
+            
+            const docData = {
+              idType: formData.docType,
+              idFile: formData.idFile,
+              faceFile: formData.faceFile,
+              submittedAt: Date.now()
+            };
+
+            onUpgradeComplete(nextTier, newLimit, docData);
             setIsProcessing(false);
          }, 2000);
       } else {
@@ -70,7 +92,7 @@ export const KYCVerificationModal: React.FC<Props> = ({ currentTier, onClose, on
 
   return (
     <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[100] p-4">
-      <div className="bg-[#0a0a0a] border border-zinc-800 rounded-3xl max-w-lg w-full shadow-[0_0_50px_rgba(0,229,153,0.05)] overflow-hidden animate-fade-in relative">
+      <div className="bg-[#0a0a0a] border border-zinc-800 rounded-3xl max-w-lg w-full shadow-[0_0_50px_rgba(0,229,153,0.05)] overflow-hidden animate-fade-in relative max-h-[90vh] overflow-y-auto custom-scrollbar">
         
         {/* Decorative Grid Background */}
         <div className="absolute inset-0 bg-grid-pattern opacity-10 pointer-events-none"></div>
@@ -157,6 +179,60 @@ export const KYCVerificationModal: React.FC<Props> = ({ currentTier, onClose, on
                       onChange={e => setFormData({...formData, ssn: e.target.value})}
                     />
                 </div>
+
+                {nextTier >= KYCTier.TIER_2 && (
+                  <div className="border-t border-zinc-800 pt-5 mt-5">
+                    <h4 className="text-white font-bold text-sm mb-4">Document Uploads</h4>
+                    
+                    {/* ID Upload */}
+                    <div className="mb-4">
+                      <label className="block text-xs text-zinc-500 mb-2 uppercase tracking-wide font-bold">Government ID (Driver's License / Passport)</label>
+                      <div 
+                        onClick={() => idInputRef.current?.click()}
+                        className="border border-dashed border-zinc-700 bg-black/50 rounded-xl p-4 cursor-pointer hover:border-[#00e599] transition-colors flex items-center justify-center gap-3"
+                      >
+                         {formData.idFile ? (
+                           <div className="text-[#00e599] flex items-center gap-2 text-sm font-bold">
+                             ✓ Document Loaded
+                           </div>
+                         ) : (
+                           <span className="text-zinc-500 text-sm">Click to upload ID</span>
+                         )}
+                      </div>
+                      <input 
+                        type="file" 
+                        ref={idInputRef} 
+                        className="hidden" 
+                        accept="image/*" 
+                        onChange={(e) => handleFileChange(e, 'idFile')}
+                      />
+                    </div>
+
+                    {/* Face Scan */}
+                    <div>
+                      <label className="block text-xs text-zinc-500 mb-2 uppercase tracking-wide font-bold">Selfie / Face Scan</label>
+                      <div 
+                        onClick={() => faceInputRef.current?.click()}
+                        className="border border-dashed border-zinc-700 bg-black/50 rounded-xl p-4 cursor-pointer hover:border-[#00e599] transition-colors flex items-center justify-center gap-3"
+                      >
+                         {formData.faceFile ? (
+                           <div className="text-[#00e599] flex items-center gap-2 text-sm font-bold">
+                             ✓ Face Scanned
+                           </div>
+                         ) : (
+                           <span className="text-zinc-500 text-sm">Click to upload Selfie</span>
+                         )}
+                      </div>
+                      <input 
+                        type="file" 
+                        ref={faceInputRef} 
+                        className="hidden" 
+                        accept="image/*" 
+                        onChange={(e) => handleFileChange(e, 'faceFile')}
+                      />
+                    </div>
+                  </div>
+                )}
                 
                 <p className="text-[10px] text-zinc-600 mt-4 text-center max-w-xs mx-auto">
                   Your data is encrypted and used solely for CIP (Customer Identification Program) compliance checks.
@@ -169,7 +245,7 @@ export const KYCVerificationModal: React.FC<Props> = ({ currentTier, onClose, on
                className="w-full mt-6" 
                isLoading={isProcessing}
             >
-              {isProcessing ? 'Verifying Identity...' : 'Confirm & Upgrade'}
+              {isProcessing ? 'Verifying Identity...' : (nextTier >= KYCTier.TIER_2 ? 'Submit for Review' : 'Confirm & Upgrade')}
             </Button>
           </form>
         </div>
