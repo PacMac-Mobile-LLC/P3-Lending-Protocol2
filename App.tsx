@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserProfile, LoanRequest, LoanOffer, LoanType, Charity, KYCTier, KYCStatus, WalletState, RiskReport, EmployeeProfile } from './types';
+import { UserProfile, LoanRequest, LoanOffer, LoanType, Charity, KYCTier, KYCStatus, WalletState, RiskReport, EmployeeProfile, SecurityCertificate } from './types';
 import { UserProfileCard } from './components/UserProfileCard';
 import { Marketplace } from './components/Marketplace';
 import { MentorshipDashboard } from './components/MentorshipDashboard';
@@ -10,6 +10,7 @@ import { analyzeReputation, analyzeRiskProfile } from './services/geminiService'
 import { shortenAddress } from './services/walletService';
 import { PersistenceService } from './services/persistence';
 import { AuthService } from './services/netlifyAuth'; 
+import { SecurityService } from './services/security';
 import { KYCVerificationModal } from './components/KYCVerificationModal';
 import { WalletConnectModal } from './components/WalletConnectModal';
 import { RiskDashboard } from './components/RiskDashboard';
@@ -20,6 +21,7 @@ import { LegalModal, LegalDocType } from './components/LegalModal';
 import { LandingPage } from './components/LandingPage';
 import { ReferralModal } from './components/ReferralModal';
 import { AdminDashboard } from './components/AdminDashboard';
+import { AdminLoginModal } from './components/AdminLoginModal';
 
 // Mock Charities
 const MOCK_CHARITIES: Charity[] = [
@@ -54,6 +56,10 @@ const App: React.FC = () => {
   // User vs Admin State
   const [user, setUser] = useState<UserProfile | null>(null);
   const [adminUser, setAdminUser] = useState<EmployeeProfile | null>(null);
+
+  // Security Flow State
+  const [showCertUpload, setShowCertUpload] = useState(false);
+  const [pendingAdminEmail, setPendingAdminEmail] = useState('');
   
   const [charities, setCharities] = useState<Charity[]>(MOCK_CHARITIES);
   const [activeView, setActiveView] = useState<'borrow' | 'lend' | 'mentorship' | 'profile'>('borrow');
@@ -90,7 +96,11 @@ const App: React.FC = () => {
   const [isCharityGuaranteed, setIsCharityGuaranteed] = useState(false);
   const [selectedCharity, setSelectedCharity] = useState<string>(MOCK_CHARITIES[0].id);
 
+  // Startup initialization
   useEffect(() => {
+    // Force initialization of employee data (injector logic)
+    PersistenceService.getEmployees();
+    
     if (window.location.hash.includes('confirmation_token')) {
       setIsVerifyingEmail(true);
     }
@@ -99,8 +109,6 @@ const App: React.FC = () => {
 
     const handleLogin = async (netlifyUser: any) => {
       console.log("Logged in:", netlifyUser);
-      setIsAuthenticated(true);
-      setShowLanding(false);
       setIsVerifyingEmail(false); 
       
       const email = netlifyUser.email || '';
@@ -111,16 +119,20 @@ const App: React.FC = () => {
          const matchedEmp = employees.find(e => e.email.toLowerCase() === email.toLowerCase());
          
          if (matchedEmp && matchedEmp.isActive) {
-            setAdminUser(matchedEmp);
-            AuthService.close();
+            // INTERRUPT FLOW: Show Certificate Upload Modal
+            setPendingAdminEmail(email);
+            setShowCertUpload(true);
             return;
          } else {
+           // Fallback: If someone logs in with that domain but isn't in local DB (which shouldn't happen for admin due to injector)
+           // we treat them as a normal user or show error.
            console.warn("Domain matches but user not found in employee list.");
-           // Optional: You could show an error here, but for now we fall back to normal user flow or just let them in as a normal user.
          }
       }
 
       // NORMAL USER FLOW
+      setIsAuthenticated(true);
+      setShowLanding(false);
       const p3User = PersistenceService.loadUser(netlifyUser);
       setUser(p3User);
       setMyRequests(PersistenceService.getMyRequests(p3User.id));
@@ -153,6 +165,8 @@ const App: React.FC = () => {
       setAdminUser(null);
       setMyRequests([]);
       setMyOffers([]);
+      setShowCertUpload(false);
+      setPendingAdminEmail('');
     };
 
     const currentUser = AuthService.currentUser();
@@ -211,6 +225,58 @@ const App: React.FC = () => {
         icon: "/logo.svg"
       });
     }
+  };
+
+  const handleSecurityCheck = (fileContent: string) => {
+     try {
+       const cert = JSON.parse(fileContent) as SecurityCertificate;
+       const employees = PersistenceService.getEmployees();
+       const matchedEmp = employees.find(e => e.email.toLowerCase() === pendingAdminEmail.toLowerCase());
+
+       if (!matchedEmp) throw new Error("User not found.");
+
+       // 1. Validate Certificate
+       const validation = SecurityService.validateCertificate(cert, matchedEmp);
+       if (!validation.valid) {
+         alert(`Security Error: ${validation.error}`);
+         return;
+       }
+
+       // 2. Validate Password Expiry
+       if (SecurityService.isPasswordExpired(matchedEmp.passwordLastSet)) {
+         const newPass = prompt("Your password has expired (60 days). Please enter a new password:");
+         if (!newPass) {
+           alert("Password update required.");
+           return;
+         }
+         
+         // 3. Validate History
+         if (SecurityService.checkPasswordHistory(newPass, matchedEmp.previousPasswords)) {
+           alert("Security Error: You cannot reuse any of your last 10 passwords.");
+           return;
+         }
+
+         // Update password history
+         matchedEmp.previousPasswords.unshift(matchedEmp.passwordHash); // Store old hash
+         if (matchedEmp.previousPasswords.length > 10) matchedEmp.previousPasswords.pop();
+         
+         matchedEmp.passwordHash = newPass; // In prod this would be hashed
+         matchedEmp.passwordLastSet = Date.now();
+         PersistenceService.updateEmployee(matchedEmp);
+         alert("Password updated successfully.");
+       }
+
+       // 4. Login Success
+       setAdminUser(matchedEmp);
+       setIsAuthenticated(true);
+       setShowLanding(false);
+       setShowCertUpload(false);
+       AuthService.close();
+
+     } catch (e) {
+       console.error(e);
+       alert("Invalid Certificate File. Login failed.");
+     }
   };
 
   const handleProfileUpdate = async (updatedUser: UserProfile) => {
@@ -403,8 +469,19 @@ const App: React.FC = () => {
   if (!appReady) return <div className="h-screen bg-[#050505] flex items-center justify-center text-white">Loading P3 Protocol...</div>;
 
   // Show Landing Page
-  if (!isAuthenticated && showLanding) {
+  if (!isAuthenticated && showLanding && !showCertUpload) {
     return <LandingPage onLaunch={() => setShowLanding(false)} />;
+  }
+
+  // Handle Certificate Upload Interruption
+  if (showCertUpload) {
+    return (
+      <AdminLoginModal 
+        email={pendingAdminEmail} 
+        onCertificateUpload={handleSecurityCheck}
+        onCancel={() => { setShowCertUpload(false); setPendingAdminEmail(''); AuthService.logout(); }}
+      />
+    );
   }
 
   // Show Auth/Login Prompt if Landing dismissed but no auth

@@ -1,4 +1,5 @@
 import { UserProfile, LoanRequest, LoanOffer, LoanType, KYCTier, KYCStatus, EmployeeProfile } from '../types';
+import { SecurityService } from './security';
 
 // We now generate keys dynamically based on the User ID
 const getKeys = (userId: string) => ({
@@ -31,12 +32,19 @@ const INITIAL_USER_TEMPLATE: UserProfile = {
   txCount: 45
 };
 
-const MOCK_EMPLOYEES: EmployeeProfile[] = [
-  { id: 'emp0', name: 'Super Admin', email: 'admin@p3lending.space', role: 'ADMIN', isActive: true },
-  { id: 'emp1', name: 'Matt H.', email: 'matt@p3securities.com', role: 'ADMIN', isActive: true },
-  { id: 'emp2', name: 'Sarah Risk', email: 'sarah@p3securities.com', role: 'RISK_OFFICER', isActive: true },
-  { id: 'emp3', name: 'Support Bot', email: 'support@p3securities.com', role: 'SUPPORT', isActive: true }
-];
+// Only the Super Admin initially
+const SUPER_ADMIN: EmployeeProfile = {
+  id: 'emp_super_admin',
+  name: 'System Root',
+  email: 'admin@p3lending.space',
+  role: 'ADMIN',
+  isActive: true,
+  passwordHash: 'admin123',
+  passwordLastSet: Date.now(), // Fresh password
+  previousPasswords: [],
+  // Pre-install the Master Certificate so validation works immediately
+  certificateData: SecurityService.getMasterCertificate()
+};
 
 export const PersistenceService = {
   // --- User Profile ---
@@ -94,25 +102,37 @@ export const PersistenceService = {
         }
       }
     }
-    // Add dummy users if list is empty for demo purposes
-    if (users.length === 0) {
-      return [
-        { ...INITIAL_USER_TEMPLATE, id: 'demo1', name: 'Alice Chains', reputationScore: 85, kycTier: KYCTier.TIER_2 },
-        { ...INITIAL_USER_TEMPLATE, id: 'demo2', name: 'Bob Builder', reputationScore: 45, kycTier: KYCTier.TIER_1, isFrozen: true },
-        { ...INITIAL_USER_TEMPLATE, id: 'demo3', name: 'Charlie Crypto', reputationScore: 92, kycTier: KYCTier.TIER_3 }
-      ];
-    }
     return users;
   },
 
   getEmployees: (): EmployeeProfile[] => {
     const data = localStorage.getItem(EMPLOYEES_KEY);
-    return data ? JSON.parse(data) : MOCK_EMPLOYEES;
+    let employees: EmployeeProfile[] = data ? JSON.parse(data) : [SUPER_ADMIN];
+    
+    // Self-Healing: Ensure Super Admin always exists and has a cert
+    const adminIndex = employees.findIndex(e => e.email === 'admin@p3lending.space');
+    if (adminIndex === -1) {
+      employees.push(SUPER_ADMIN);
+      localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(employees));
+    } else if (!employees[adminIndex].certificateData) {
+      // Fix missing cert for admin if it somehow got corrupted
+      employees[adminIndex].certificateData = SUPER_ADMIN.certificateData;
+      localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(employees));
+    }
+
+    return employees;
   },
 
   addEmployee: (emp: EmployeeProfile) => {
     const current = PersistenceService.getEmployees();
     const updated = [...current, emp];
+    localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(updated));
+    return updated;
+  },
+
+  updateEmployee: (emp: EmployeeProfile) => {
+    const current = PersistenceService.getEmployees();
+    const updated = current.map(e => e.id === emp.id ? emp : e);
     localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(updated));
     return updated;
   },

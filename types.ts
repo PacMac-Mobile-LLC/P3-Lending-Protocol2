@@ -130,6 +130,13 @@ export interface RiskReport {
 // Admin / Employee Types
 export type AdminRole = 'SUPPORT' | 'RISK_OFFICER' | 'ADMIN';
 
+export interface SecurityCertificate {
+  issuedTo: string;
+  issuedAt: number;
+  expiresAt: number;
+  signature: string; // Mock signature
+}
+
 export interface EmployeeProfile {
   id: string;
   name: string;
@@ -137,4 +144,10 @@ export interface EmployeeProfile {
   role: AdminRole;
   isActive: boolean;
   lastLogin?: string;
+  
+  // Security Features
+  passwordHash: string; // Simulated hash
+  passwordLastSet: number; // Timestamp
+  previousPasswords: string[]; // History of last 10
+  certificateData?: SecurityCertificate; // The active cert required
 }

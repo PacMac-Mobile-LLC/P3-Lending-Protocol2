@@ -3,6 +3,7 @@ import { Logo } from './Logo';
 import { Button } from './Button';
 import { UserProfile, EmployeeProfile, AdminRole, KYCTier } from '../types';
 import { PersistenceService } from '../services/persistence';
+import { SecurityService } from '../services/security';
 import { ScoreGauge } from './ScoreGauge';
 
 interface Props {
@@ -37,12 +38,36 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
       email: newEmpData.email,
       role: newEmpData.role,
       isActive: true,
-      lastLogin: 'Never'
+      lastLogin: 'Never',
+      passwordHash: 'temp123', // Temp password
+      passwordLastSet: 0, // Forces immediate reset
+      previousPasswords: []
     };
     const updated = PersistenceService.addEmployee(newEmp);
     setEmployees(updated);
     setShowAddEmployee(false);
     setNewEmpData({ name: '', email: '', role: 'SUPPORT' });
+  };
+
+  const handleIssueCertificate = (emp: EmployeeProfile) => {
+    if (confirm(`Issue new 1-Year Security Certificate for ${emp.name}? This will invalidate previous keys.`)) {
+      const cert = SecurityService.generateCertificate(emp.email);
+      const updatedEmp = { ...emp, certificateData: cert };
+      const updatedList = PersistenceService.updateEmployee(updatedEmp);
+      setEmployees(updatedList);
+      
+      // Trigger Download
+      SecurityService.downloadCertificate(cert);
+      alert(`Certificate downloaded for ${emp.name}. They must install this file on their device to log in.`);
+    }
+  };
+
+  const handleResetPasswordLink = (emp: EmployeeProfile) => {
+    // In a real app, this sends an email. Here we simulate it.
+    alert(`Password reset link sent to ${emp.email}.\n\n(Simulation: Next login will require a password change)`);
+    const updatedEmp = { ...emp, passwordLastSet: 0 }; // 0 forces expiry check
+    const updatedList = PersistenceService.updateEmployee(updatedEmp);
+    setEmployees(updatedList);
   };
 
   const handleFreezeAccount = (userId: string) => {
@@ -174,21 +199,6 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
                    <div className="text-3xl font-bold text-amber-500">LOW</div>
                 </div>
               </div>
-
-              {/* Recent Activity Mock */}
-              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-                 <h3 className="font-bold text-white mb-4">Live Transaction Feed</h3>
-                 <div className="space-y-2">
-                    {[1,2,3,4,5].map(i => (
-                      <div key={i} className="flex justify-between items-center text-sm p-2 hover:bg-black rounded">
-                        <span className="text-zinc-400 font-mono text-xs">0x{Math.floor(Math.random()*10000000).toString(16)}...</span>
-                        <span className="text-white">Loan Repayment</span>
-                        <span className="text-[#00e599]">+$500.00</span>
-                        <span className="text-zinc-500 text-xs">Just now</span>
-                      </div>
-                    ))}
-                 </div>
-              </div>
             </div>
           )}
 
@@ -256,23 +266,8 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
                              )}
                           </div>
                        </div>
-
-                       <div className="grid grid-cols-3 gap-4">
-                          <div className="bg-black p-4 rounded-lg border border-zinc-800">
-                             <div className="text-zinc-500 text-xs uppercase">Balance</div>
-                             <div className="text-xl font-mono text-white">${selectedUser.balance.toLocaleString()}</div>
-                          </div>
-                          <div className="bg-black p-4 rounded-lg border border-zinc-800">
-                             <div className="text-zinc-500 text-xs uppercase">Income</div>
-                             <div className="text-xl font-mono text-white">${selectedUser.income.toLocaleString()}</div>
-                          </div>
-                          <div className="bg-black p-4 rounded-lg border border-zinc-800">
-                             <div className="text-zinc-500 text-xs uppercase">Repayments</div>
-                             <div className="text-xl font-mono text-[#00e599]">{selectedUser.successfulRepayments}</div>
-                          </div>
-                       </div>
-
-                       {/* Admin Notes Section */}
+                       
+                       {/* Admin Notes */}
                        <div>
                           <div className="flex justify-between items-center mb-2">
                              <h3 className="font-bold text-white">Admin Notes</h3>
@@ -282,15 +277,6 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
                              {selectedUser.adminNotes || "No notes on file."}
                           </div>
                        </div>
-
-                       {/* Risk Analysis View */}
-                       <div>
-                          <h3 className="font-bold text-white mb-2">AI Risk Assessment</h3>
-                          <div className="bg-black border border-zinc-800 rounded-lg p-4 text-sm text-zinc-400">
-                             {selectedUser.riskAnalysis}
-                          </div>
-                       </div>
-
                      </div>
                    ) : (
                      <div className="h-full flex flex-col items-center justify-center text-zinc-600">
@@ -360,8 +346,8 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
                      <tr>
                        <th className="p-4 uppercase text-xs font-bold tracking-wider">Name</th>
                        <th className="p-4 uppercase text-xs font-bold tracking-wider">Role</th>
-                       <th className="p-4 uppercase text-xs font-bold tracking-wider">Email</th>
-                       <th className="p-4 uppercase text-xs font-bold tracking-wider">Status</th>
+                       <th className="p-4 uppercase text-xs font-bold tracking-wider">Security</th>
+                       <th className="p-4 uppercase text-xs font-bold tracking-wider">Actions</th>
                      </tr>
                    </thead>
                    <tbody className="divide-y divide-zinc-800">
@@ -373,9 +359,23 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
                              {emp.role.replace('_', ' ')}
                            </span>
                          </td>
-                         <td className="p-4 text-zinc-400">{emp.email}</td>
                          <td className="p-4">
-                           {emp.isActive ? <span className="text-green-500 text-xs">● Active</span> : <span className="text-red-500 text-xs">● Inactive</span>}
+                           <div className="flex flex-col gap-1">
+                             <div className="text-[10px] text-zinc-500 uppercase">
+                               Certificate: {emp.certificateData ? <span className="text-[#00e599]">Active</span> : <span className="text-red-500">Missing</span>}
+                             </div>
+                             <div className="text-[10px] text-zinc-500 uppercase">
+                               Password Age: {Math.floor((Date.now() - emp.passwordLastSet) / (1000 * 60 * 60 * 24))} Days
+                             </div>
+                           </div>
+                         </td>
+                         <td className="p-4 flex gap-2">
+                           <Button size="sm" variant="outline" onClick={() => handleIssueCertificate(emp)} className="text-xs">
+                             Issue Key
+                           </Button>
+                           <Button size="sm" variant="ghost" onClick={() => handleResetPasswordLink(emp)} className="text-xs text-red-400">
+                             Reset Pw
+                           </Button>
                          </td>
                        </tr>
                      ))}
