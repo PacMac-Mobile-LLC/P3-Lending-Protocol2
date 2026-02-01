@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { EmployeeProfile, InternalChatMessage, AdminRole } from '../types';
+import { EmployeeProfile, ChatMessage, AdminRole } from '../types';
 import { PersistenceService } from '../services/persistence';
 import { Button } from './Button';
 
@@ -9,20 +9,14 @@ interface Props {
   onClose: () => void;
 }
 
-// Simple beep sounds via data URIs to avoid file dependency
-const SOUNDS = {
-  SEND: 'data:audio/wav;base64,UklGRl9vT1NEXzIAAAAAExAAAAAAZ4AAAAAAAAAAAAAA... (truncated for brevity, using standard beep logic below instead)',
-  // Using a short pleasant pop sound
-  POP: 'data:audio/mp3;base64,SUQzBAAAAAABAFRYWFgAAAASAAADbWFqb3JfYnJhbmQAbXA0MgBUWFhYAAAAEQAAA21pbm9yX3ZlcnNpb24AMABUWFhYAAAAHAAAA2NvbXBhdGlibGVfYnJhbmRzAGlzb21tcDQyAP/7UAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAInfo...', 
-};
-
 export const AdminChatWidget: React.FC<Props> = ({ currentUser, isOpen, onClose }) => {
   const [employees, setEmployees] = useState<EmployeeProfile[]>([]);
-  const [messages, setMessages] = useState<InternalChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [activeView, setActiveView] = useState<'CHAT' | 'MEMBERS'>('CHAT');
   const lastMessageIdRef = useRef<string | null>(null);
+  const [replyToThread, setReplyToThread] = useState<string | null>(null);
 
   // Play a simple system beep context
   const playSound = (type: 'SEND' | 'RECEIVE') => {
@@ -52,7 +46,7 @@ export const AdminChatWidget: React.FC<Props> = ({ currentUser, isOpen, onClose 
     }
   };
 
-  const triggerNotification = (msg: InternalChatMessage) => {
+  const triggerNotification = (msg: ChatMessage) => {
     if (Notification.permission === 'granted') {
       new Notification(`New Message from ${msg.senderName}`, {
         body: msg.message,
@@ -91,8 +85,8 @@ export const AdminChatWidget: React.FC<Props> = ({ currentUser, isOpen, onClose 
         if (latest.senderId !== currentUser.id) {
           playSound('RECEIVE');
           
-          // Check for @mention
-          if (latest.message.includes(`@${currentUser.name}`)) {
+          // Check for @mention or Support Request
+          if (latest.type === 'CUSTOMER_SUPPORT' || latest.message.includes(`@${currentUser.name}`)) {
             triggerNotification(latest);
           }
         }
@@ -115,24 +109,35 @@ export const AdminChatWidget: React.FC<Props> = ({ currentUser, isOpen, onClose 
     e.preventDefault();
     if (!newMessage.trim()) return;
 
-    const msg: InternalChatMessage = {
+    const msg: ChatMessage = {
       id: `msg_${Date.now()}`,
       senderId: currentUser.id,
       senderName: currentUser.name,
       role: currentUser.role,
       message: newMessage,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      // If we are replying to a customer thread, use that type, otherwise internal
+      type: replyToThread ? 'CUSTOMER_SUPPORT' : 'INTERNAL', 
+      threadId: replyToThread || undefined
     };
 
     PersistenceService.addChatMessage(msg);
     setMessages(prev => [...prev, msg]);
     setNewMessage('');
+    // Don't clear replyToThread immediately so they can keep chatting? 
+    // For now, let's keep it sticky until they click "X"
     playSound('SEND');
   };
 
   const insertTag = (name: string) => {
     setNewMessage(prev => `${prev}@${name} `);
     setActiveView('CHAT'); // Switch back to chat to type
+  };
+
+  const handleReplyToCustomer = (threadId: string | undefined, customerName: string) => {
+    if (!threadId) return;
+    setReplyToThread(threadId);
+    setNewMessage(`@${customerName} `);
   };
 
   if (!isOpen) return null;
@@ -143,7 +148,10 @@ export const AdminChatWidget: React.FC<Props> = ({ currentUser, isOpen, onClose 
        <div className="h-16 border-b border-zinc-800 flex items-center justify-between px-4 bg-zinc-900/50 backdrop-blur-md">
           <div className="flex items-center gap-2">
              <div className="w-2.5 h-2.5 bg-[#00e599] rounded-full animate-pulse shadow-[0_0_5px_#00e599]"></div>
-             <h3 className="font-bold text-white">Team Channel</h3>
+             <div>
+               <h3 className="font-bold text-white text-sm">Unified Command</h3>
+               <p className="text-[9px] text-zinc-500">Internal & Support Streams</p>
+             </div>
           </div>
           <div className="flex items-center gap-2">
             <button 
@@ -168,6 +176,8 @@ export const AdminChatWidget: React.FC<Props> = ({ currentUser, isOpen, onClose 
                <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                   {messages.map((msg, idx) => {
                     const isMe = msg.senderId === currentUser.id;
+                    const isCustomer = msg.role === 'CUSTOMER';
+                    const isSupportThread = msg.type === 'CUSTOMER_SUPPORT';
                     const showHeader = idx === 0 || messages[idx-1].senderId !== msg.senderId || (msg.timestamp - messages[idx-1].timestamp > 60000);
                     
                     // Highlight logic for tags
@@ -178,14 +188,26 @@ export const AdminChatWidget: React.FC<Props> = ({ currentUser, isOpen, onClose 
                          {showHeader && (
                            <div className={`flex items-center gap-2 mb-1 ${isMe ? 'flex-row-reverse' : ''}`}>
                               <span className="text-xs font-bold text-white">{msg.senderName}</span>
-                              <span className={`text-[9px] px-1 rounded uppercase font-bold ${msg.role === 'ADMIN' ? 'bg-red-900/40 text-red-400' : 'bg-blue-900/40 text-blue-400'}`}>{msg.role.replace('_', ' ')}</span>
+                              {msg.role !== 'CUSTOMER' && (
+                                <span className={`text-[9px] px-1 rounded uppercase font-bold ${msg.role === 'ADMIN' ? 'bg-red-900/40 text-red-400' : 'bg-blue-900/40 text-blue-400'}`}>{msg.role.replace('_', ' ')}</span>
+                              )}
+                              {isCustomer && (
+                                <span className="text-[9px] px-1 rounded uppercase font-bold bg-orange-900/40 text-orange-400">CLIENT</span>
+                              )}
                               <span className="text-[10px] text-zinc-600">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                            </div>
                          )}
-                         <div className={`px-3 py-2 rounded-lg text-sm max-w-[85%] break-words ${isMe ? 'bg-[#00e599]/10 border border-[#00e599]/30 text-white rounded-tr-none' : 'bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-tl-none'}`}>
+                         <div 
+                           className={`px-3 py-2 rounded-lg text-sm max-w-[85%] break-words relative group cursor-pointer 
+                             ${isMe ? 'bg-[#00e599]/10 border border-[#00e599]/30 text-white rounded-tr-none' : 
+                               isSupportThread ? 'bg-orange-500/10 border border-orange-500/30 text-orange-100 rounded-tl-none' : 
+                               'bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-tl-none'}`}
+                           onClick={() => isSupportThread && !isMe && handleReplyToCustomer(msg.threadId, msg.senderName)}
+                           title={isSupportThread ? "Click to Reply to Customer Thread" : ""}
+                         >
                            {parts.map((part, i) => (
                              part.startsWith('@') 
-                               ? <span key={i} className="text-[#00e599] font-bold bg-[#00e599]/10 px-1 rounded">{part}</span> 
+                               ? <span key={i} className={`${isSupportThread ? 'text-orange-400' : 'text-[#00e599]'} font-bold bg-black/30 px-1 rounded`}>{part}</span> 
                                : <span key={i}>{part}</span>
                            ))}
                          </div>
@@ -196,20 +218,28 @@ export const AdminChatWidget: React.FC<Props> = ({ currentUser, isOpen, onClose 
                </div>
                
                {/* Input Area */}
-               <form onSubmit={handleSendMessage} className="p-4 bg-zinc-900 border-t border-zinc-800">
-                  <div className="flex gap-2">
-                     <input 
-                       type="text" 
-                       value={newMessage}
-                       onChange={e => setNewMessage(e.target.value)}
-                       placeholder="Message team... (@ to tag)"
-                       className="flex-1 bg-black border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-[#00e599] outline-none transition-colors"
-                     />
-                     <Button type="submit" size="sm" className="px-3">
-                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-                     </Button>
-                  </div>
-               </form>
+               <div className="bg-zinc-900 border-t border-zinc-800">
+                 {replyToThread && (
+                   <div className="px-4 py-2 bg-orange-900/20 flex justify-between items-center text-xs text-orange-400 border-b border-orange-500/20">
+                     <span>Replying to Customer Thread...</span>
+                     <button onClick={() => { setReplyToThread(null); setNewMessage(''); }} className="hover:text-white">✕ Cancel</button>
+                   </div>
+                 )}
+                 <form onSubmit={handleSendMessage} className="p-4">
+                    <div className="flex gap-2">
+                       <input 
+                         type="text" 
+                         value={newMessage}
+                         onChange={e => setNewMessage(e.target.value)}
+                         placeholder={replyToThread ? "Reply to customer..." : "Message team... (@ to tag)"}
+                         className={`flex-1 bg-black border rounded-lg px-3 py-2 text-sm text-white outline-none transition-colors ${replyToThread ? 'border-orange-500/50 focus:border-orange-500' : 'border-zinc-700 focus:border-[#00e599]'}`}
+                       />
+                       <Button type="submit" size="sm" className={`px-3 ${replyToThread ? 'bg-orange-600 hover:bg-orange-500 border-none' : ''}`}>
+                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                       </Button>
+                    </div>
+                 </form>
+               </div>
             </div>
           )}
 

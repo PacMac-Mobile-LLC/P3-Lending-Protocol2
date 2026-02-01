@@ -24,6 +24,7 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { Footer } from './components/Footer';
 import { KnowledgeBase } from './components/KnowledgeBase';
+import { CustomerChatWidget } from './components/CustomerChatWidget';
 
 const MOCK_CHARITIES: Charity[] = [
   { id: 'c1', name: 'Green Earth', mission: 'Reforestation', totalRaised: 1250, color: 'bg-green-500' },
@@ -452,6 +453,7 @@ const App: React.FC = () => {
 
     return (
       <div className="flex h-screen bg-[#050505] text-zinc-200 font-sans selection:bg-[#00e599] selection:text-black overflow-hidden relative">
+        <CustomerChatWidget user={user} />
         {showSnow && <SnowEffect />}
         {showKYCModal && <KYCVerificationModal currentTier={user.kycTier} onClose={() => setShowKYCModal(false)} onUpgradeComplete={handleKYCUpgrade} />}
         {showRiskModal && <RiskDashboard report={riskReport} isLoading={isRiskLoading} onRefresh={refreshRiskAnalysis} onClose={() => setShowRiskModal(false)} />}

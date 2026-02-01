@@ -197,11 +197,15 @@ export interface InternalTicket {
   createdAt: number;
 }
 
-export interface InternalChatMessage {
+export type ChatType = 'INTERNAL' | 'CUSTOMER_SUPPORT';
+
+export interface ChatMessage {
   id: string;
   senderId: string;
   senderName: string;
-  role: AdminRole;
+  role: AdminRole | 'CUSTOMER';
   message: string;
   timestamp: number;
+  type: ChatType;
+  threadId?: string; // For grouping customer support tickets
 }

@@ -1,4 +1,4 @@
-import { UserProfile, LoanRequest, LoanOffer, LoanType, KYCTier, KYCStatus, EmployeeProfile, ReferralData, InternalTicket, InternalChatMessage, Dispute } from '../types';
+import { UserProfile, LoanRequest, LoanOffer, LoanType, KYCTier, KYCStatus, EmployeeProfile, ReferralData, InternalTicket, ChatMessage, Dispute } from '../types';
 import { SecurityService } from './security';
 
 // Dynamic Keys based on User ID
@@ -283,17 +283,18 @@ export const PersistenceService = {
     return updated;
   },
 
-  getChatHistory: (): InternalChatMessage[] => {
+  getChatHistory: (): ChatMessage[] => {
     try {
       const data = localStorage.getItem(GLOBAL_KEYS.CHAT);
       if (!data) {
-        const welcome: InternalChatMessage = {
+        const welcome: ChatMessage = {
           id: 'msg_welcome',
           senderId: 'emp_super_admin',
           senderName: 'System Root',
           role: 'ADMIN',
           message: 'System Initialized. Encrypted Channel Active.',
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          type: 'INTERNAL'
         };
         PersistenceService.addChatMessage(welcome);
         return [welcome];
@@ -302,7 +303,7 @@ export const PersistenceService = {
     } catch (e) { return []; }
   },
 
-  addChatMessage: (msg: InternalChatMessage) => {
+  addChatMessage: (msg: ChatMessage) => {
     const current = PersistenceService.getChatHistory();
     const updated = [...current, msg].slice(-200); // Keep last 200
     localStorage.setItem(GLOBAL_KEYS.CHAT, JSON.stringify(updated));

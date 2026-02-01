@@ -3,12 +3,6 @@ import { Footer } from './Footer';
 import { LegalDocType } from './LegalModal';
 import { Logo } from './Logo';
 
-declare global {
-  interface Window {
-    Tawk_API?: any;
-  }
-}
-
 interface Props {
   onBack: () => void;
   onOpenLegal: (type: LegalDocType) => void;
@@ -208,14 +202,8 @@ export const KnowledgeBase: React.FC<Props> = ({ onBack, onOpenLegal }) => {
                <div className="mt-8 bg-black border border-zinc-800 rounded-xl p-6 flex justify-between items-center">
                  <div>
                    <h4 className="text-white font-bold">Was this helpful?</h4>
-                   <p className="text-xs text-zinc-500">If you still need assistance, our team is online.</p>
+                   <p className="text-xs text-zinc-500">If you still need assistance, use the chat bubble in the corner.</p>
                  </div>
-                 <button 
-                   onClick={() => window.Tawk_API?.maximize()} // Open Tawk.to
-                   className="bg-[#00e599] hover:bg-[#00cc88] text-black font-bold py-2 px-4 rounded-lg text-sm transition-colors"
-                 >
-                   Chat with Support
-                 </button>
                </div>
              </div>
            ) : (
