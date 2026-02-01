@@ -5,9 +5,10 @@ import { ScoreGauge } from './ScoreGauge';
 
 interface Props {
   onLaunch: () => void;
+  onDevAdminLogin: () => void;
 }
 
-export const LandingPage: React.FC<Props> = ({ onLaunch }) => {
+export const LandingPage: React.FC<Props> = ({ onLaunch, onDevAdminLogin }) => {
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
     if (element) {
@@ -28,9 +29,18 @@ export const LandingPage: React.FC<Props> = ({ onLaunch }) => {
           <button onClick={() => scrollToSection('borrowers')} className="hidden md:block text-sm font-medium text-zinc-400 hover:text-white transition-colors">For Borrowers</button>
           <button onClick={() => scrollToSection('lenders')} className="hidden md:block text-sm font-medium text-zinc-400 hover:text-white transition-colors">For Lenders</button>
           <button onClick={() => scrollToSection('compliance')} className="hidden md:block text-sm font-medium text-zinc-400 hover:text-white transition-colors">Compliance</button>
-          <Button onClick={onLaunch} className="shadow-[0_0_20px_rgba(0,229,153,0.4)]">
-            Launch App
-          </Button>
+          
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={onDevAdminLogin}
+              className="text-xs font-mono text-zinc-500 hover:text-[#00e599] transition-colors border border-zinc-800 rounded px-2 py-1"
+            >
+              Dev: Admin Login
+            </button>
+            <Button onClick={onLaunch} className="shadow-[0_0_20px_rgba(0,229,153,0.4)]">
+              Launch App
+            </Button>
+          </div>
         </div>
       </nav>
 

@@ -96,6 +96,65 @@ const App: React.FC = () => {
   const [isCharityGuaranteed, setIsCharityGuaranteed] = useState(false);
   const [selectedCharity, setSelectedCharity] = useState<string>(MOCK_CHARITIES[0].id);
 
+  // Main login handler
+  const handleLogin = async (netlifyUser: any) => {
+    console.log("Logged in:", netlifyUser);
+    setIsVerifyingEmail(false); 
+    
+    const email = netlifyUser.email || '';
+
+    // CHECK FOR ADMIN/EMPLOYEE DOMAIN
+    if (email.endsWith('@p3lending.space')) {
+       const employees = PersistenceService.getEmployees();
+       const matchedEmp = employees.find(e => e.email.toLowerCase() === email.toLowerCase());
+       
+       if (matchedEmp && matchedEmp.isActive) {
+          // INTERRUPT FLOW: Show Certificate Upload Modal
+          setPendingAdminEmail(email);
+          setShowCertUpload(true);
+          return;
+       } else {
+         console.warn("Domain matches but user not found in employee list.");
+       }
+    }
+
+    // NORMAL USER FLOW
+    setIsAuthenticated(true);
+    setShowLanding(false);
+    const p3User = PersistenceService.loadUser(netlifyUser);
+    setUser(p3User);
+    setMyRequests(PersistenceService.getMyRequests(p3User.id));
+    setMyOffers(PersistenceService.getMyOffers(p3User.id)); 
+    AuthService.close(); 
+
+    if (p3User.riskAnalysis?.includes("unavailable") || p3User.reputationScore === 50) {
+      setIsAnalyzing(true);
+      const result = await analyzeReputation(p3User);
+      setUser(prev => {
+        if (!prev) return null;
+        const finalUser = {
+          ...prev,
+          reputationScore: result.score,
+          riskAnalysis: result.analysis,
+          badges: [...new Set([...prev.badges, ...(result.newBadges || [])])]
+        };
+        PersistenceService.saveUser(finalUser);
+        return finalUser;
+      });
+      setIsAnalyzing(false);
+    }
+  };
+
+  // Mock Admin Login for Dev Environment
+  const handleMockAdminLogin = () => {
+    const mockAdminUser = {
+      email: 'admin@p3lending.space',
+      id: 'emp_super_admin',
+      user_metadata: { full_name: 'System Root' }
+    };
+    handleLogin(mockAdminUser);
+  };
+
   // Startup initialization
   useEffect(() => {
     // Force initialization of employee data (injector logic)
@@ -106,56 +165,6 @@ const App: React.FC = () => {
     }
 
     AuthService.init();
-
-    const handleLogin = async (netlifyUser: any) => {
-      console.log("Logged in:", netlifyUser);
-      setIsVerifyingEmail(false); 
-      
-      const email = netlifyUser.email || '';
-
-      // CHECK FOR ADMIN/EMPLOYEE DOMAIN
-      if (email.endsWith('@p3lending.space')) {
-         const employees = PersistenceService.getEmployees();
-         const matchedEmp = employees.find(e => e.email.toLowerCase() === email.toLowerCase());
-         
-         if (matchedEmp && matchedEmp.isActive) {
-            // INTERRUPT FLOW: Show Certificate Upload Modal
-            setPendingAdminEmail(email);
-            setShowCertUpload(true);
-            return;
-         } else {
-           // Fallback: If someone logs in with that domain but isn't in local DB (which shouldn't happen for admin due to injector)
-           // we treat them as a normal user or show error.
-           console.warn("Domain matches but user not found in employee list.");
-         }
-      }
-
-      // NORMAL USER FLOW
-      setIsAuthenticated(true);
-      setShowLanding(false);
-      const p3User = PersistenceService.loadUser(netlifyUser);
-      setUser(p3User);
-      setMyRequests(PersistenceService.getMyRequests(p3User.id));
-      setMyOffers(PersistenceService.getMyOffers(p3User.id)); 
-      AuthService.close(); 
-
-      if (p3User.riskAnalysis?.includes("unavailable") || p3User.reputationScore === 50) {
-        setIsAnalyzing(true);
-        const result = await analyzeReputation(p3User);
-        setUser(prev => {
-          if (!prev) return null;
-          const finalUser = {
-            ...prev,
-            reputationScore: result.score,
-            riskAnalysis: result.analysis,
-            badges: [...new Set([...prev.badges, ...(result.newBadges || [])])]
-          };
-          PersistenceService.saveUser(finalUser);
-          return finalUser;
-        });
-        setIsAnalyzing(false);
-      }
-    };
 
     const handleLogout = () => {
       console.log("Logged out");
@@ -470,7 +479,7 @@ const App: React.FC = () => {
 
   // Show Landing Page
   if (!isAuthenticated && showLanding && !showCertUpload) {
-    return <LandingPage onLaunch={() => setShowLanding(false)} />;
+    return <LandingPage onLaunch={() => setShowLanding(false)} onDevAdminLogin={handleMockAdminLogin} />;
   }
 
   // Handle Certificate Upload Interruption
