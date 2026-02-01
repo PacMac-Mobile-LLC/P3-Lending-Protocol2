@@ -15,7 +15,8 @@ import { WalletConnectModal } from './components/WalletConnectModal';
 import { RiskDashboard } from './components/RiskDashboard';
 import { SnowEffect } from './components/SnowEffect';
 import { NewsTicker } from './components/NewsTicker';
-import { LenderDashboard } from './components/LenderDashboard'; // New Component
+import { LenderDashboard } from './components/LenderDashboard';
+import { LegalModal, LegalDocType } from './components/LegalModal';
 
 // Mock Charities
 const MOCK_CHARITIES: Charity[] = [
@@ -51,7 +52,7 @@ const App: React.FC = () => {
   const [activeView, setActiveView] = useState<'borrow' | 'lend' | 'mentorship' | 'profile'>('borrow');
   
   const [myRequests, setMyRequests] = useState<LoanRequest[]>([]);
-  const [myOffers, setMyOffers] = useState<LoanOffer[]>([]); // New State
+  const [myOffers, setMyOffers] = useState<LoanOffer[]>([]);
   const [communityRequests, setCommunityRequests] = useState<LoanRequest[]>(MOCK_COMMUNITY_REQUESTS);
   
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -59,6 +60,7 @@ const App: React.FC = () => {
   const [showKYCModal, setShowKYCModal] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [showRiskModal, setShowRiskModal] = useState(false);
+  const [activeLegalDoc, setActiveLegalDoc] = useState<LegalDocType | null>(null);
   const [showSnow, setShowSnow] = useState(false);
   
   const [riskReport, setRiskReport] = useState<RiskReport | null>(null);
@@ -94,7 +96,7 @@ const App: React.FC = () => {
       const p3User = PersistenceService.loadUser(netlifyUser);
       setUser(p3User);
       setMyRequests(PersistenceService.getMyRequests(p3User.id));
-      setMyOffers(PersistenceService.getMyOffers(p3User.id)); // Load Offers
+      setMyOffers(PersistenceService.getMyOffers(p3User.id)); 
       AuthService.close(); 
 
       if (p3User.riskAnalysis?.includes("unavailable") || p3User.reputationScore === 50) {
@@ -389,7 +391,7 @@ const App: React.FC = () => {
            ) : (
              <>
                <h1 className="text-4xl font-bold text-white tracking-tighter">
-                 P<span className="text-[#00e599]">3</span> Lending Dashboard
+                 P<span className="text-[#00e599]">3</span> Securities Dashboard
                </h1>
                <p className="text-zinc-400 max-w-md mx-auto">
                  The future of reputation-based finance. Sign in to access your dashboard, build your score, and secure funding.
@@ -432,6 +434,7 @@ const App: React.FC = () => {
       {showKYCModal && <KYCVerificationModal currentTier={user.kycTier} onClose={() => setShowKYCModal(false)} onUpgradeComplete={handleKYCUpgrade} />}
       {showRiskModal && <RiskDashboard report={riskReport} isLoading={isRiskLoading} onRefresh={refreshRiskAnalysis} onClose={() => setShowRiskModal(false)} />}
       <WalletConnectModal isOpen={showWalletModal} onClose={() => setShowWalletModal(false)} onConnect={(info) => setWallet(info)} />
+      <LegalModal type={activeLegalDoc} onClose={() => setActiveLegalDoc(null)} />
 
       <aside className="w-64 bg-[#0a0a0a] border-r border-zinc-900 flex flex-col z-50">
         <div className="p-6">
@@ -651,7 +654,7 @@ const App: React.FC = () => {
                        <span className="text-xs text-zinc-500 uppercase tracking-widest">Compliance</span>
                     </div>
                     <p className="text-[10px] text-zinc-500 leading-relaxed max-w-md">
-                      P3 Lending is a decentralized technology platform, not a bank or depository institution. 
+                      P3 Securities is a decentralized technology platform, not a bank or depository institution. 
                       Loans are not FDIC insured. Crypto assets are highly volatile. 
                       Participation involves significant risk, including potential loss of principal.
                     </p>
@@ -659,23 +662,23 @@ const App: React.FC = () => {
                  <div>
                     <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-3">Legal</h4>
                     <ul className="space-y-2 text-[10px] text-zinc-500">
-                       <li><a href="#" className="hover:text-[#00e599]">Terms of Service</a></li>
-                       <li><a href="#" className="hover:text-[#00e599]">Privacy Policy</a></li>
-                       <li><a href="#" className="hover:text-[#00e599]">E-Sign Consent</a></li>
-                       <li><a href="#" className="hover:text-[#00e599]">State Disclosures</a></li>
+                       <li><button onClick={() => setActiveLegalDoc('TERMS')} className="hover:text-[#00e599]">Terms of Service</button></li>
+                       <li><button onClick={() => setActiveLegalDoc('PRIVACY')} className="hover:text-[#00e599]">Privacy Policy</button></li>
+                       <li><button onClick={() => setActiveLegalDoc('ESIGN')} className="hover:text-[#00e599]">E-Sign Consent</button></li>
+                       <li><button onClick={() => setActiveLegalDoc('DISCLOSURES')} className="hover:text-[#00e599]">State Disclosures</button></li>
                     </ul>
                  </div>
                  <div>
                     <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-3">Resources</h4>
                     <ul className="space-y-2 text-[10px] text-zinc-500">
-                       <li><a href="#" className="hover:text-[#00e599]">Fair Lending (ECOA)</a></li>
-                       <li><a href="#" className="hover:text-[#00e599]">Responsible Security</a></li>
-                       <li><a href="#" className="hover:text-[#00e599]">Support & Safety</a></li>
+                       <li><button onClick={() => setActiveLegalDoc('ECOA')} className="hover:text-[#00e599]">Fair Lending (ECOA)</button></li>
+                       <li><button onClick={() => setActiveLegalDoc('SECURITY')} className="hover:text-[#00e599]">Responsible Security</button></li>
+                       <li><button onClick={() => setActiveLegalDoc('SUPPORT')} className="hover:text-[#00e599]">Support & Safety</button></li>
                     </ul>
                  </div>
               </div>
               <div className="mt-8 pt-4 border-t border-zinc-900 text-[10px] text-zinc-600 flex justify-between items-center">
-                 <span>© 2024 P3 Lending Protocol. All rights reserved.</span>
+                 <span>© 2024 P3 Securities. All rights reserved.</span>
                  <span>NMLS ID: 123456 (Pending)</span>
               </div>
            </div>
