@@ -10,7 +10,7 @@
     "start": "vite"
   },
   "dependencies": {
-    "@google/genai": "^0.1.1",
+    "@google/genai": "^0.2.0",
     "@stripe/react-stripe-js": "^2.4.0",
     "@stripe/stripe-js": "^2.4.0",
     "@supabase/supabase-js": "^2.39.0",

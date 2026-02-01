@@ -40,10 +40,24 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
 
   useEffect(() => {
     // Load data
-    setUsers(PersistenceService.getAllUsers());
-    setEmployees(PersistenceService.getEmployees());
-    setInternalTickets(PersistenceService.getInternalTickets());
-    setDisputes(PersistenceService.getAllDisputes());
+    const loadData = async () => {
+      try {
+        const u = await PersistenceService.getAllUsers();
+        setUsers(u || []);
+        
+        const e = await PersistenceService.getEmployees();
+        setEmployees(e || []);
+        
+        const t = await PersistenceService.getInternalTickets();
+        setInternalTickets(t || []);
+        
+        const d = await PersistenceService.getAllDisputes();
+        setDisputes(d || []);
+      } catch (err) {
+        console.error("Admin dashboard failed to load data", err);
+      }
+    };
+    loadData();
 
     // Hide Tawk.to when in Admin Mode
     if (window.Tawk_API && window.Tawk_API.hideWidget) {
@@ -57,7 +71,7 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
     };
   }, []);
 
-  const handleAddEmployee = (e: React.FormEvent) => {
+  const handleAddEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     const newEmp: EmployeeProfile = {
       id: `emp_${Date.now()}`,
@@ -70,7 +84,7 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
       passwordLastSet: 0, // Forces immediate reset
       previousPasswords: []
     };
-    const updated = PersistenceService.addEmployee(newEmp);
+    const updated = await PersistenceService.addEmployee(newEmp);
     setEmployees(updated);
     setShowAddEmployee(false);
     setNewEmpData({ name: '', email: '', role: 'SUPPORT' });
@@ -80,8 +94,8 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
     if (confirm(`Issue new 1-Year Security Certificate for ${emp.name}? This will invalidate previous keys.`)) {
       const cert = SecurityService.generateCertificate(emp.email);
       const updatedEmp = { ...emp, certificateData: cert };
-      const updatedList = PersistenceService.updateEmployee(updatedEmp);
-      setEmployees(updatedList);
+      // Note: This would be async in real app
+      PersistenceService.updateEmployee(updatedEmp).then(updatedList => setEmployees(updatedList));
       
       // Trigger Download
       SecurityService.downloadCertificate(cert);
@@ -92,74 +106,67 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
   const handleResetPasswordLink = (emp: EmployeeProfile) => {
     alert(`Password reset link sent to ${emp.email}.\n\n(Simulation: Next login will require a password change)`);
     const updatedEmp = { ...emp, passwordLastSet: 0 }; // 0 forces expiry check
-    const updatedList = PersistenceService.updateEmployee(updatedEmp);
-    setEmployees(updatedList);
+    PersistenceService.updateEmployee(updatedEmp).then(updatedList => setEmployees(updatedList));
   };
 
-  const handleFreezeAccount = (userId: string) => {
+  const handleFreezeAccount = async (userId: string) => {
     if (confirm("Are you sure you want to freeze this account? All funds will be locked.")) {
-      const updatedList = users.map(u => {
-        if (u.id === userId) {
-          const updated = { ...u, isFrozen: !u.isFrozen };
-          PersistenceService.saveUser(updated);
-          if (selectedUser?.id === userId) setSelectedUser(updated);
-          return updated;
-        }
-        return u;
-      });
-      setUsers(updatedList);
+      const targetUser = users.find(u => u.id === userId);
+      if (targetUser) {
+        const updated = { ...targetUser, isFrozen: !targetUser.isFrozen };
+        await PersistenceService.saveUser(updated);
+        
+        setUsers(prev => prev.map(u => u.id === userId ? updated : u));
+        if (selectedUser?.id === userId) setSelectedUser(updated);
+      }
     }
   };
 
-  const handleAddAdminNote = (userId: string) => {
+  const handleAddAdminNote = async (userId: string) => {
     const note = prompt("Enter note for this user account:");
     if (note) {
-      const updatedList = users.map(u => {
-        if (u.id === userId) {
-           const existing = u.adminNotes ? u.adminNotes + '\n' : '';
-           const updated = { ...u, adminNotes: `${existing}[${new Date().toLocaleDateString()} ${currentAdmin.name}]: ${note}` };
-           PersistenceService.saveUser(updated);
-           if (selectedUser?.id === userId) setSelectedUser(updated);
-           return updated;
-        }
-        return u;
-      });
-      setUsers(updatedList);
+      const targetUser = users.find(u => u.id === userId);
+      if (targetUser) {
+         const existing = targetUser.adminNotes ? targetUser.adminNotes + '\n' : '';
+         const updated = { ...targetUser, adminNotes: `${existing}[${new Date().toLocaleDateString()} ${currentAdmin.name}]: ${note}` };
+         await PersistenceService.saveUser(updated);
+         
+         setUsers(prev => prev.map(u => u.id === userId ? updated : u));
+         if (selectedUser?.id === userId) setSelectedUser(updated);
+      }
     }
   };
 
   // KYC Manual Action
-  const handleKYCAction = (userId: string, action: 'APPROVE' | 'REJECT') => {
-    const updatedList = users.map(u => {
-      if (u.id === userId) {
-        const updated = {
-          ...u,
-          kycStatus: action === 'APPROVE' ? KYCStatus.VERIFIED : KYCStatus.REJECTED,
-          kycTier: action === 'APPROVE' ? KYCTier.TIER_2 : u.kycTier, // Bump to Tier 2 on manual approval
-          kycLimit: action === 'APPROVE' ? 50000 : u.kycLimit
-        };
-        PersistenceService.saveUser(updated);
-        if (selectedUser?.id === userId) setSelectedUser(updated);
-        return updated;
-      }
-      return u;
-    });
-    setUsers(updatedList);
-    alert(`KYC ${action === 'APPROVE' ? 'Approved' : 'Rejected'} for User.`);
+  const handleKYCAction = async (userId: string, action: 'APPROVE' | 'REJECT') => {
+    const targetUser = users.find(u => u.id === userId);
+    if (targetUser) {
+      const updated = {
+        ...targetUser,
+        kycStatus: action === 'APPROVE' ? KYCStatus.VERIFIED : KYCStatus.REJECTED,
+        kycTier: action === 'APPROVE' ? KYCTier.TIER_2 : targetUser.kycTier, 
+        kycLimit: action === 'APPROVE' ? 50000 : targetUser.kycLimit
+      };
+      await PersistenceService.saveUser(updated);
+      
+      setUsers(prev => prev.map(u => u.id === userId ? updated : u));
+      if (selectedUser?.id === userId) setSelectedUser(updated);
+      alert(`KYC ${action === 'APPROVE' ? 'Approved' : 'Rejected'} for User.`);
+    }
   };
 
   // Dispute Action
-  const handleResolveDispute = (disputeId: string, resolution: string) => {
+  const handleResolveDispute = async (disputeId: string, resolution: string) => {
     const dispute = disputes.find(d => d.id === disputeId);
     if (dispute) {
       const updatedDispute = { ...dispute, status: 'RESOLVED' as const, resolution };
-      PersistenceService.saveDispute(updatedDispute);
+      await PersistenceService.saveDispute(updatedDispute);
       setDisputes(prev => prev.map(d => d.id === disputeId ? updatedDispute : d));
     }
   };
 
   // Internal Ticket Actions
-  const handleCreateTicket = (e: React.FormEvent) => {
+  const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
     const ticket: InternalTicket = {
       id: `tick_${Date.now()}`,
@@ -171,22 +178,23 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
       status: 'OPEN',
       createdAt: Date.now()
     };
-    const updated = PersistenceService.addInternalTicket(ticket);
+    const updated = await PersistenceService.addInternalTicket(ticket);
     setInternalTickets(updated);
     setNewTicket({ subject: '', description: '', priority: 'LOW' });
   };
 
-  const handleResolveInternalTicket = (id: string) => {
-    const updated = PersistenceService.resolveInternalTicket(id);
+  const handleResolveInternalTicket = async (id: string) => {
+    const updated = await PersistenceService.resolveInternalTicket(id);
     setInternalTickets(updated);
   };
 
-  const filteredUsers = users.filter(u => 
-    u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    u.id.toLowerCase().includes(searchTerm.toLowerCase())
+  const safeUsers = users || []; // Safety fallback
+  const filteredUsers = safeUsers.filter(u => 
+    u.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    u.id?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const pendingKYCUsers = users.filter(u => u.kycStatus === KYCStatus.PENDING);
+  const pendingKYCUsers = safeUsers.filter(u => u.kycStatus === KYCStatus.PENDING);
   const openDisputes = disputes.filter(d => d.status === 'OPEN');
   const openTickets = internalTickets.filter(t => t.status === 'OPEN');
 
@@ -316,15 +324,15 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
                   <div className="text-zinc-500 text-xs uppercase font-bold tracking-wider mb-2">Total Users</div>
-                  <div className="text-3xl font-bold text-white">{users.length}</div>
+                  <div className="text-3xl font-bold text-white">{safeUsers.length}</div>
                 </div>
                 <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
                   <div className="text-zinc-500 text-xs uppercase font-bold tracking-wider mb-2">Verified (Tier 2+)</div>
-                  <div className="text-3xl font-bold text-[#00e599]">{users.filter(u => u.kycTier === KYCTier.TIER_2 || u.kycTier === KYCTier.TIER_3).length}</div>
+                  <div className="text-3xl font-bold text-[#00e599]">{safeUsers.filter(u => u.kycTier === KYCTier.TIER_2 || u.kycTier === KYCTier.TIER_3).length}</div>
                 </div>
                 <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
                   <div className="text-zinc-500 text-xs uppercase font-bold tracking-wider mb-2">Frozen Accounts</div>
-                  <div className="text-3xl font-bold text-red-500">{users.filter(u => u.isFrozen).length}</div>
+                  <div className="text-3xl font-bold text-red-500">{safeUsers.filter(u => u.isFrozen).length}</div>
                 </div>
                 <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
                    <div className="text-zinc-500 text-xs uppercase font-bold tracking-wider mb-2">Platform Risk Score</div>
@@ -334,19 +342,6 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
             </div>
           )}
 
-          {/* ... USERS, KYC, TEAM, KNOWLEDGE Tabs (No changes needed here logic wise) ... */}
-          {/* Re-using existing render logic for brevity as only logic hookup changed */}
-          {(activeTab === 'USERS' || activeTab === 'KYC' || activeTab === 'KNOWLEDGE' || activeTab === 'TEAM') && (
-             // The original code from previous turn goes here. 
-             // Since I need to output full file, I will copy-paste the logic from the previous step 
-             // but ensure it uses the updated Persistence logic implicitly.
-             // (Truncated in thought process but will be full in XML)
-             // ... [Rest of Component Content from Previous Step] ...
-             // For safety, I will replicate the exact structure from the input file but update the DISPUTES section to be dynamic.
-             <></>
-          )}
-          
-          {/* ... Including the rest of the component body ... */}
           {(activeTab === 'USERS' || activeTab === 'KYC') && (
              <div className="flex h-full gap-6 animate-fade-in">
                 {/* User List */}

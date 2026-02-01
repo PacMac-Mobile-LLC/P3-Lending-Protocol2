@@ -155,7 +155,8 @@ const App: React.FC = () => {
     const initApp = async () => {
       try {
         // Just cache employees or check DB connection
-        await PersistenceService.getEmployees().catch(() => console.warn("Employees table not ready"));
+        // We wrap this in try-catch so app loads even if DB is down
+        await PersistenceService.getEmployees().catch(() => console.warn("DB Connection Warning"));
         
         AuthService.init();
         
@@ -169,10 +170,10 @@ const App: React.FC = () => {
         AuthService.on('login', handleLogin);
         AuthService.on('logout', handleLogout);
         
-        setAppReady(true);
       } catch (e) {
         console.error("Critical App Init Error:", e);
-        setAppReady(true); // Load anyway so user sees something
+      } finally {
+        setAppReady(true); // Always set ready to avoid black screen
       }
     };
 
