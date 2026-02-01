@@ -12,6 +12,48 @@ interface Props {
   onOpenLegal: (type: LegalDocType) => void;
 }
 
+const AnimatedParagraph = () => {
+  const text = "The first decentralized lending protocol powered by AI. We replace archaic FICO scores with Social Underwriting—unlocking capital based on your character, not just your history.";
+  const words = text.split(' ');
+
+  return (
+    <>
+      <style>
+        {`
+          @keyframes highlight-pulse {
+            0%, 100% { background-color: transparent; color: #a1a1aa; } /* zinc-400 */
+            5%, 95% { background-color: transparent; color: #a1a1aa; }
+            50% { background-color: rgba(0, 229, 153, 0.2); color: #ffffff; text-shadow: 0 0 10px rgba(0,229,153,0.5); }
+          }
+        `}
+      </style>
+      <p className="text-xl leading-relaxed max-w-lg">
+        {words.map((word, i) => {
+          // Keep Social Underwriting permanently emphasized, animate others
+          const isKeyTerm = word.includes('Social') || word.includes('Underwriting');
+          
+          if (isKeyTerm) {
+            return <strong key={i} className="text-white font-bold">{word} </strong>;
+          }
+
+          return (
+            <span
+              key={i}
+              className="inline-block px-1 rounded transition-all"
+              style={{
+                animation: `highlight-pulse ${4 + Math.random() * 6}s ease-in-out infinite`,
+                animationDelay: `${Math.random() * 5}s`
+              }}
+            >
+              {word}{' '}
+            </span>
+          );
+        })}
+      </p>
+    </>
+  );
+};
+
 export const LandingPage: React.FC<Props> = ({ onLaunch, onDevAdminLogin, onOpenDocs, onOpenLegal }) => {
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
@@ -61,10 +103,10 @@ export const LandingPage: React.FC<Props> = ({ onLaunch, onDevAdminLogin, onOpen
               Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00e599] to-emerald-600">Reputation</span> <br/>
               Is Your Currency.
             </h1>
-            <p className="text-xl text-zinc-400 leading-relaxed max-w-lg">
-              The first decentralized lending protocol powered by AI. We replace archaic FICO scores with 
-              <strong className="text-white"> Social Underwriting</strong>—unlocking capital based on your character, not just your history.
-            </p>
+            
+            {/* Animated Paragraph Component */}
+            <AnimatedParagraph />
+
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <Button size="lg" onClick={onLaunch} className="text-lg px-10">
                 Start Borrowing
