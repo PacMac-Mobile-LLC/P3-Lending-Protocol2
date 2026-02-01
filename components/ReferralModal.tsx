@@ -5,15 +5,19 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   referralCode: string;
+  onOpenTerms: () => void;
 }
 
-export const ReferralModal: React.FC<Props> = ({ isOpen, onClose, referralCode }) => {
+export const ReferralModal: React.FC<Props> = ({ isOpen, onClose, referralCode, onOpenTerms }) => {
   const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
 
+  // Generate live link based on current window location
+  const referralLink = `${window.location.origin}/?ref=${referralCode}`;
+
   const handleCopy = () => {
-    navigator.clipboard.writeText(`https://p3securities.com/join/${referralCode}`);
+    navigator.clipboard.writeText(referralLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -39,15 +43,15 @@ export const ReferralModal: React.FC<Props> = ({ isOpen, onClose, referralCode }
 
           <h2 className="text-2xl font-bold text-white mb-2">Boost Your Reputation</h2>
           <p className="text-zinc-400 text-sm mb-8 leading-relaxed">
-            Invite friends to P3 Securities. For every Tier 1 verified user you refer, your Reputation Score increases by <strong className="text-[#00e599]">+5 points</strong>.
+            Invite friends to P3 Securities. When they create a <strong>new account</strong> and add at least <strong>$100</strong> to their dashboard, your Reputation Score increases by <strong className="text-[#00e599]">+5 points</strong>.
           </p>
 
           <div className="bg-black border border-zinc-800 rounded-xl p-4 mb-6 flex items-center justify-between group cursor-pointer" onClick={handleCopy}>
-             <div className="text-left">
+             <div className="text-left overflow-hidden">
                <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Your Referral Link</div>
-               <div className="text-white font-mono text-sm truncate max-w-[200px]">p3securities.com/join/{referralCode}</div>
+               <div className="text-white font-mono text-sm truncate w-full">{referralLink}</div>
              </div>
-             <div className="text-zinc-500 group-hover:text-white transition-colors">
+             <div className="text-zinc-500 group-hover:text-white transition-colors pl-2">
                 {copied ? (
                   <span className="text-[#00e599] font-bold text-xs flex items-center gap-1">
                     ✓ Copied
@@ -71,9 +75,15 @@ export const ReferralModal: React.FC<Props> = ({ isOpen, onClose, referralCode }
 
           <div className="flex gap-3">
             <Button className="w-full" onClick={handleCopy}>Copy Link</Button>
-            <Button variant="secondary" className="w-full" onClick={() => window.open(`https://twitter.com/intent/tweet?text=I'm building my financial reputation on @P3Securities. Join me and ditch the FICO score: p3securities.com/join/${referralCode}`, '_blank')}>
+            <Button variant="secondary" className="w-full" onClick={() => window.open(`https://twitter.com/intent/tweet?text=I'm building my financial reputation on @P3Securities. Join me and ditch the FICO score: ${referralLink}`, '_blank')}>
               Share on X
             </Button>
+          </div>
+          
+          <div className="mt-6 border-t border-zinc-800 pt-4">
+             <button onClick={onOpenTerms} className="text-[10px] text-zinc-500 hover:text-white underline">
+               Terms and Conditions of Referrals
+             </button>
           </div>
         </div>
       </div>

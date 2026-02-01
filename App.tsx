@@ -22,6 +22,8 @@ import { LandingPage } from './components/LandingPage';
 import { ReferralModal } from './components/ReferralModal';
 import { AdminDashboard } from './components/AdminDashboard';
 import { AdminLoginModal } from './components/AdminLoginModal';
+import { Footer } from './components/Footer';
+import { KnowledgeBase } from './components/KnowledgeBase';
 
 // Mock Charities
 const MOCK_CHARITIES: Charity[] = [
@@ -62,7 +64,7 @@ const App: React.FC = () => {
   const [pendingAdminEmail, setPendingAdminEmail] = useState('');
   
   const [charities, setCharities] = useState<Charity[]>(MOCK_CHARITIES);
-  const [activeView, setActiveView] = useState<'borrow' | 'lend' | 'mentorship' | 'profile'>('borrow');
+  const [activeView, setActiveView] = useState<'borrow' | 'lend' | 'mentorship' | 'profile' | 'knowledge_base'>('borrow');
   
   const [myRequests, setMyRequests] = useState<LoanRequest[]>([]);
   const [myOffers, setMyOffers] = useState<LoanOffer[]>([]);
@@ -121,8 +123,16 @@ const App: React.FC = () => {
     // NORMAL USER FLOW
     setIsAuthenticated(true);
     setShowLanding(false);
-    const p3User = PersistenceService.loadUser(netlifyUser);
+    
+    // Check for pending referral in LocalStorage
+    const pendingRef = localStorage.getItem('p3_pending_ref');
+    
+    const p3User = PersistenceService.loadUser(netlifyUser, pendingRef);
     setUser(p3User);
+    
+    // Clear the pending ref so it doesn't apply to subsequent logins
+    localStorage.removeItem('p3_pending_ref');
+
     setMyRequests(PersistenceService.getMyRequests(p3User.id));
     setMyOffers(PersistenceService.getMyOffers(p3User.id)); 
     AuthService.close(); 
@@ -160,6 +170,15 @@ const App: React.FC = () => {
     // Force initialization of employee data (injector logic)
     PersistenceService.getEmployees();
     
+    // Check URL for referral codes
+    const params = new URLSearchParams(window.location.search);
+    const refCode = params.get('ref');
+    if (refCode) {
+      localStorage.setItem('p3_pending_ref', refCode);
+      // Optional: Clear URL for cleaner UX, but standard practice varies.
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     if (window.location.hash.includes('confirmation_token')) {
       setIsVerifyingEmail(true);
     }
@@ -306,6 +325,14 @@ const App: React.FC = () => {
       return finalUser;
     });
     setIsAnalyzing(false);
+  };
+
+  // Special handler for simulated deposits
+  const handleDeposit = (amount: number) => {
+    if (!user) return;
+    const updatedUser = PersistenceService.processDeposit(user, amount);
+    setUser(updatedUser);
+    alert(`Successfully deposited $${amount}. New Balance: $${updatedUser.balance}`);
   };
 
   const handleKYCUpgrade = (newTier: KYCTier, limit: number) => {
@@ -479,7 +506,20 @@ const App: React.FC = () => {
 
   // Show Landing Page
   if (!isAuthenticated && showLanding && !showCertUpload) {
-    return <LandingPage onLaunch={() => setShowLanding(false)} onDevAdminLogin={handleMockAdminLogin} />;
+    if (activeView === 'knowledge_base') {
+       return <KnowledgeBase onBack={() => setActiveView('borrow')} onOpenLegal={(type) => setActiveLegalDoc(type)} />;
+    }
+    return (
+      <>
+        <LegalModal type={activeLegalDoc} onClose={() => setActiveLegalDoc(null)} />
+        <LandingPage 
+          onLaunch={() => setShowLanding(false)} 
+          onDevAdminLogin={handleMockAdminLogin} 
+          onOpenDocs={() => setActiveView('knowledge_base')}
+          onOpenLegal={(type) => setActiveLegalDoc(type)}
+        />
+      </>
+    );
   }
 
   // Handle Certificate Upload Interruption
@@ -545,6 +585,16 @@ const App: React.FC = () => {
     return <AdminDashboard currentAdmin={adminUser} onLogout={() => { setAdminUser(null); setIsAuthenticated(false); setShowLanding(true); }} />;
   }
 
+  // ROUTING: Knowledge Base View
+  if (activeView === 'knowledge_base') {
+    return (
+      <>
+        <LegalModal type={activeLegalDoc} onClose={() => setActiveLegalDoc(null)} />
+        <KnowledgeBase onBack={() => setActiveView('borrow')} onOpenLegal={(type) => setActiveLegalDoc(type)} />
+      </>
+    );
+  }
+
   // ROUTING: Show User Dashboard if normal user
   if (user) {
     const NavItem = ({ view, label, icon }: { view: typeof activeView, label: string, icon: React.ReactNode }) => (
@@ -568,7 +618,7 @@ const App: React.FC = () => {
         {showRiskModal && <RiskDashboard report={riskReport} isLoading={isRiskLoading} onRefresh={refreshRiskAnalysis} onClose={() => setShowRiskModal(false)} />}
         <WalletConnectModal isOpen={showWalletModal} onClose={() => setShowWalletModal(false)} onConnect={(info) => setWallet(info)} />
         <LegalModal type={activeLegalDoc} onClose={() => setActiveLegalDoc(null)} />
-        <ReferralModal isOpen={showReferralModal} onClose={() => setShowReferralModal(false)} referralCode={user.id.substring(0,6).toUpperCase()} />
+        <ReferralModal isOpen={showReferralModal} onClose={() => setShowReferralModal(false)} referralCode={user.id} onOpenTerms={() => setActiveLegalDoc('REFERRAL_TERMS' as LegalDocType)} />
 
         <aside className="w-64 bg-[#0a0a0a] border-r border-zinc-900 flex flex-col z-50">
           <div className="p-6">
@@ -589,6 +639,11 @@ const App: React.FC = () => {
               view="mentorship" 
               label="Mentorship" 
               icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>} 
+            />
+            <NavItem 
+              view="knowledge_base" 
+              label="Knowledge Base" 
+              icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>} 
             />
             <NavItem 
               view="profile" 
@@ -628,7 +683,7 @@ const App: React.FC = () => {
           <header className="h-16 border-b border-zinc-800/50 backdrop-blur-sm flex items-center justify-between px-8 z-10 bg-[#050505]/80">
              <div className="flex items-center gap-4">
                 <h1 className="text-xl font-bold text-white tracking-tight">
-                  {activeView === 'borrow' ? 'My Dashboard' : activeView === 'lend' ? 'Lending Marketplace' : activeView === 'mentorship' ? 'Mentorship Hub' : 'Profile Settings'}
+                  {activeView === 'borrow' ? 'My Dashboard' : activeView === 'lend' ? 'Lending Marketplace' : activeView === 'mentorship' ? 'Mentorship Hub' : activeView === 'knowledge_base' ? 'Knowledge Base' : 'Profile Settings'}
                 </h1>
              </div>
              <div className="flex items-center gap-4">
@@ -666,8 +721,8 @@ const App: React.FC = () => {
 
           <NewsTicker />
 
-          <div className="flex-1 overflow-y-auto p-8 relative z-0 custom-scrollbar flex flex-col">
-             <div className="flex-1">
+          <div className="flex-1 overflow-y-auto relative z-0 custom-scrollbar flex flex-col">
+             <div className="flex-1 p-8">
                {activeView === 'borrow' && (
                  <div className="max-w-6xl mx-auto animate-fade-in space-y-8">
                     <UserProfileCard 
@@ -784,47 +839,16 @@ const App: React.FC = () => {
                )}
 
                {activeView === 'profile' && (
-                 <ProfileSettings user={user} onSave={handleProfileUpdate} />
+                 <ProfileSettings user={user} onSave={handleProfileUpdate} onDeposit={handleDeposit} />
                )}
+
+                {activeView === 'knowledge_base' && (
+                  <KnowledgeBase onBack={() => setActiveView('borrow')} onOpenLegal={(type) => setActiveLegalDoc(type)} />
+                )}
              </div>
 
-             {/* Legal & Compliance Footer - Global Scope for Dashboard */}
-             <div className="max-w-6xl mx-auto w-full mt-12 pt-8 pb-4 border-t border-zinc-900 text-center md:text-left">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                   <div className="col-span-1 md:col-span-2">
-                      <div className="flex items-center gap-2 mb-4">
-                         <span className="font-bold text-white tracking-tighter text-lg">P<span className="text-[#00e599]">3</span></span>
-                         <span className="text-xs text-zinc-500 uppercase tracking-widest">Compliance</span>
-                      </div>
-                      <p className="text-[10px] text-zinc-500 leading-relaxed max-w-md">
-                        P3 Securities is a decentralized technology platform, not a bank or depository institution. 
-                        Loans are not FDIC insured. Crypto assets are highly volatile. 
-                        Participation involves significant risk, including potential loss of principal.
-                      </p>
-                   </div>
-                   <div>
-                      <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-3">Legal</h4>
-                      <ul className="space-y-2 text-[10px] text-zinc-500">
-                         <li><button onClick={() => setActiveLegalDoc('TERMS')} className="hover:text-[#00e599]">Terms of Service</button></li>
-                         <li><button onClick={() => setActiveLegalDoc('PRIVACY')} className="hover:text-[#00e599]">Privacy Policy</button></li>
-                         <li><button onClick={() => setActiveLegalDoc('ESIGN')} className="hover:text-[#00e599]">E-Sign Consent</button></li>
-                         <li><button onClick={() => setActiveLegalDoc('DISCLOSURES')} className="hover:text-[#00e599]">State Disclosures</button></li>
-                      </ul>
-                   </div>
-                   <div>
-                      <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-3">Resources</h4>
-                      <ul className="space-y-2 text-[10px] text-zinc-500">
-                         <li><button onClick={() => setActiveLegalDoc('ECOA')} className="hover:text-[#00e599]">Fair Lending (ECOA)</button></li>
-                         <li><button onClick={() => setActiveLegalDoc('SECURITY')} className="hover:text-[#00e599]">Responsible Security</button></li>
-                         <li><button onClick={() => setActiveLegalDoc('SUPPORT')} className="hover:text-[#00e599]">Support & Safety</button></li>
-                      </ul>
-                   </div>
-                </div>
-                <div className="mt-8 pt-4 border-t border-zinc-900 text-[10px] text-zinc-600 flex justify-between items-center">
-                   <span>© 2024 P3 Securities. All rights reserved.</span>
-                   <span>NMLS ID: 123456 (Pending)</span>
-                </div>
-             </div>
+             {/* Shared Footer (except for KB which has its own layout) */}
+             {activeView !== 'knowledge_base' && <Footer onOpenLegal={(type) => setActiveLegalDoc(type)} />}
           </div>
         </main>
       </div>

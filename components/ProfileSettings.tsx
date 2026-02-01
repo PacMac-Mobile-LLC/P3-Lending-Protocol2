@@ -5,11 +5,13 @@ import { Button } from './Button';
 interface Props {
   user: UserProfile;
   onSave: (updatedUser: UserProfile) => void;
+  onDeposit: (amount: number) => void;
 }
 
-export const ProfileSettings: React.FC<Props> = ({ user, onSave }) => {
+export const ProfileSettings: React.FC<Props> = ({ user, onSave, onDeposit }) => {
   const [formData, setFormData] = useState(user);
   const [isSaving, setIsSaving] = useState(false);
+  const [depositAmount, setDepositAmount] = useState(100);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleChange = (field: keyof UserProfile, value: any) => {
@@ -87,6 +89,32 @@ export const ProfileSettings: React.FC<Props> = ({ user, onSave }) => {
                )}
             </div>
           </div>
+        </div>
+
+        {/* Deposit Funds Section (For Testing Referrals) */}
+        <div className="glass-panel p-8 rounded-2xl space-y-6 border border-zinc-800/50">
+           <div className="flex justify-between items-center border-b border-zinc-800 pb-4 mb-6">
+             <h3 className="text-lg font-bold text-white">Wallet & Funds</h3>
+             <span className="text-sm text-[#00e599] font-mono">Current Balance: ${formData.balance}</span>
+           </div>
+           
+           <div className="bg-zinc-900/50 p-4 rounded-xl border border-zinc-800">
+             <label className="block text-xs text-zinc-500 uppercase tracking-wider font-bold mb-2">Simulate Deposit ($)</label>
+             <div className="flex gap-4">
+               <input 
+                 type="number" 
+                 value={depositAmount}
+                 onChange={(e) => setDepositAmount(Number(e.target.value))}
+                 className="flex-1 bg-black border border-zinc-800 rounded-xl p-3 text-white focus:border-[#00e599] outline-none transition-colors"
+               />
+               <Button type="button" variant="primary" onClick={() => onDeposit(depositAmount)}>
+                 Add Funds
+               </Button>
+             </div>
+             <p className="text-[10px] text-zinc-500 mt-2">
+               *Adding $100+ will trigger a "Qualified Referral" event if you were invited.
+             </p>
+           </div>
         </div>
 
         {/* Details Section */}

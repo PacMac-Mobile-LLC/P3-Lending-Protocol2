@@ -1,4 +1,4 @@
-import { UserProfile, LoanRequest, LoanOffer, LoanType, KYCTier, KYCStatus, EmployeeProfile } from '../types';
+import { UserProfile, LoanRequest, LoanOffer, LoanType, KYCTier, KYCStatus, EmployeeProfile, ReferralData } from '../types';
 import { SecurityService } from './security';
 
 // We now generate keys dynamically based on the User ID
@@ -15,7 +15,7 @@ const INITIAL_USER_TEMPLATE: UserProfile = {
   id: 'guest',
   name: 'Guest User',
   income: 65000,
-  balance: 12450.75,
+  balance: 0,
   avatarUrl: undefined,
   employmentStatus: 'Software Engineer',
   financialHistory: 'Paid off student loans in 2022. currently have a car lease.',
@@ -29,7 +29,8 @@ const INITIAL_USER_TEMPLATE: UserProfile = {
   kycLimit: 0,
   mentorshipsCount: 0,
   walletAgeDays: 120, 
-  txCount: 45
+  txCount: 45,
+  referrals: []
 };
 
 // Only the Super Admin initially
@@ -48,7 +49,7 @@ const SUPER_ADMIN: EmployeeProfile = {
 
 export const PersistenceService = {
   // --- User Profile ---
-  loadUser: (netlifyUser: any): UserProfile => {
+  loadUser: (netlifyUser: any, pendingReferralCode?: string | null): UserProfile => {
     try {
       if (!netlifyUser) return INITIAL_USER_TEMPLATE;
 
@@ -67,12 +68,51 @@ export const PersistenceService = {
           // Reset reputation for new users
           reputationScore: 50, 
         };
+
+        // Handle Referral Logic for NEW users only
+        if (pendingReferralCode) {
+           // We expect referral code to be the User ID of the referrer
+           // Prevent self-referral
+           if (pendingReferralCode !== newUser.id) {
+             PersistenceService.registerReferral(pendingReferralCode, newUser.id);
+             newUser.referredBy = pendingReferralCode;
+           }
+        }
+
         PersistenceService.saveUser(newUser);
         return newUser;
       }
     } catch (e) {
       console.error("Failed to load user", e);
       return INITIAL_USER_TEMPLATE;
+    }
+  },
+
+  registerReferral: (referrerId: string, newUserId: string) => {
+    try {
+      // Load the Referrer
+      const referrerKeys = getKeys(referrerId);
+      const referrerData = localStorage.getItem(referrerKeys.USER);
+      
+      if (referrerData) {
+        const referrerProfile: UserProfile = JSON.parse(referrerData);
+        
+        // Add pending referral
+        const newReferral: ReferralData = {
+          userId: newUserId,
+          date: new Date().toISOString(),
+          status: 'PENDING',
+          earnings: 0
+        };
+
+        // Avoid duplicates
+        if (!referrerProfile.referrals.some(r => r.userId === newUserId)) {
+          referrerProfile.referrals.push(newReferral);
+          localStorage.setItem(referrerKeys.USER, JSON.stringify(referrerProfile));
+        }
+      }
+    } catch (e) {
+      console.error("Failed to register referral", e);
     }
   },
 
@@ -83,6 +123,50 @@ export const PersistenceService = {
     } catch (e) {
       console.error("Failed to save user (likely QuotaExceeded for image)", e);
       alert("Storage limit reached. Try using a smaller profile image.");
+    }
+  },
+
+  // --- Financial Actions ---
+  processDeposit: (user: UserProfile, amount: number): UserProfile => {
+    const updatedUser = { ...user, balance: user.balance + amount };
+    PersistenceService.saveUser(updatedUser);
+
+    // CHECK REFERRAL CONVERSION
+    // If balance >= 100 and they were referred by someone, trigger reward
+    if (updatedUser.balance >= 100 && updatedUser.referredBy) {
+      PersistenceService.completeReferral(updatedUser.referredBy, updatedUser.id);
+    }
+
+    return updatedUser;
+  },
+
+  completeReferral: (referrerId: string, refereeId: string) => {
+    try {
+      const keys = getKeys(referrerId);
+      const data = localStorage.getItem(keys.USER);
+      if (data) {
+        const referrer: UserProfile = JSON.parse(data);
+        const referralIndex = referrer.referrals.findIndex(r => r.userId === refereeId);
+        
+        if (referralIndex !== -1 && referrer.referrals[referralIndex].status === 'PENDING') {
+          // Update Status
+          referrer.referrals[referralIndex].status = 'COMPLETED';
+          referrer.referrals[referralIndex].earnings = 5; // +5 Reputation Points
+          
+          // Apply Reward
+          referrer.reputationScore = Math.min(100, referrer.reputationScore + 5);
+          referrer.badges.push('Community Builder');
+          
+          // Dedupe badges
+          referrer.badges = [...new Set(referrer.badges)];
+
+          localStorage.setItem(keys.USER, JSON.stringify(referrer));
+          
+          // Optional: Notify the user in the UI somehow (omitted for brevity, handled by reactive state updates if online)
+        }
+      }
+    } catch (e) {
+      console.error("Failed to complete referral reward", e);
     }
   },
 

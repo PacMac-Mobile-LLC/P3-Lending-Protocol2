@@ -2,13 +2,17 @@ import React from 'react';
 import { Logo } from './Logo';
 import { Button } from './Button';
 import { ScoreGauge } from './ScoreGauge';
+import { Footer } from './Footer';
+import { LegalDocType } from './LegalModal';
 
 interface Props {
   onLaunch: () => void;
   onDevAdminLogin: () => void;
+  onOpenDocs: () => void;
+  onOpenLegal: (type: LegalDocType) => void;
 }
 
-export const LandingPage: React.FC<Props> = ({ onLaunch, onDevAdminLogin }) => {
+export const LandingPage: React.FC<Props> = ({ onLaunch, onDevAdminLogin, onOpenDocs, onOpenLegal }) => {
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
     if (element) {
@@ -17,18 +21,18 @@ export const LandingPage: React.FC<Props> = ({ onLaunch, onDevAdminLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white overflow-x-hidden relative font-sans selection:bg-[#00e599] selection:text-black">
+    <div className="min-h-screen bg-[#050505] text-white overflow-x-hidden relative font-sans selection:bg-[#00e599] selection:text-black flex flex-col">
       {/* Background Effects */}
       <div className="absolute top-0 left-0 w-full h-full bg-grid-pattern opacity-20 pointer-events-none"></div>
       <div className="absolute top-[-10%] right-[-10%] w-[800px] h-[800px] bg-[#00e599]/10 rounded-full blur-[120px] pointer-events-none"></div>
       
       {/* Navbar */}
-      <nav className="relative z-50 flex items-center justify-between px-6 py-6 max-w-7xl mx-auto">
+      <nav className="relative z-50 flex items-center justify-between px-6 py-6 max-w-7xl mx-auto w-full">
         <Logo />
         <div className="flex items-center gap-6">
           <button onClick={() => scrollToSection('borrowers')} className="hidden md:block text-sm font-medium text-zinc-400 hover:text-white transition-colors">For Borrowers</button>
           <button onClick={() => scrollToSection('lenders')} className="hidden md:block text-sm font-medium text-zinc-400 hover:text-white transition-colors">For Lenders</button>
-          <button onClick={() => scrollToSection('compliance')} className="hidden md:block text-sm font-medium text-zinc-400 hover:text-white transition-colors">Compliance</button>
+          <button onClick={onOpenDocs} className="hidden md:block text-sm font-medium text-zinc-400 hover:text-white transition-colors">Docs & Support</button>
           
           <div className="flex items-center gap-2">
             <button 
@@ -45,7 +49,7 @@ export const LandingPage: React.FC<Props> = ({ onLaunch, onDevAdminLogin }) => {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative z-10 pt-20 pb-32 px-6">
+      <section className="relative z-10 pt-20 pb-32 px-6 flex-1">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           
           <div className="space-y-8 animate-fade-in">
@@ -170,30 +174,42 @@ export const LandingPage: React.FC<Props> = ({ onLaunch, onDevAdminLogin }) => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div id="borrowers" className="p-8 rounded-3xl bg-black border border-zinc-800 hover:border-[#00e599] transition-colors group">
-              <div className="w-14 h-14 rounded-2xl bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-[#00e599] transition-colors">
-                <span className="text-2xl group-hover:text-black">⚖️</span>
+            <div id="borrowers" className="p-8 rounded-3xl bg-black border border-zinc-800 hover:border-[#00e599] transition-colors group relative overflow-hidden">
+              <div className="absolute inset-0 bg-grid-pattern opacity-5 group-hover:opacity-10 transition-opacity"></div>
+              <div className="w-14 h-14 rounded-2xl bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-[#00e599] transition-colors relative z-10">
+                {/* Fair Lending Icon */}
+                <svg className="w-7 h-7 text-white group-hover:text-black transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                </svg>
               </div>
-              <h3 className="text-xl font-bold text-white mb-3">Fair Lending (ECOA)</h3>
-              <p className="text-zinc-400 text-sm leading-relaxed">
+              <h3 className="text-xl font-bold text-white mb-3 relative z-10">Fair Lending (ECOA)</h3>
+              <p className="text-zinc-400 text-sm leading-relaxed relative z-10">
                 Our "Blind AI" algorithms are audited to remove bias. We don't care about your zip code or background—only your actions.
               </p>
             </div>
-            <div id="lenders" className="p-8 rounded-3xl bg-black border border-zinc-800 hover:border-[#00e599] transition-colors group">
-              <div className="w-14 h-14 rounded-2xl bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-[#00e599] transition-colors">
-                <span className="text-2xl group-hover:text-black">🚀</span>
+            <div id="lenders" className="p-8 rounded-3xl bg-black border border-zinc-800 hover:border-[#00e599] transition-colors group relative overflow-hidden">
+               <div className="absolute inset-0 bg-grid-pattern opacity-5 group-hover:opacity-10 transition-opacity"></div>
+              <div className="w-14 h-14 rounded-2xl bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-[#00e599] transition-colors relative z-10">
+                {/* Impact Yield Icon */}
+                <svg className="w-7 h-7 text-white group-hover:text-black transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
               </div>
-              <h3 className="text-xl font-bold text-white mb-3">Impact Yield</h3>
-              <p className="text-zinc-400 text-sm leading-relaxed">
+              <h3 className="text-xl font-bold text-white mb-3 relative z-10">Impact Yield</h3>
+              <p className="text-zinc-400 text-sm leading-relaxed relative z-10">
                 Lenders earn competitive APY while sponsoring "Fresh Start" microloans. It's profit with a purpose.
               </p>
             </div>
-            <div id="compliance" className="p-8 rounded-3xl bg-black border border-zinc-800 hover:border-[#00e599] transition-colors group">
-              <div className="w-14 h-14 rounded-2xl bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-[#00e599] transition-colors">
-                <span className="text-2xl group-hover:text-black">🔒</span>
+            <div id="compliance" className="p-8 rounded-3xl bg-black border border-zinc-800 hover:border-[#00e599] transition-colors group relative overflow-hidden">
+               <div className="absolute inset-0 bg-grid-pattern opacity-5 group-hover:opacity-10 transition-opacity"></div>
+              <div className="w-14 h-14 rounded-2xl bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-[#00e599] transition-colors relative z-10">
+                {/* Secure Icon */}
+                <svg className="w-7 h-7 text-white group-hover:text-black transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
               </div>
-              <h3 className="text-xl font-bold text-white mb-3">Secure & Compliant</h3>
-              <p className="text-zinc-400 text-sm leading-relaxed">
+              <h3 className="text-xl font-bold text-white mb-3 relative z-10">Secure & Compliant</h3>
+              <p className="text-zinc-400 text-sm leading-relaxed relative z-10">
                 Built on audited smart contracts. We are pursuing full NMLS licensing and adhere to BSA/AML regulations.
               </p>
             </div>
@@ -201,10 +217,7 @@ export const LandingPage: React.FC<Props> = ({ onLaunch, onDevAdminLogin }) => {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-12 border-t border-zinc-900 text-center">
-        <p className="text-zinc-600 text-sm">© 2024 P3 Securities. All rights reserved.</p>
-      </footer>
+      <Footer onOpenLegal={onOpenLegal} />
     </div>
   );
 };

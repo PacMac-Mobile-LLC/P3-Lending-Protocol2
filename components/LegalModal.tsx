@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type LegalDocType = 'TERMS' | 'PRIVACY' | 'ESIGN' | 'DISCLOSURES' | 'ECOA' | 'SECURITY' | 'SUPPORT';
+export type LegalDocType = 'TERMS' | 'PRIVACY' | 'ESIGN' | 'DISCLOSURES' | 'ECOA' | 'SECURITY' | 'SUPPORT' | 'REFERRAL_TERMS';
 
 interface Props {
   type: LegalDocType | null;
@@ -101,6 +101,20 @@ export const LegalModal: React.FC<Props> = ({ type, onClose }) => {
               <p><strong>Contact Us.</strong> For general support, please email support@p3securities.com or join our Discord community.</p>
               <p><strong>Reporting Fraud.</strong> If you suspect a user is engaging in fraud or money laundering, please report them immediately using the "Report" button on their profile or via our support channel.</p>
               <p><strong>Safety Tips.</strong> Never lend more than you can afford to lose. Verify the borrower's reputation score and history before funding a loan.</p>
+            </div>
+          )
+        };
+      case 'REFERRAL_TERMS':
+        return {
+          title: 'Referral Program Terms',
+          lastUpdated: 'February 1, 2024',
+          content: (
+            <div className="space-y-4 text-zinc-300 text-sm leading-relaxed">
+              <p><strong>1. Eligibility.</strong> You must be an active, verified user (Tier 1 KYC or higher) to earn referral rewards.</p>
+              <p><strong>2. Qualified Referral.</strong> A "Qualified Referral" occurs when a person (the "Referee") arrives at the Platform via your unique Referral Link, creates a new account, and deposits at least $100.00 USD equivalent in cryptocurrency into their dashboard balance.</p>
+              <p><strong>3. No Self-Referrals.</strong> You may not refer yourself. Creating multiple accounts to earn rewards is a violation of these terms and will result in a permanent ban and forfeiture of all points.</p>
+              <p><strong>4. Reward Payout.</strong> Rewards are paid in Reputation Score points (+5 per referral). There is no cash alternative.</p>
+              <p><strong>5. Modifications.</strong> P3 Securities reserves the right to modify, suspend, or terminate the referral program at any time without notice.</p>
             </div>
           )
         };

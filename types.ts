@@ -31,6 +31,13 @@ export interface Charity {
   color: string;
 }
 
+export interface ReferralData {
+  userId: string;
+  date: string;
+  status: 'PENDING' | 'COMPLETED'; // PENDING = Signed up, COMPLETED = Added > $100
+  earnings: number;
+}
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -55,6 +62,10 @@ export interface UserProfile {
   // Mentorship Stats
   mentorshipsCount?: number;
   totalSponsored?: number;
+  
+  // Referral System
+  referredBy?: string; // ID of the user who referred this profile
+  referrals: ReferralData[]; // List of people I have referred
   
   // Blockchain Data (Simulated for Risk Engine)
   walletAgeDays?: number;
