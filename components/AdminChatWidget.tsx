@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { EmployeeProfile, ChatMessage, AdminRole } from '../types';
+import { EmployeeProfile, ChatMessage } from '../types';
 import { PersistenceService } from '../services/persistence';
 import { Button } from './Button';
+import { supabase } from '../supabaseClient';
 
 interface Props {
   currentUser: EmployeeProfile;
@@ -14,98 +15,49 @@ export const AdminChatWidget: React.FC<Props> = ({ currentUser, isOpen, onClose 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [activeView, setActiveView] = useState<'CHAT' | 'MEMBERS'>('CHAT');
-  const lastMessageIdRef = useRef<string | null>(null);
   const [replyToThread, setReplyToThread] = useState<string | null>(null);
 
-  // Play a simple system beep context
-  const playSound = (type: 'SEND' | 'RECEIVE') => {
-    try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      
-      if (type === 'SEND') {
-        osc.frequency.value = 800;
-        gain.gain.setValueAtTime(0.1, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.1);
-      } else {
-        osc.frequency.value = 1200; // Higher pitch for receive
-        gain.gain.setValueAtTime(0.1, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.2);
-      }
-    } catch (e) {
-      console.error("Audio Context Error", e);
-    }
-  };
-
-  const triggerNotification = (msg: ChatMessage) => {
-    if (Notification.permission === 'granted') {
-      new Notification(`New Message from ${msg.senderName}`, {
-        body: msg.message,
-        icon: '/logo.svg'
-      });
-    }
-  };
-
-  useEffect(() => {
-    // Request Notification Permission
-    if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-      Notification.requestPermission();
-    }
-  }, []);
-
-  // Load data and setup polling
+  // Initial Load
   useEffect(() => {
     if (!isOpen) return;
+    
+    const loadData = async () => {
+      const emps = await PersistenceService.getEmployees();
+      setEmployees(emps);
+      const msgs = await PersistenceService.getChatHistory();
+      setMessages(msgs);
+    };
+    loadData();
 
-    // Initial load
-    setEmployees(PersistenceService.getEmployees());
-    const history = PersistenceService.getChatHistory();
-    setMessages(history);
-    if (history.length > 0) lastMessageIdRef.current = history[history.length - 1].id;
-
-    // Polling for live updates
-    const interval = setInterval(() => {
-      const freshHistory = PersistenceService.getChatHistory();
-      setMessages(freshHistory);
-      
-      const latest = freshHistory[freshHistory.length - 1];
-      if (latest && latest.id !== lastMessageIdRef.current) {
-        lastMessageIdRef.current = latest.id;
+    // SUPABASE REALTIME SUBSCRIPTION
+    const channel = supabase
+      .channel('public:chats')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chats' }, (payload) => {
+        const newMsg = payload.new.data as ChatMessage;
+        setMessages(prev => [...prev, newMsg]);
         
-        // Check if it's someone else's message
-        if (latest.senderId !== currentUser.id) {
-          playSound('RECEIVE');
-          
-          // Check for @mention or Support Request
-          if (latest.type === 'CUSTOMER_SUPPORT' || latest.message.includes(`@${currentUser.name}`)) {
-            triggerNotification(latest);
-          }
+        // Notification logic
+        if (newMsg.senderId !== currentUser.id) {
+           new Audio('data:audio/wav;base64,UklGRl9vT1NEXzIAAAAAExAAAAAAZ4AAAAAAAAAAAAAA...').play().catch(() => {}); // Short beep
+           if (Notification.permission === 'granted' && (newMsg.type === 'CUSTOMER_SUPPORT' || newMsg.message.includes(`@${currentUser.name}`))) {
+             new Notification(`New Message: ${newMsg.senderName}`, { body: newMsg.message });
+           }
         }
-      }
-      
-      setEmployees(PersistenceService.getEmployees()); 
-    }, 2000);
+      })
+      .subscribe();
 
-    return () => clearInterval(interval);
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [isOpen, currentUser]);
 
-  // Auto-scroll to bottom
   useEffect(() => {
-    if (activeView === 'CHAT') {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, activeView, isOpen]);
+  }, [messages, isOpen]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
 
@@ -116,22 +68,13 @@ export const AdminChatWidget: React.FC<Props> = ({ currentUser, isOpen, onClose 
       role: currentUser.role,
       message: newMessage,
       timestamp: Date.now(),
-      // If we are replying to a customer thread, use that type, otherwise internal
-      type: replyToThread ? 'CUSTOMER_SUPPORT' : 'INTERNAL', 
+      type: replyToThread ? 'CUSTOMER_SUPPORT' : 'INTERNAL',
       threadId: replyToThread || undefined
     };
 
-    PersistenceService.addChatMessage(msg);
-    setMessages(prev => [...prev, msg]);
+    await PersistenceService.addChatMessage(msg);
+    // Realtime subscription will add it to the list
     setNewMessage('');
-    // Don't clear replyToThread immediately so they can keep chatting? 
-    // For now, let's keep it sticky until they click "X"
-    playSound('SEND');
-  };
-
-  const insertTag = (name: string) => {
-    setNewMessage(prev => `${prev}@${name} `);
-    setActiveView('CHAT'); // Switch back to chat to type
   };
 
   const handleReplyToCustomer = (threadId: string | undefined, customerName: string) => {
@@ -150,127 +93,56 @@ export const AdminChatWidget: React.FC<Props> = ({ currentUser, isOpen, onClose 
              <div className="w-2.5 h-2.5 bg-[#00e599] rounded-full animate-pulse shadow-[0_0_5px_#00e599]"></div>
              <div>
                <h3 className="font-bold text-white text-sm">Unified Command</h3>
-               <p className="text-[9px] text-zinc-500">Internal & Support Streams</p>
+               <p className="text-[9px] text-zinc-500">Live Stream</p>
              </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={() => setActiveView(activeView === 'CHAT' ? 'MEMBERS' : 'CHAT')}
-              className={`p-2 rounded hover:bg-zinc-800 transition-colors ${activeView === 'MEMBERS' ? 'text-[#00e599]' : 'text-zinc-500'}`}
-              title="Team Members"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-            </button>
-            <button onClick={onClose} className="p-2 text-zinc-500 hover:text-white rounded hover:bg-zinc-800">
-               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
-          </div>
+          <button onClick={onClose} className="text-zinc-500 hover:text-white">
+             ✕
+          </button>
        </div>
 
-       {/* Content */}
-       <div className="flex-1 overflow-hidden relative">
-          
-          {/* View: Chat Stream */}
-          {activeView === 'CHAT' && (
-            <div className="h-full flex flex-col">
-               <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-                  {messages.map((msg, idx) => {
-                    const isMe = msg.senderId === currentUser.id;
-                    const isCustomer = msg.role === 'CUSTOMER';
-                    const isSupportThread = msg.type === 'CUSTOMER_SUPPORT';
-                    const showHeader = idx === 0 || messages[idx-1].senderId !== msg.senderId || (msg.timestamp - messages[idx-1].timestamp > 60000);
-                    
-                    // Highlight logic for tags
-                    const parts = msg.message.split(/(@\w+\s?)/g);
-
-                    return (
-                      <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                         {showHeader && (
-                           <div className={`flex items-center gap-2 mb-1 ${isMe ? 'flex-row-reverse' : ''}`}>
-                              <span className="text-xs font-bold text-white">{msg.senderName}</span>
-                              {msg.role !== 'CUSTOMER' && (
-                                <span className={`text-[9px] px-1 rounded uppercase font-bold ${msg.role === 'ADMIN' ? 'bg-red-900/40 text-red-400' : 'bg-blue-900/40 text-blue-400'}`}>{msg.role.replace('_', ' ')}</span>
-                              )}
-                              {isCustomer && (
-                                <span className="text-[9px] px-1 rounded uppercase font-bold bg-orange-900/40 text-orange-400">CLIENT</span>
-                              )}
-                              <span className="text-[10px] text-zinc-600">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                           </div>
-                         )}
-                         <div 
-                           className={`px-3 py-2 rounded-lg text-sm max-w-[85%] break-words relative group cursor-pointer 
-                             ${isMe ? 'bg-[#00e599]/10 border border-[#00e599]/30 text-white rounded-tr-none' : 
-                               isSupportThread ? 'bg-orange-500/10 border border-orange-500/30 text-orange-100 rounded-tl-none' : 
-                               'bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-tl-none'}`}
-                           onClick={() => isSupportThread && !isMe && handleReplyToCustomer(msg.threadId, msg.senderName)}
-                           title={isSupportThread ? "Click to Reply to Customer Thread" : ""}
-                         >
-                           {parts.map((part, i) => (
-                             part.startsWith('@') 
-                               ? <span key={i} className={`${isSupportThread ? 'text-orange-400' : 'text-[#00e599]'} font-bold bg-black/30 px-1 rounded`}>{part}</span> 
-                               : <span key={i}>{part}</span>
-                           ))}
-                         </div>
-                      </div>
-                    );
-                  })}
-                  <div ref={messagesEndRef} />
-               </div>
-               
-               {/* Input Area */}
-               <div className="bg-zinc-900 border-t border-zinc-800">
-                 {replyToThread && (
-                   <div className="px-4 py-2 bg-orange-900/20 flex justify-between items-center text-xs text-orange-400 border-b border-orange-500/20">
-                     <span>Replying to Customer Thread...</span>
-                     <button onClick={() => { setReplyToThread(null); setNewMessage(''); }} className="hover:text-white">✕ Cancel</button>
-                   </div>
-                 )}
-                 <form onSubmit={handleSendMessage} className="p-4">
-                    <div className="flex gap-2">
-                       <input 
-                         type="text" 
-                         value={newMessage}
-                         onChange={e => setNewMessage(e.target.value)}
-                         placeholder={replyToThread ? "Reply to customer..." : "Message team... (@ to tag)"}
-                         className={`flex-1 bg-black border rounded-lg px-3 py-2 text-sm text-white outline-none transition-colors ${replyToThread ? 'border-orange-500/50 focus:border-orange-500' : 'border-zinc-700 focus:border-[#00e599]'}`}
-                       />
-                       <Button type="submit" size="sm" className={`px-3 ${replyToThread ? 'bg-orange-600 hover:bg-orange-500 border-none' : ''}`}>
-                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-                       </Button>
-                    </div>
-                 </form>
-               </div>
-            </div>
-          )}
-
-          {/* View: Members List */}
-          {activeView === 'MEMBERS' && (
-            <div className="h-full overflow-y-auto p-4 custom-scrollbar">
-               <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-4">Active Employees</h4>
-               <div className="space-y-3">
-                  {employees.map(emp => (
-                    <div key={emp.id} className="flex items-center gap-3 p-3 rounded-xl bg-zinc-900/50 border border-zinc-800 group hover:border-[#00e599]/50 transition-colors">
-                       <div className="relative">
-                          <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-zinc-400 border border-zinc-700">
-                            {emp.name.charAt(0)}
-                          </div>
-                          {(emp.isActive) && (
-                            <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-[#00e599] rounded-full border-2 border-[#0a0a0a]"></div>
-                          )}
-                       </div>
-                       <div className="flex-1 min-w-0">
-                          <div className="text-sm font-bold text-white truncate">{emp.name}</div>
-                          <div className="text-[10px] text-zinc-500 truncate">{emp.email}</div>
-                       </div>
-                       <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px] bg-zinc-800 hover:bg-[#00e599] hover:text-black" onClick={() => insertTag(emp.name)}>
-                         Tag
-                       </Button>
-                    </div>
-                  ))}
-               </div>
-            </div>
-          )}
-
+       {/* Chat List */}
+       <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+          {messages.map((msg, idx) => {
+            const isMe = msg.senderId === currentUser.id;
+            const isSupport = msg.type === 'CUSTOMER_SUPPORT';
+            
+            return (
+              <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                 <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-bold text-white">{msg.senderName}</span>
+                    {msg.role === 'CUSTOMER' && <span className="text-[9px] bg-orange-900 text-orange-400 px-1 rounded">CLIENT</span>}
+                 </div>
+                 <div 
+                   className={`px-3 py-2 rounded-lg text-sm max-w-[90%] cursor-pointer ${isMe ? 'bg-[#00e599]/10 text-white' : isSupport ? 'bg-orange-500/10 text-orange-100' : 'bg-zinc-800 text-zinc-300'}`}
+                   onClick={() => isSupport && !isMe && handleReplyToCustomer(msg.threadId, msg.senderName)}
+                 >
+                   {msg.message}
+                 </div>
+              </div>
+            );
+          })}
+          <div ref={messagesEndRef} />
+       </div>
+       
+       {/* Input */}
+       <div className="bg-zinc-900 border-t border-zinc-800 p-4">
+         {replyToThread && (
+           <div className="text-xs text-orange-400 mb-2 flex justify-between">
+             <span>Replying to Customer...</span>
+             <button onClick={() => setReplyToThread(null)}>Cancel</button>
+           </div>
+         )}
+         <form onSubmit={handleSendMessage} className="flex gap-2">
+            <input 
+              type="text" 
+              value={newMessage}
+              onChange={e => setNewMessage(e.target.value)}
+              placeholder="Message..."
+              className="flex-1 bg-black border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-[#00e599] outline-none"
+            />
+            <Button type="submit" size="sm">Send</Button>
+         </form>
        </div>
     </div>
   );

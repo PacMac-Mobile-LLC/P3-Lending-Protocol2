@@ -1,22 +1,7 @@
-import { UserProfile, LoanRequest, LoanOffer, LoanType, KYCTier, KYCStatus, EmployeeProfile, ReferralData, InternalTicket, ChatMessage, Dispute } from '../types';
-import { SecurityService } from './security';
+import { UserProfile, LoanRequest, LoanOffer, EmployeeProfile, ReferralData, InternalTicket, ChatMessage, Dispute, KYCTier, KYCStatus } from '../types';
+import { supabase } from '../supabaseClient';
 
-// Dynamic Keys based on User ID
-const getKeys = (userId: string) => ({
-  USER: `p3_user_${userId}`,
-});
-
-// Global "Database" Keys (Simulating Backend)
-const GLOBAL_KEYS = {
-  EMPLOYEES: 'p3_admin_employees',
-  TICKETS: 'p3_internal_tickets',
-  CHAT: 'p3_internal_chat_history',
-  REQUESTS: 'p3_global_requests',
-  OFFERS: 'p3_global_offers',
-  DISPUTES: 'p3_global_disputes'
-};
-
-// Fallback data if no local data exists
+// INITIAL TEMPLATE REMAINING FOR FALLBACK
 const INITIAL_USER_TEMPLATE: UserProfile = {
   id: 'guest',
   name: 'Guest User',
@@ -39,291 +24,249 @@ const INITIAL_USER_TEMPLATE: UserProfile = {
   referrals: []
 };
 
-// Root Admin - The only hardcoded seed allowed for system access
-const SUPER_ADMIN: EmployeeProfile = {
-  id: 'emp_super_admin',
-  name: 'System Root',
-  email: 'admin@p3lending.space',
-  role: 'ADMIN',
-  isActive: true,
-  passwordHash: 'admin123',
-  passwordLastSet: Date.now(),
-  previousPasswords: [],
-  certificateData: SecurityService.getMasterCertificate()
-};
-
+// NOTE: All methods are now ASYNC because they hit the database.
 export const PersistenceService = {
+  
   // --- User Profile ---
-  loadUser: (netlifyUser: any, pendingReferralCode?: string | null): UserProfile => {
-    try {
-      if (!netlifyUser) return INITIAL_USER_TEMPLATE;
+  
+  loadUser: async (netlifyUser: any, pendingReferralCode?: string | null): Promise<UserProfile> => {
+    if (!netlifyUser) return INITIAL_USER_TEMPLATE;
 
-      const keys = getKeys(netlifyUser.id);
-      const data = localStorage.getItem(keys.USER);
+    try {
+      // 1. Try to fetch existing user
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', netlifyUser.id)
+        .single();
 
       if (data) {
-        return JSON.parse(data);
+        // User exists, return parsed data
+        return { ...data.data, id: data.id, email: data.email }; // Flatten jsonb
       } else {
-        // Create new profile based on Netlify Data
+        // 2. Create New User
         const newUser: UserProfile = {
           ...INITIAL_USER_TEMPLATE,
           id: netlifyUser.id,
           name: netlifyUser.user_metadata?.full_name || netlifyUser.email.split('@')[0],
           avatarUrl: netlifyUser.user_metadata?.avatar_url || undefined,
-          reputationScore: 50, 
         };
 
-        // Handle Referral Logic
+        // Handle Referral
         if (pendingReferralCode && pendingReferralCode !== newUser.id) {
-             PersistenceService.registerReferral(pendingReferralCode, newUser.id);
-             newUser.referredBy = pendingReferralCode;
+           await PersistenceService.registerReferral(pendingReferralCode, newUser.id);
+           newUser.referredBy = pendingReferralCode;
         }
 
-        PersistenceService.saveUser(newUser);
+        // Insert into DB
+        await supabase.from('users').insert({
+          id: newUser.id,
+          email: netlifyUser.email,
+          data: newUser 
+        });
+
         return newUser;
       }
     } catch (e) {
-      console.error("Failed to load user", e);
+      console.error("DB Load Error", e);
       return INITIAL_USER_TEMPLATE;
     }
   },
 
-  registerReferral: (referrerId: string, newUserId: string) => {
-    try {
-      const referrerKeys = getKeys(referrerId);
-      const referrerData = localStorage.getItem(referrerKeys.USER);
+  saveUser: async (user: UserProfile) => {
+    // Separate ID from data blob to avoid duplication
+    const { id, ...userData } = user;
+    await supabase
+      .from('users')
+      .upsert({ id: id, data: user });
+  },
+
+  getAllUsers: async (): Promise<UserProfile[]> => {
+    const { data } = await supabase.from('users').select('*');
+    return data ? data.map((r: any) => r.data) : [];
+  },
+
+  registerReferral: async (referrerId: string, newUserId: string) => {
+    // Fetch Referrer
+    const { data } = await supabase.from('users').select('*').eq('id', referrerId).single();
+    if (data) {
+      const profile = data.data as UserProfile;
+      const newReferral: ReferralData = {
+        userId: newUserId,
+        date: new Date().toISOString(),
+        status: 'PENDING',
+        earnings: 0
+      };
       
-      if (referrerData) {
-        const referrerProfile: UserProfile = JSON.parse(referrerData);
-        const newReferral: ReferralData = {
-          userId: newUserId,
-          date: new Date().toISOString(),
-          status: 'PENDING',
-          earnings: 0
-        };
-
-        if (!referrerProfile.referrals.some(r => r.userId === newUserId)) {
-          referrerProfile.referrals.push(newReferral);
-          localStorage.setItem(referrerKeys.USER, JSON.stringify(referrerProfile));
-        }
+      if (!profile.referrals.some(r => r.userId === newUserId)) {
+        profile.referrals.push(newReferral);
+        await PersistenceService.saveUser(profile);
       }
-    } catch (e) {
-      console.error("Failed to register referral", e);
     }
   },
 
-  saveUser: (user: UserProfile) => {
-    try {
-      const keys = getKeys(user.id);
-      localStorage.setItem(keys.USER, JSON.stringify(user));
-    } catch (e) {
-      console.error("Failed to save user", e);
-    }
+  // --- Employees ---
+
+  getEmployees: async (): Promise<EmployeeProfile[]> => {
+    const { data } = await supabase.from('employees').select('*');
+    if (!data) return [];
+    
+    return data.map((e: any) => ({
+      ...e.data,
+      id: e.id,
+      email: e.email,
+      role: e.role,
+      passwordHash: e.password_hash,
+      isActive: e.is_active
+    }));
   },
 
-  processDeposit: (user: UserProfile, amount: number): UserProfile => {
+  addEmployee: async (employee: EmployeeProfile): Promise<EmployeeProfile[]> => {
+    await supabase.from('employees').upsert({
+      id: employee.id,
+      email: employee.email,
+      role: employee.role,
+      password_hash: employee.passwordHash,
+      is_active: employee.isActive,
+      data: employee
+    });
+    return PersistenceService.getEmployees();
+  },
+
+  updateEmployee: async (employee: EmployeeProfile): Promise<EmployeeProfile[]> => {
+    await supabase.from('employees').upsert({
+      id: employee.id,
+      email: employee.email,
+      role: employee.role,
+      password_hash: employee.passwordHash,
+      is_active: employee.isActive,
+      data: employee
+    });
+    return PersistenceService.getEmployees();
+  },
+
+  // --- Internal Tickets ---
+
+  getInternalTickets: async (): Promise<InternalTicket[]> => {
+    const { data } = await supabase.from('internal_tickets').select('*').order('created_at', { ascending: false });
+    return data ? data.map((r: any) => r.data) : [];
+  },
+
+  addInternalTicket: async (ticket: InternalTicket): Promise<InternalTicket[]> => {
+    await supabase.from('internal_tickets').insert({
+      id: ticket.id,
+      status: ticket.status,
+      data: ticket
+    });
+    return PersistenceService.getInternalTickets();
+  },
+
+  resolveInternalTicket: async (id: string): Promise<InternalTicket[]> => {
+    const { data } = await supabase.from('internal_tickets').select('*').eq('id', id).single();
+    if (data) {
+      const ticket = data.data as InternalTicket;
+      ticket.status = 'RESOLVED';
+      await supabase.from('internal_tickets').update({
+        status: 'RESOLVED',
+        data: ticket
+      }).eq('id', id);
+    }
+    return PersistenceService.getInternalTickets();
+  },
+
+  // --- Marketplace ---
+
+  getAllRequests: async (): Promise<LoanRequest[]> => {
+    const { data } = await supabase.from('loan_requests').select('*').order('created_at', { ascending: false });
+    return data ? data.map((r: any) => r.data) : [];
+  },
+
+  saveRequest: async (req: LoanRequest) => {
+    await supabase.from('loan_requests').upsert({
+      id: req.id,
+      borrower_id: req.borrowerId,
+      status: req.status,
+      amount: req.amount,
+      data: req
+    });
+  },
+
+  getAllOffers: async (): Promise<LoanOffer[]> => {
+    const { data } = await supabase.from('loan_offers').select('*').order('created_at', { ascending: false });
+    return data ? data.map((r: any) => r.data) : [];
+  },
+
+  saveOffer: async (offer: LoanOffer) => {
+    await supabase.from('loan_offers').upsert({
+      id: offer.id,
+      lender_id: offer.lenderId,
+      status: offer.status || 'ACTIVE',
+      data: offer
+    });
+  },
+
+  // --- Chat & Realtime ---
+
+  getChatHistory: async (): Promise<ChatMessage[]> => {
+    const { data } = await supabase.from('chats').select('*').order('created_at', { ascending: true }).limit(200);
+    return data ? data.map((r: any) => r.data) : [];
+  },
+
+  addChatMessage: async (msg: ChatMessage) => {
+    await supabase.from('chats').insert({
+      id: msg.id,
+      thread_id: msg.threadId,
+      sender_id: msg.senderId,
+      message: msg.message,
+      type: msg.type,
+      data: msg
+    });
+  },
+
+  // --- Disputes ---
+
+  getAllDisputes: async (): Promise<Dispute[]> => {
+    const { data } = await supabase.from('disputes').select('*');
+    return data ? data.map((r: any) => r.data) : [];
+  },
+
+  saveDispute: async (dispute: Dispute) => {
+    await supabase.from('disputes').upsert({
+      id: dispute.id,
+      status: dispute.status,
+      data: dispute
+    });
+  },
+
+  // --- Helpers ---
+  
+  processDeposit: async (user: UserProfile, amount: number): Promise<UserProfile> => {
     const updatedUser = { ...user, balance: user.balance + amount };
-    PersistenceService.saveUser(updatedUser);
-
+    await PersistenceService.saveUser(updatedUser);
+    
     if (updatedUser.balance >= 100 && updatedUser.referredBy) {
-      PersistenceService.completeReferral(updatedUser.referredBy, updatedUser.id);
+      await PersistenceService.completeReferral(updatedUser.referredBy, updatedUser.id);
     }
-
     return updatedUser;
   },
 
-  completeReferral: (referrerId: string, refereeId: string) => {
-    try {
-      const keys = getKeys(referrerId);
-      const data = localStorage.getItem(keys.USER);
-      if (data) {
-        const referrer: UserProfile = JSON.parse(data);
-        const referralIndex = referrer.referrals.findIndex(r => r.userId === refereeId);
-        
-        if (referralIndex !== -1 && referrer.referrals[referralIndex].status === 'PENDING') {
-          referrer.referrals[referralIndex].status = 'COMPLETED';
-          referrer.referrals[referralIndex].earnings = 5;
-          referrer.reputationScore = Math.min(100, referrer.reputationScore + 5);
-          referrer.badges.push('Community Builder');
-          referrer.badges = [...new Set(referrer.badges)];
-          localStorage.setItem(keys.USER, JSON.stringify(referrer));
-        }
-      }
-    } catch (e) {
-      console.error("Failed to complete referral reward", e);
-    }
-  },
-
-  getAllUsers: (): UserProfile[] => {
-    const users: UserProfile[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('p3_user_')) {
-        try {
-          const userData = localStorage.getItem(key);
-          if (userData) {
-            users.push(JSON.parse(userData));
-          }
-        } catch (e) { console.error(e); }
+  completeReferral: async (referrerId: string, refereeId: string) => {
+    const { data } = await supabase.from('users').select('*').eq('id', referrerId).single();
+    if (data) {
+      const profile = data.data as UserProfile;
+      const refIdx = profile.referrals.findIndex(r => r.userId === refereeId);
+      if (refIdx !== -1 && profile.referrals[refIdx].status === 'PENDING') {
+        profile.referrals[refIdx].status = 'COMPLETED';
+        profile.referrals[refIdx].earnings = 5;
+        profile.reputationScore = Math.min(100, profile.reputationScore + 5);
+        await PersistenceService.saveUser(profile);
       }
     }
-    return users;
   },
 
-  // --- Employees & Admin ---
-  getEmployees: (): EmployeeProfile[] => {
-    const data = localStorage.getItem(GLOBAL_KEYS.EMPLOYEES);
-    let employees: EmployeeProfile[] = data ? JSON.parse(data) : [SUPER_ADMIN];
-    
-    // Ensure Super Admin exists
-    const adminIndex = employees.findIndex(e => e.email === 'admin@p3lending.space');
-    if (adminIndex === -1) {
-      employees.push(SUPER_ADMIN);
-      localStorage.setItem(GLOBAL_KEYS.EMPLOYEES, JSON.stringify(employees));
-    }
-    return employees;
-  },
-
-  addEmployee: (emp: EmployeeProfile) => {
-    const current = PersistenceService.getEmployees();
-    const updated = [...current, emp];
-    localStorage.setItem(GLOBAL_KEYS.EMPLOYEES, JSON.stringify(updated));
-    return updated;
-  },
-
-  updateEmployee: (emp: EmployeeProfile) => {
-    const current = PersistenceService.getEmployees();
-    const updated = current.map(e => e.id === emp.id ? emp : e);
-    localStorage.setItem(GLOBAL_KEYS.EMPLOYEES, JSON.stringify(updated));
-    return updated;
-  },
-
-  // --- Global Marketplace Data (Simulated Backend) ---
-  
-  // Requests
-  getAllRequests: (): LoanRequest[] => {
-    try {
-      const data = localStorage.getItem(GLOBAL_KEYS.REQUESTS);
-      return data ? JSON.parse(data) : [];
-    } catch { return []; }
-  },
-
-  saveRequest: (req: LoanRequest) => {
-    const all = PersistenceService.getAllRequests();
-    const existingIndex = all.findIndex(r => r.id === req.id);
-    let updated;
-    if (existingIndex >= 0) {
-      updated = all.map(r => r.id === req.id ? req : r);
-    } else {
-      updated = [req, ...all];
-    }
-    localStorage.setItem(GLOBAL_KEYS.REQUESTS, JSON.stringify(updated));
-    return updated;
-  },
-
-  // Offers
-  getAllOffers: (): LoanOffer[] => {
-    try {
-      const data = localStorage.getItem(GLOBAL_KEYS.OFFERS);
-      return data ? JSON.parse(data) : [];
-    } catch { return []; }
-  },
-
-  saveOffer: (offer: LoanOffer) => {
-    const all = PersistenceService.getAllOffers();
-    const existingIndex = all.findIndex(o => o.id === offer.id);
-    let updated;
-    if (existingIndex >= 0) {
-      updated = all.map(o => o.id === offer.id ? offer : o);
-    } else {
-      updated = [offer, ...all];
-    }
-    localStorage.setItem(GLOBAL_KEYS.OFFERS, JSON.stringify(updated));
-    return updated;
-  },
-
-  // Disputes
-  getAllDisputes: (): Dispute[] => {
-    try {
-      const data = localStorage.getItem(GLOBAL_KEYS.DISPUTES);
-      return data ? JSON.parse(data) : [];
-    } catch { return []; }
-  },
-
-  saveDispute: (dispute: Dispute) => {
-    const all = PersistenceService.getAllDisputes();
-    const existingIndex = all.findIndex(d => d.id === dispute.id);
-    let updated;
-    if (existingIndex >= 0) {
-      updated = all.map(d => d.id === dispute.id ? dispute : d);
-    } else {
-      updated = [dispute, ...all];
-    }
-    localStorage.setItem(GLOBAL_KEYS.DISPUTES, JSON.stringify(updated));
-    return updated;
-  },
-
-  // --- Internal Tools ---
-  getInternalTickets: (): InternalTicket[] => {
-    const data = localStorage.getItem(GLOBAL_KEYS.TICKETS);
-    return data ? JSON.parse(data) : [];
-  },
-  
-  addInternalTicket: (ticket: InternalTicket) => {
-    const current = PersistenceService.getInternalTickets();
-    const updated = [ticket, ...current];
-    localStorage.setItem(GLOBAL_KEYS.TICKETS, JSON.stringify(updated));
-    return updated;
-  },
-
-  resolveInternalTicket: (ticketId: string) => {
-    const current = PersistenceService.getInternalTickets();
-    const updated = current.map(t => t.id === ticketId ? { ...t, status: 'RESOLVED' as const } : t);
-    localStorage.setItem(GLOBAL_KEYS.TICKETS, JSON.stringify(updated));
-    return updated;
-  },
-
-  getChatHistory: (): ChatMessage[] => {
-    try {
-      const data = localStorage.getItem(GLOBAL_KEYS.CHAT);
-      if (!data) {
-        const welcome: ChatMessage = {
-          id: 'msg_welcome',
-          senderId: 'emp_super_admin',
-          senderName: 'System Root',
-          role: 'ADMIN',
-          message: 'System Initialized. Encrypted Channel Active.',
-          timestamp: Date.now(),
-          type: 'INTERNAL'
-        };
-        PersistenceService.addChatMessage(welcome);
-        return [welcome];
-      }
-      return JSON.parse(data);
-    } catch (e) { return []; }
-  },
-
-  addChatMessage: (msg: ChatMessage) => {
-    const current = PersistenceService.getChatHistory();
-    const updated = [...current, msg].slice(-200); // Keep last 200
-    localStorage.setItem(GLOBAL_KEYS.CHAT, JSON.stringify(updated));
-    return updated;
-  },
-
-  // --- Helpers for Filtering ---
-  getMyRequests: (userId: string): LoanRequest[] => {
-    return PersistenceService.getAllRequests().filter(r => r.borrowerId === userId);
-  },
-
-  getMyOffers: (userId: string): LoanOffer[] => {
-    return PersistenceService.getAllOffers().filter(o => o.lenderId === userId);
-  },
-
-  // --- Reset ---
+  // Clear data (local only for session, cannot delete from DB via this button for safety)
   clearAll: (userId: string) => {
-    const keys = getKeys(userId);
-    localStorage.removeItem(keys.USER);
-    // Note: We do NOT clear global requests/offers to preserve system integrity for other users
+    localStorage.clear();
     window.location.reload();
   }
 };

@@ -3,16 +3,20 @@ import { UserProfile, LoanRequest, LoanOffer, MatchResult, RiskReport } from "..
 
 // Helper to safely get the API Key without crashing the app on load
 const getAI = () => {
+  // In Vite, process.env is replaced at build time by the define plugin in vite.config.ts
+  // However, accessing 'process' directly can sometimes cause ReferenceErrors in browser if not polyfilled.
+  // We check typeof process first or rely on the string replacement.
+  
   let apiKey = '';
   try {
-    // process.env.API_KEY is replaced by Vite during build
-    apiKey = process.env.API_KEY || '';
+    // @ts-ignore
+    apiKey = process.env.API_KEY; 
   } catch (e) {
-    console.error("Config Error: 'process' is not defined. Ensure vite.config.ts is active.");
+    console.warn("Could not read API Key from process.env");
   }
   
   if (!apiKey || apiKey === 'undefined' || apiKey === '') {
-    console.warn("Gemini API Key is missing or empty. Please check your Netlify Environment Variables.");
+    // console.warn("Gemini API Key is missing. AI features will run in demo mode.");
     return null;
   }
 
@@ -299,10 +303,7 @@ export const analyzeRiskProfile = async (profile: UserProfile): Promise<RiskRepo
       }
       `,
       config: {
-        tools: [{ googleSearch: {} }], // ENABLE GOOGLE SEARCH GROUNDING
-        // IMPORTANT: We do NOT use responseMimeType: "application/json" here 
-        // because Google Search grounding sometimes conflicts with rigid JSON enforcement.
-        // We parse the text output manually below.
+        tools: [{ googleSearch: {} }], 
       }
     });
 
@@ -310,7 +311,7 @@ export const analyzeRiskProfile = async (profile: UserProfile): Promise<RiskRepo
     
     if (!text) throw new Error("No response from AI Risk Engine");
     
-    // Extract JSON from the text response (handling potential markdown wrapping or search sources)
+    // Extract JSON from the text response
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     const cleanJson = jsonMatch ? jsonMatch[0] : text;
     
@@ -320,7 +321,6 @@ export const analyzeRiskProfile = async (profile: UserProfile): Promise<RiskRepo
 
   } catch (error) {
     console.error("Risk Analysis Error:", error);
-    // Fallback if search fails or API Key is missing
     return {
       compositeScore: 50,
       macroScore: 50,
