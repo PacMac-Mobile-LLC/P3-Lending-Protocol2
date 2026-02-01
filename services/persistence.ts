@@ -32,6 +32,7 @@ const INITIAL_USER_TEMPLATE: UserProfile = {
 };
 
 const MOCK_EMPLOYEES: EmployeeProfile[] = [
+  { id: 'emp0', name: 'Super Admin', email: 'admin@p3lending.space', role: 'ADMIN', isActive: true },
   { id: 'emp1', name: 'Matt H.', email: 'matt@p3securities.com', role: 'ADMIN', isActive: true },
   { id: 'emp2', name: 'Sarah Risk', email: 'sarah@p3securities.com', role: 'RISK_OFFICER', isActive: true },
   { id: 'emp3', name: 'Support Bot', email: 'support@p3securities.com', role: 'SUPPORT', isActive: true }

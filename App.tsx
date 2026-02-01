@@ -103,6 +103,24 @@ const App: React.FC = () => {
       setShowLanding(false);
       setIsVerifyingEmail(false); 
       
+      const email = netlifyUser.email || '';
+
+      // CHECK FOR ADMIN/EMPLOYEE DOMAIN
+      if (email.endsWith('@p3lending.space')) {
+         const employees = PersistenceService.getEmployees();
+         const matchedEmp = employees.find(e => e.email.toLowerCase() === email.toLowerCase());
+         
+         if (matchedEmp && matchedEmp.isActive) {
+            setAdminUser(matchedEmp);
+            AuthService.close();
+            return;
+         } else {
+           console.warn("Domain matches but user not found in employee list.");
+           // Optional: You could show an error here, but for now we fall back to normal user flow or just let them in as a normal user.
+         }
+      }
+
+      // NORMAL USER FLOW
       const p3User = PersistenceService.loadUser(netlifyUser);
       setUser(p3User);
       setMyRequests(PersistenceService.getMyRequests(p3User.id));
@@ -154,20 +172,6 @@ const App: React.FC = () => {
       AuthService.off('logout', handleLogout);
     };
   }, []);
-
-  const handleAdminLogin = () => {
-    // Simulated Admin Login
-    const mockAdmin: EmployeeProfile = {
-      id: 'emp_001',
-      name: 'Admin User',
-      email: 'admin@p3securities.com',
-      role: 'ADMIN',
-      isActive: true
-    };
-    setAdminUser(mockAdmin);
-    setIsAuthenticated(true);
-    setShowLanding(false);
-  };
 
   useEffect(() => {
     const sequence = "make it snow";
@@ -400,7 +404,7 @@ const App: React.FC = () => {
 
   // Show Landing Page
   if (!isAuthenticated && showLanding) {
-    return <LandingPage onLaunch={() => setShowLanding(false)} onAdminLogin={handleAdminLogin} />;
+    return <LandingPage onLaunch={() => setShowLanding(false)} />;
   }
 
   // Show Auth/Login Prompt if Landing dismissed but no auth
@@ -441,9 +445,7 @@ const App: React.FC = () => {
                  >
                    Connect Identity
                  </Button>
-                 <button onClick={handleAdminLogin} className="text-xs text-zinc-600 hover:text-white transition-colors">
-                   Admin Portal Login (Employees Only)
-                 </button>
+                 <p className="text-xs text-zinc-600">Employee Login enabled via @p3lending.space email</p>
                </div>
              </>
            )}
@@ -700,7 +702,7 @@ const App: React.FC = () => {
                )}
              </div>
 
-             {/* Legal & Compliance Footer */}
+             {/* Legal & Compliance Footer - Global Scope for Dashboard */}
              <div className="max-w-6xl mx-auto w-full mt-12 pt-8 pb-4 border-t border-zinc-900 text-center md:text-left">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                    <div className="col-span-1 md:col-span-2">
