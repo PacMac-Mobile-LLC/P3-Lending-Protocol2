@@ -1,28 +1,32 @@
-import { UserProfile, LoanRequest, LoanOffer, LoanType, KYCTier, KYCStatus, EmployeeProfile, ReferralData, InternalTicket, InternalChatMessage } from '../types';
+import { UserProfile, LoanRequest, LoanOffer, LoanType, KYCTier, KYCStatus, EmployeeProfile, ReferralData, InternalTicket, InternalChatMessage, Dispute } from '../types';
 import { SecurityService } from './security';
 
-// We now generate keys dynamically based on the User ID
+// Dynamic Keys based on User ID
 const getKeys = (userId: string) => ({
   USER: `p3_user_${userId}`,
-  MY_REQUESTS: `p3_my_requests_${userId}`,
-  MY_OFFERS: `p3_my_offers_${userId}`, 
 });
 
-const EMPLOYEES_KEY = 'p3_admin_employees';
-const INTERNAL_TICKETS_KEY = 'p3_internal_tickets';
-const INTERNAL_CHAT_KEY = 'p3_internal_chat_history';
+// Global "Database" Keys (Simulating Backend)
+const GLOBAL_KEYS = {
+  EMPLOYEES: 'p3_admin_employees',
+  TICKETS: 'p3_internal_tickets',
+  CHAT: 'p3_internal_chat_history',
+  REQUESTS: 'p3_global_requests',
+  OFFERS: 'p3_global_offers',
+  DISPUTES: 'p3_global_disputes'
+};
 
 // Fallback data if no local data exists
 const INITIAL_USER_TEMPLATE: UserProfile = {
   id: 'guest',
   name: 'Guest User',
-  income: 65000,
+  income: 0,
   balance: 0,
   avatarUrl: undefined,
-  employmentStatus: 'Software Engineer',
-  financialHistory: 'Paid off student loans in 2022. currently have a car lease.',
+  employmentStatus: 'Unemployed',
+  financialHistory: 'New account.',
   reputationScore: 50,
-  riskAnalysis: 'History suggests stability, but limited on-chain history.',
+  riskAnalysis: 'Insufficient data for analysis.',
   successfulRepayments: 0,
   currentStreak: 0,
   badges: [],
@@ -30,12 +34,12 @@ const INITIAL_USER_TEMPLATE: UserProfile = {
   kycStatus: KYCStatus.UNVERIFIED,
   kycLimit: 0,
   mentorshipsCount: 0,
-  walletAgeDays: 120, 
-  txCount: 45,
+  walletAgeDays: 0, 
+  txCount: 0,
   referrals: []
 };
 
-// Only the Super Admin initially
+// Root Admin - The only hardcoded seed allowed for system access
 const SUPER_ADMIN: EmployeeProfile = {
   id: 'emp_super_admin',
   name: 'System Root',
@@ -43,9 +47,8 @@ const SUPER_ADMIN: EmployeeProfile = {
   role: 'ADMIN',
   isActive: true,
   passwordHash: 'admin123',
-  passwordLastSet: Date.now(), // Fresh password
+  passwordLastSet: Date.now(),
   previousPasswords: [],
-  // Pre-install the Master Certificate so validation works immediately
   certificateData: SecurityService.getMasterCertificate()
 };
 
@@ -67,18 +70,13 @@ export const PersistenceService = {
           id: netlifyUser.id,
           name: netlifyUser.user_metadata?.full_name || netlifyUser.email.split('@')[0],
           avatarUrl: netlifyUser.user_metadata?.avatar_url || undefined,
-          // Reset reputation for new users
           reputationScore: 50, 
         };
 
-        // Handle Referral Logic for NEW users only
-        if (pendingReferralCode) {
-           // We expect referral code to be the User ID of the referrer
-           // Prevent self-referral
-           if (pendingReferralCode !== newUser.id) {
+        // Handle Referral Logic
+        if (pendingReferralCode && pendingReferralCode !== newUser.id) {
              PersistenceService.registerReferral(pendingReferralCode, newUser.id);
              newUser.referredBy = pendingReferralCode;
-           }
         }
 
         PersistenceService.saveUser(newUser);
@@ -92,14 +90,11 @@ export const PersistenceService = {
 
   registerReferral: (referrerId: string, newUserId: string) => {
     try {
-      // Load the Referrer
       const referrerKeys = getKeys(referrerId);
       const referrerData = localStorage.getItem(referrerKeys.USER);
       
       if (referrerData) {
         const referrerProfile: UserProfile = JSON.parse(referrerData);
-        
-        // Add pending referral
         const newReferral: ReferralData = {
           userId: newUserId,
           date: new Date().toISOString(),
@@ -107,7 +102,6 @@ export const PersistenceService = {
           earnings: 0
         };
 
-        // Avoid duplicates
         if (!referrerProfile.referrals.some(r => r.userId === newUserId)) {
           referrerProfile.referrals.push(newReferral);
           localStorage.setItem(referrerKeys.USER, JSON.stringify(referrerProfile));
@@ -123,18 +117,14 @@ export const PersistenceService = {
       const keys = getKeys(user.id);
       localStorage.setItem(keys.USER, JSON.stringify(user));
     } catch (e) {
-      console.error("Failed to save user (likely QuotaExceeded for image)", e);
-      alert("Storage limit reached. Try using a smaller profile image.");
+      console.error("Failed to save user", e);
     }
   },
 
-  // --- Financial Actions ---
   processDeposit: (user: UserProfile, amount: number): UserProfile => {
     const updatedUser = { ...user, balance: user.balance + amount };
     PersistenceService.saveUser(updatedUser);
 
-    // CHECK REFERRAL CONVERSION
-    // If balance >= 100 and they were referred by someone, trigger reward
     if (updatedUser.balance >= 100 && updatedUser.referredBy) {
       PersistenceService.completeReferral(updatedUser.referredBy, updatedUser.id);
     }
@@ -151,20 +141,12 @@ export const PersistenceService = {
         const referralIndex = referrer.referrals.findIndex(r => r.userId === refereeId);
         
         if (referralIndex !== -1 && referrer.referrals[referralIndex].status === 'PENDING') {
-          // Update Status
           referrer.referrals[referralIndex].status = 'COMPLETED';
-          referrer.referrals[referralIndex].earnings = 5; // +5 Reputation Points
-          
-          // Apply Reward
+          referrer.referrals[referralIndex].earnings = 5;
           referrer.reputationScore = Math.min(100, referrer.reputationScore + 5);
           referrer.badges.push('Community Builder');
-          
-          // Dedupe badges
           referrer.badges = [...new Set(referrer.badges)];
-
           localStorage.setItem(keys.USER, JSON.stringify(referrer));
-          
-          // Optional: Notify the user in the UI somehow (omitted for brevity, handled by reactive state updates if online)
         }
       }
     } catch (e) {
@@ -172,7 +154,6 @@ export const PersistenceService = {
     }
   },
 
-  // --- Admin Methods ---
   getAllUsers: (): UserProfile[] => {
     const users: UserProfile[] = [];
     for (let i = 0; i < localStorage.length; i++) {
@@ -183,149 +164,165 @@ export const PersistenceService = {
           if (userData) {
             users.push(JSON.parse(userData));
           }
-        } catch (e) {
-          console.error("Failed to parse user", key);
-        }
+        } catch (e) { console.error(e); }
       }
     }
     return users;
   },
 
+  // --- Employees & Admin ---
   getEmployees: (): EmployeeProfile[] => {
-    const data = localStorage.getItem(EMPLOYEES_KEY);
+    const data = localStorage.getItem(GLOBAL_KEYS.EMPLOYEES);
     let employees: EmployeeProfile[] = data ? JSON.parse(data) : [SUPER_ADMIN];
     
-    // Self-Healing: Ensure Super Admin always exists and has a cert
+    // Ensure Super Admin exists
     const adminIndex = employees.findIndex(e => e.email === 'admin@p3lending.space');
     if (adminIndex === -1) {
       employees.push(SUPER_ADMIN);
-      localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(employees));
-    } else if (!employees[adminIndex].certificateData) {
-      // Fix missing cert for admin if it somehow got corrupted
-      employees[adminIndex].certificateData = SUPER_ADMIN.certificateData;
-      localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(employees));
+      localStorage.setItem(GLOBAL_KEYS.EMPLOYEES, JSON.stringify(employees));
     }
-
     return employees;
   },
 
   addEmployee: (emp: EmployeeProfile) => {
     const current = PersistenceService.getEmployees();
     const updated = [...current, emp];
-    localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(updated));
+    localStorage.setItem(GLOBAL_KEYS.EMPLOYEES, JSON.stringify(updated));
     return updated;
   },
 
   updateEmployee: (emp: EmployeeProfile) => {
     const current = PersistenceService.getEmployees();
     const updated = current.map(e => e.id === emp.id ? emp : e);
-    localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(updated));
+    localStorage.setItem(GLOBAL_KEYS.EMPLOYEES, JSON.stringify(updated));
     return updated;
   },
 
-  // --- Internal Knowledge Base / Tickets ---
+  // --- Global Marketplace Data (Simulated Backend) ---
+  
+  // Requests
+  getAllRequests: (): LoanRequest[] => {
+    try {
+      const data = localStorage.getItem(GLOBAL_KEYS.REQUESTS);
+      return data ? JSON.parse(data) : [];
+    } catch { return []; }
+  },
+
+  saveRequest: (req: LoanRequest) => {
+    const all = PersistenceService.getAllRequests();
+    const existingIndex = all.findIndex(r => r.id === req.id);
+    let updated;
+    if (existingIndex >= 0) {
+      updated = all.map(r => r.id === req.id ? req : r);
+    } else {
+      updated = [req, ...all];
+    }
+    localStorage.setItem(GLOBAL_KEYS.REQUESTS, JSON.stringify(updated));
+    return updated;
+  },
+
+  // Offers
+  getAllOffers: (): LoanOffer[] => {
+    try {
+      const data = localStorage.getItem(GLOBAL_KEYS.OFFERS);
+      return data ? JSON.parse(data) : [];
+    } catch { return []; }
+  },
+
+  saveOffer: (offer: LoanOffer) => {
+    const all = PersistenceService.getAllOffers();
+    const existingIndex = all.findIndex(o => o.id === offer.id);
+    let updated;
+    if (existingIndex >= 0) {
+      updated = all.map(o => o.id === offer.id ? offer : o);
+    } else {
+      updated = [offer, ...all];
+    }
+    localStorage.setItem(GLOBAL_KEYS.OFFERS, JSON.stringify(updated));
+    return updated;
+  },
+
+  // Disputes
+  getAllDisputes: (): Dispute[] => {
+    try {
+      const data = localStorage.getItem(GLOBAL_KEYS.DISPUTES);
+      return data ? JSON.parse(data) : [];
+    } catch { return []; }
+  },
+
+  saveDispute: (dispute: Dispute) => {
+    const all = PersistenceService.getAllDisputes();
+    const existingIndex = all.findIndex(d => d.id === dispute.id);
+    let updated;
+    if (existingIndex >= 0) {
+      updated = all.map(d => d.id === dispute.id ? dispute : d);
+    } else {
+      updated = [dispute, ...all];
+    }
+    localStorage.setItem(GLOBAL_KEYS.DISPUTES, JSON.stringify(updated));
+    return updated;
+  },
+
+  // --- Internal Tools ---
   getInternalTickets: (): InternalTicket[] => {
-    const data = localStorage.getItem(INTERNAL_TICKETS_KEY);
+    const data = localStorage.getItem(GLOBAL_KEYS.TICKETS);
     return data ? JSON.parse(data) : [];
   },
   
   addInternalTicket: (ticket: InternalTicket) => {
     const current = PersistenceService.getInternalTickets();
-    const updated = [ticket, ...current]; // Newest first
-    localStorage.setItem(INTERNAL_TICKETS_KEY, JSON.stringify(updated));
+    const updated = [ticket, ...current];
+    localStorage.setItem(GLOBAL_KEYS.TICKETS, JSON.stringify(updated));
     return updated;
   },
 
   resolveInternalTicket: (ticketId: string) => {
     const current = PersistenceService.getInternalTickets();
     const updated = current.map(t => t.id === ticketId ? { ...t, status: 'RESOLVED' as const } : t);
-    localStorage.setItem(INTERNAL_TICKETS_KEY, JSON.stringify(updated));
+    localStorage.setItem(GLOBAL_KEYS.TICKETS, JSON.stringify(updated));
     return updated;
   },
 
-  // --- Internal Chat ---
   getChatHistory: (): InternalChatMessage[] => {
     try {
-      const data = localStorage.getItem(INTERNAL_CHAT_KEY);
-      // Pre-seed with a welcome message if empty
+      const data = localStorage.getItem(GLOBAL_KEYS.CHAT);
       if (!data) {
         const welcome: InternalChatMessage = {
           id: 'msg_welcome',
           senderId: 'emp_super_admin',
           senderName: 'System Root',
           role: 'ADMIN',
-          message: 'Welcome to the P3 Internal Channel. All logs are encrypted.',
+          message: 'System Initialized. Encrypted Channel Active.',
           timestamp: Date.now()
         };
         PersistenceService.addChatMessage(welcome);
         return [welcome];
       }
       return JSON.parse(data);
-    } catch (e) {
-      return [];
-    }
+    } catch (e) { return []; }
   },
 
   addChatMessage: (msg: InternalChatMessage) => {
     const current = PersistenceService.getChatHistory();
-    // Keep last 100 messages
-    const updated = [...current, msg].slice(-100); 
-    localStorage.setItem(INTERNAL_CHAT_KEY, JSON.stringify(updated));
+    const updated = [...current, msg].slice(-200); // Keep last 200
+    localStorage.setItem(GLOBAL_KEYS.CHAT, JSON.stringify(updated));
     return updated;
   },
 
-  // --- Loan Requests ---
+  // --- Helpers for Filtering ---
   getMyRequests: (userId: string): LoanRequest[] => {
-    try {
-      const keys = getKeys(userId);
-      const data = localStorage.getItem(keys.MY_REQUESTS);
-      return data ? JSON.parse(data) : [];
-    } catch (e) {
-      return [];
-    }
+    return PersistenceService.getAllRequests().filter(r => r.borrowerId === userId);
   },
 
-  saveMyRequests: (userId: string, requests: LoanRequest[]) => {
-    const keys = getKeys(userId);
-    localStorage.setItem(keys.MY_REQUESTS, JSON.stringify(requests));
-  },
-
-  addRequest: (userId: string, req: LoanRequest) => {
-    const current = PersistenceService.getMyRequests(userId);
-    const updated = [req, ...current];
-    PersistenceService.saveMyRequests(userId, updated);
-    return updated;
-  },
-
-  updateRequest: (userId: string, updatedReq: LoanRequest) => {
-    const current = PersistenceService.getMyRequests(userId);
-    const updated = current.map(r => r.id === updatedReq.id ? updatedReq : r);
-    PersistenceService.saveMyRequests(userId, updated);
-    return updated;
-  },
-
-  // --- Loan Offers (Lender Side) ---
   getMyOffers: (userId: string): LoanOffer[] => {
-    try {
-      const keys = getKeys(userId);
-      const data = localStorage.getItem(keys.MY_OFFERS);
-      return data ? JSON.parse(data) : [];
-    } catch (e) {
-      return [];
-    }
-  },
-
-  saveMyOffers: (userId: string, offers: LoanOffer[]) => {
-    const keys = getKeys(userId);
-    localStorage.setItem(keys.MY_OFFERS, JSON.stringify(offers));
+    return PersistenceService.getAllOffers().filter(o => o.lenderId === userId);
   },
 
   // --- Reset ---
   clearAll: (userId: string) => {
     const keys = getKeys(userId);
     localStorage.removeItem(keys.USER);
-    localStorage.removeItem(keys.MY_REQUESTS);
-    localStorage.removeItem(keys.MY_OFFERS);
+    // Note: We do NOT clear global requests/offers to preserve system integrity for other users
     window.location.reload();
   }
 };

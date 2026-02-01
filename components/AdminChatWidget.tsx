@@ -9,12 +9,64 @@ interface Props {
   onClose: () => void;
 }
 
+// Simple beep sounds via data URIs to avoid file dependency
+const SOUNDS = {
+  SEND: 'data:audio/wav;base64,UklGRl9vT1NEXzIAAAAAExAAAAAAZ4AAAAAAAAAAAAAA... (truncated for brevity, using standard beep logic below instead)',
+  // Using a short pleasant pop sound
+  POP: 'data:audio/mp3;base64,SUQzBAAAAAABAFRYWFgAAAASAAADbWFqb3JfYnJhbmQAbXA0MgBUWFhYAAAAEQAAA21pbm9yX3ZlcnNpb24AMABUWFhYAAAAHAAAA2NvbXBhdGlibGVfYnJhbmRzAGlzb21tcDQyAP/7UAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAInfo...', 
+};
+
 export const AdminChatWidget: React.FC<Props> = ({ currentUser, isOpen, onClose }) => {
   const [employees, setEmployees] = useState<EmployeeProfile[]>([]);
   const [messages, setMessages] = useState<InternalChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [activeView, setActiveView] = useState<'CHAT' | 'MEMBERS'>('CHAT');
+  const lastMessageIdRef = useRef<string | null>(null);
+
+  // Play a simple system beep context
+  const playSound = (type: 'SEND' | 'RECEIVE') => {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      if (type === 'SEND') {
+        osc.frequency.value = 800;
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.1);
+      } else {
+        osc.frequency.value = 1200; // Higher pitch for receive
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.2);
+      }
+    } catch (e) {
+      console.error("Audio Context Error", e);
+    }
+  };
+
+  const triggerNotification = (msg: InternalChatMessage) => {
+    if (Notification.permission === 'granted') {
+      new Notification(`New Message from ${msg.senderName}`, {
+        body: msg.message,
+        icon: '/logo.svg'
+      });
+    }
+  };
+
+  useEffect(() => {
+    // Request Notification Permission
+    if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+      Notification.requestPermission();
+    }
+  }, []);
 
   // Load data and setup polling
   useEffect(() => {
@@ -22,17 +74,35 @@ export const AdminChatWidget: React.FC<Props> = ({ currentUser, isOpen, onClose 
 
     // Initial load
     setEmployees(PersistenceService.getEmployees());
-    setMessages(PersistenceService.getChatHistory());
+    const history = PersistenceService.getChatHistory();
+    setMessages(history);
+    if (history.length > 0) lastMessageIdRef.current = history[history.length - 1].id;
 
-    // Simple polling to simulate real-time for the demo
+    // Polling for live updates
     const interval = setInterval(() => {
-      setMessages(PersistenceService.getChatHistory());
-      // Re-fetch employees in case someone new joined
+      const freshHistory = PersistenceService.getChatHistory();
+      setMessages(freshHistory);
+      
+      const latest = freshHistory[freshHistory.length - 1];
+      if (latest && latest.id !== lastMessageIdRef.current) {
+        lastMessageIdRef.current = latest.id;
+        
+        // Check if it's someone else's message
+        if (latest.senderId !== currentUser.id) {
+          playSound('RECEIVE');
+          
+          // Check for @mention
+          if (latest.message.includes(`@${currentUser.name}`)) {
+            triggerNotification(latest);
+          }
+        }
+      }
+      
       setEmployees(PersistenceService.getEmployees()); 
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [isOpen]);
+  }, [isOpen, currentUser]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -57,22 +127,12 @@ export const AdminChatWidget: React.FC<Props> = ({ currentUser, isOpen, onClose 
     PersistenceService.addChatMessage(msg);
     setMessages(prev => [...prev, msg]);
     setNewMessage('');
+    playSound('SEND');
+  };
 
-    // SIMULATION: If user types "status" or "help", bot replies
-    if (newMessage.toLowerCase().includes('status')) {
-      setTimeout(() => {
-        const reply: InternalChatMessage = {
-          id: `msg_${Date.now() + 1}`,
-          senderId: 'emp_super_admin',
-          senderName: 'System Root',
-          role: 'ADMIN',
-          message: `[@${currentUser.name}] All systems operational. P3 Mainnet latency: 12ms.`,
-          timestamp: Date.now()
-        };
-        PersistenceService.addChatMessage(reply);
-        setMessages(prev => [...prev, reply]);
-      }, 1000);
-    }
+  const insertTag = (name: string) => {
+    setNewMessage(prev => `${prev}@${name} `);
+    setActiveView('CHAT'); // Switch back to chat to type
   };
 
   if (!isOpen) return null;
@@ -109,6 +169,9 @@ export const AdminChatWidget: React.FC<Props> = ({ currentUser, isOpen, onClose 
                   {messages.map((msg, idx) => {
                     const isMe = msg.senderId === currentUser.id;
                     const showHeader = idx === 0 || messages[idx-1].senderId !== msg.senderId || (msg.timestamp - messages[idx-1].timestamp > 60000);
+                    
+                    // Highlight logic for tags
+                    const parts = msg.message.split(/(@\w+\s?)/g);
 
                     return (
                       <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
@@ -120,7 +183,11 @@ export const AdminChatWidget: React.FC<Props> = ({ currentUser, isOpen, onClose 
                            </div>
                          )}
                          <div className={`px-3 py-2 rounded-lg text-sm max-w-[85%] break-words ${isMe ? 'bg-[#00e599]/10 border border-[#00e599]/30 text-white rounded-tr-none' : 'bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-tl-none'}`}>
-                           {msg.message}
+                           {parts.map((part, i) => (
+                             part.startsWith('@') 
+                               ? <span key={i} className="text-[#00e599] font-bold bg-[#00e599]/10 px-1 rounded">{part}</span> 
+                               : <span key={i}>{part}</span>
+                           ))}
                          </div>
                       </div>
                     );
@@ -135,7 +202,7 @@ export const AdminChatWidget: React.FC<Props> = ({ currentUser, isOpen, onClose 
                        type="text" 
                        value={newMessage}
                        onChange={e => setNewMessage(e.target.value)}
-                       placeholder="Message team..."
+                       placeholder="Message team... (@ to tag)"
                        className="flex-1 bg-black border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-[#00e599] outline-none transition-colors"
                      />
                      <Button type="submit" size="sm" className="px-3">
@@ -152,12 +219,11 @@ export const AdminChatWidget: React.FC<Props> = ({ currentUser, isOpen, onClose 
                <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-4">Active Employees</h4>
                <div className="space-y-3">
                   {employees.map(emp => (
-                    <div key={emp.id} className="flex items-center gap-3 p-3 rounded-xl bg-zinc-900/50 border border-zinc-800">
+                    <div key={emp.id} className="flex items-center gap-3 p-3 rounded-xl bg-zinc-900/50 border border-zinc-800 group hover:border-[#00e599]/50 transition-colors">
                        <div className="relative">
                           <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-zinc-400 border border-zinc-700">
                             {emp.name.charAt(0)}
                           </div>
-                          {/* Simulate online status - Root & Current user always online */}
                           {(emp.isActive) && (
                             <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-[#00e599] rounded-full border-2 border-[#0a0a0a]"></div>
                           )}
@@ -166,9 +232,9 @@ export const AdminChatWidget: React.FC<Props> = ({ currentUser, isOpen, onClose 
                           <div className="text-sm font-bold text-white truncate">{emp.name}</div>
                           <div className="text-[10px] text-zinc-500 truncate">{emp.email}</div>
                        </div>
-                       <div className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${emp.role === 'ADMIN' ? 'bg-red-900/20 text-red-500' : 'bg-blue-900/20 text-blue-500'}`}>
-                         {emp.role === 'RISK_OFFICER' ? 'RISK' : emp.role}
-                       </div>
+                       <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px] bg-zinc-800 hover:bg-[#00e599] hover:text-black" onClick={() => insertTag(emp.name)}>
+                         Tag
+                       </Button>
                     </div>
                   ))}
                </div>

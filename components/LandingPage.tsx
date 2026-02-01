@@ -95,12 +95,6 @@ export const LandingPage: React.FC<Props> = ({ onLaunch, onDevAdminLogin, onOpen
           <button onClick={onOpenDocs} className="hidden md:block text-sm font-medium text-zinc-400 hover:text-white transition-colors">Docs & Support</button>
           
           <div className="flex items-center gap-2">
-            <button 
-              onClick={onDevAdminLogin}
-              className="text-xs font-mono text-zinc-500 hover:text-[#00e599] transition-colors border border-zinc-800 rounded px-2 py-1"
-            >
-              Dev: Admin Login
-            </button>
             <Button onClick={onLaunch} className="shadow-[0_0_20px_rgba(0,229,153,0.4)]">
               Launch App
             </Button>
