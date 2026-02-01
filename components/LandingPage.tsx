@@ -8,8 +8,15 @@ interface Props {
 }
 
 export const LandingPage: React.FC<Props> = ({ onLaunch }) => {
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-[#050505] text-white overflow-hidden relative font-sans selection:bg-[#00e599] selection:text-black">
+    <div className="min-h-screen bg-[#050505] text-white overflow-x-hidden relative font-sans selection:bg-[#00e599] selection:text-black">
       {/* Background Effects */}
       <div className="absolute top-0 left-0 w-full h-full bg-grid-pattern opacity-20 pointer-events-none"></div>
       <div className="absolute top-[-10%] right-[-10%] w-[800px] h-[800px] bg-[#00e599]/10 rounded-full blur-[120px] pointer-events-none"></div>
@@ -18,9 +25,9 @@ export const LandingPage: React.FC<Props> = ({ onLaunch }) => {
       <nav className="relative z-50 flex items-center justify-between px-6 py-6 max-w-7xl mx-auto">
         <Logo />
         <div className="flex items-center gap-6">
-          <a href="#" className="hidden md:block text-sm font-medium text-zinc-400 hover:text-white transition-colors">For Borrowers</a>
-          <a href="#" className="hidden md:block text-sm font-medium text-zinc-400 hover:text-white transition-colors">For Lenders</a>
-          <a href="#" className="hidden md:block text-sm font-medium text-zinc-400 hover:text-white transition-colors">Compliance</a>
+          <button onClick={() => scrollToSection('borrowers')} className="hidden md:block text-sm font-medium text-zinc-400 hover:text-white transition-colors">For Borrowers</button>
+          <button onClick={() => scrollToSection('lenders')} className="hidden md:block text-sm font-medium text-zinc-400 hover:text-white transition-colors">For Lenders</button>
+          <button onClick={() => scrollToSection('compliance')} className="hidden md:block text-sm font-medium text-zinc-400 hover:text-white transition-colors">Compliance</button>
           <Button onClick={onLaunch} className="shadow-[0_0_20px_rgba(0,229,153,0.4)]">
             Launch App
           </Button>
@@ -153,7 +160,7 @@ export const LandingPage: React.FC<Props> = ({ onLaunch }) => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="p-8 rounded-3xl bg-black border border-zinc-800 hover:border-[#00e599] transition-colors group">
+            <div id="borrowers" className="p-8 rounded-3xl bg-black border border-zinc-800 hover:border-[#00e599] transition-colors group">
               <div className="w-14 h-14 rounded-2xl bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-[#00e599] transition-colors">
                 <span className="text-2xl group-hover:text-black">⚖️</span>
               </div>
@@ -162,7 +169,7 @@ export const LandingPage: React.FC<Props> = ({ onLaunch }) => {
                 Our "Blind AI" algorithms are audited to remove bias. We don't care about your zip code or background—only your actions.
               </p>
             </div>
-            <div className="p-8 rounded-3xl bg-black border border-zinc-800 hover:border-[#00e599] transition-colors group">
+            <div id="lenders" className="p-8 rounded-3xl bg-black border border-zinc-800 hover:border-[#00e599] transition-colors group">
               <div className="w-14 h-14 rounded-2xl bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-[#00e599] transition-colors">
                 <span className="text-2xl group-hover:text-black">🚀</span>
               </div>
@@ -171,7 +178,7 @@ export const LandingPage: React.FC<Props> = ({ onLaunch }) => {
                 Lenders earn competitive APY while sponsoring "Fresh Start" microloans. It's profit with a purpose.
               </p>
             </div>
-            <div className="p-8 rounded-3xl bg-black border border-zinc-800 hover:border-[#00e599] transition-colors group">
+            <div id="compliance" className="p-8 rounded-3xl bg-black border border-zinc-800 hover:border-[#00e599] transition-colors group">
               <div className="w-14 h-14 rounded-2xl bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-[#00e599] transition-colors">
                 <span className="text-2xl group-hover:text-black">🔒</span>
               </div>
