@@ -17,6 +17,8 @@ import { SnowEffect } from './components/SnowEffect';
 import { NewsTicker } from './components/NewsTicker';
 import { LenderDashboard } from './components/LenderDashboard';
 import { LegalModal, LegalDocType } from './components/LegalModal';
+import { LandingPage } from './components/LandingPage';
+import { ReferralModal } from './components/ReferralModal';
 
 // Mock Charities
 const MOCK_CHARITIES: Charity[] = [
@@ -44,6 +46,7 @@ const MOCK_COMMUNITY_REQUESTS: LoanRequest[] = [
 
 const App: React.FC = () => {
   const [appReady, setAppReady] = useState(false);
+  const [showLanding, setShowLanding] = useState(true); // Control Landing Page
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isVerifyingEmail, setIsVerifyingEmail] = useState(false); 
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -60,6 +63,7 @@ const App: React.FC = () => {
   const [showKYCModal, setShowKYCModal] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [showRiskModal, setShowRiskModal] = useState(false);
+  const [showReferralModal, setShowReferralModal] = useState(false);
   const [activeLegalDoc, setActiveLegalDoc] = useState<LegalDocType | null>(null);
   const [showSnow, setShowSnow] = useState(false);
   
@@ -92,6 +96,7 @@ const App: React.FC = () => {
     const handleLogin = async (netlifyUser: any) => {
       console.log("Logged in:", netlifyUser);
       setIsAuthenticated(true);
+      setShowLanding(false); // Skip landing page if logged in
       setIsVerifyingEmail(false); 
       const p3User = PersistenceService.loadUser(netlifyUser);
       setUser(p3User);
@@ -120,6 +125,7 @@ const App: React.FC = () => {
     const handleLogout = () => {
       console.log("Logged out");
       setIsAuthenticated(false);
+      setShowLanding(true); // Return to landing page
       setUser(null);
       setMyRequests([]);
       setMyOffers([]);
@@ -373,10 +379,21 @@ const App: React.FC = () => {
 
   if (!appReady) return <div className="h-screen bg-[#050505] flex items-center justify-center text-white">Loading P3 Protocol...</div>;
 
+  // Show Landing Page if not authenticated
+  if (!isAuthenticated && showLanding) {
+    return <LandingPage onLaunch={() => setShowLanding(false)} />;
+  }
+
+  // Show Auth/Login Prompt if Landing is dismissed but still not authenticated
   if (!isAuthenticated || !user) {
     return (
       <div className="h-screen bg-[#050505] flex flex-col items-center justify-center relative overflow-hidden">
          <div className="absolute inset-0 bg-grid-pattern pointer-events-none opacity-20"></div>
+         
+         <div className="absolute top-6 left-6 z-20">
+            <Button variant="ghost" size="sm" onClick={() => setShowLanding(true)}>← Back to Home</Button>
+         </div>
+
          <div className="z-10 text-center space-y-8 animate-fade-in">
            <div className="transform scale-150 mb-8">
              <Logo showText={false} />
@@ -435,6 +452,7 @@ const App: React.FC = () => {
       {showRiskModal && <RiskDashboard report={riskReport} isLoading={isRiskLoading} onRefresh={refreshRiskAnalysis} onClose={() => setShowRiskModal(false)} />}
       <WalletConnectModal isOpen={showWalletModal} onClose={() => setShowWalletModal(false)} onConnect={(info) => setWallet(info)} />
       <LegalModal type={activeLegalDoc} onClose={() => setActiveLegalDoc(null)} />
+      <ReferralModal isOpen={showReferralModal} onClose={() => setShowReferralModal(false)} referralCode={user.id.substring(0,6).toUpperCase()} />
 
       <aside className="w-64 bg-[#0a0a0a] border-r border-zinc-900 flex flex-col z-50">
         <div className="p-6">
@@ -462,20 +480,19 @@ const App: React.FC = () => {
             icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>} 
           />
         </nav>
-        <div className="p-4 mx-4 mb-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
-           <div className="flex items-center gap-2 mb-3">
-             <span className="text-pink-500">♥</span>
-             <span className="text-xs font-bold text-white uppercase tracking-wider">Impact Fund</span>
+        
+        {/* Referral Box */}
+        <div 
+          onClick={() => setShowReferralModal(true)}
+          className="p-4 mx-4 mb-4 bg-gradient-to-br from-zinc-900 to-[#00e599]/10 rounded-xl border border-zinc-800 cursor-pointer hover:border-[#00e599]/50 transition-colors group"
+        >
+           <div className="flex items-center gap-2 mb-2">
+             <span className="text-xl">🚀</span>
+             <span className="text-xs font-bold text-white uppercase tracking-wider group-hover:text-[#00e599]">Boost Score</span>
            </div>
-           <div className="space-y-3">
-             {charities.slice(0,2).map(c => (
-               <div key={c.id} className="flex justify-between text-xs">
-                 <span className="text-zinc-500">{c.name}</span>
-                 <span className="text-white font-mono">${c.totalRaised}</span>
-               </div>
-             ))}
-           </div>
+           <p className="text-[10px] text-zinc-500">Invite friends & earn reputation points.</p>
         </div>
+
         <div className="p-4 border-t border-zinc-900">
            <Button variant="ghost" size="sm" className="w-full justify-start text-zinc-500 hover:text-red-400" onClick={() => AuthService.logout()}>
              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
