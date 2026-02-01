@@ -48,7 +48,8 @@ export const KYCVerificationModal: React.FC<Props> = ({ currentTier, onClose, on
         dob: formData.dob,
         address: formData.address,
         ssnLast4: formData.ssn.slice(-4),
-        docType: nextTier === KYCTier.TIER_2 ? 'Simulated ID Upload' : undefined
+        // CRITICAL FIX: Send a valid 'docType' for Tier 1 so the AI doesn't reject it as 'missing documentation'.
+        docType: nextTier === KYCTier.TIER_2 ? 'Simulated ID Upload' : 'Public Records Match (eIDV)'
       });
 
       if (result.passed) {

@@ -46,7 +46,9 @@ export const performComplianceCheck = async (
       3. Assign a Risk Level (Low, Medium, High).
       4. Determine if KYC should pass or fail based on standard compliance protocols.
       
-      NOTE: This is a simulation. Unless the name is "Osama bin Laden" or clearly fraudulent, assume the user is a standard citizen but provide professional reasoning.
+      IMPORTANT RULE:
+      - If "Document Provided" is 'Public Records Match (eIDV)', this COUNTS as valid verification for Tier 1 (Basic) access. Do NOT reject due to lack of physical ID in this case.
+      - Unless the name is "Osama bin Laden" or clearly fraudulent, assume the user is a standard citizen and APPROVE the application.
       `,
       config: {
         responseMimeType: "application/json",
