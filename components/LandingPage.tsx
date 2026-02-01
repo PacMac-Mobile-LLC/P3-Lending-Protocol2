@@ -12,56 +12,85 @@ interface Props {
   onOpenLegal: (type: LegalDocType) => void;
 }
 
+// --- Dynamic Toast Component ---
+const LiveToasts = () => {
+  const events = [
+    { icon: '⚡', title: 'Smart Contract Executed', sub: 'Instant Funding Released' },
+    { icon: '🛡️', title: 'Fresh Start Approved', sub: 'Charity Backed Guarantee' },
+    { icon: '📈', title: 'Reputation Increased', sub: 'User reached 85 Score' },
+    { icon: '💸', title: 'Loan Repaid', sub: 'Lender earned 8% APY' }
+  ];
+
+  const [index, setIndex] = useState(0);
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setVisible(false);
+      setTimeout(() => {
+        setIndex((prev) => (prev + 1) % events.length);
+        setVisible(true);
+      }, 500); // Wait for fade out before switching
+    }, 4000); // Change every 4 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const current = events[index];
+
+  return (
+    <div 
+      className={`absolute -top-12 -right-4 md:-right-10 transition-all duration-500 ease-in-out transform ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+    >
+      <div className="bg-[#050505] border border-zinc-800 p-4 rounded-xl shadow-2xl flex items-center gap-4 w-72">
+        <div className="w-10 h-10 rounded-full bg-[#00e599]/20 flex items-center justify-center text-lg">
+          {current.icon}
+        </div>
+        <div>
+          <div className="text-[#00e599] font-bold text-xs uppercase tracking-wider mb-0.5">Live Activity</div>
+          <div className="text-white font-bold text-sm">{current.title}</div>
+          <div className="text-zinc-500 text-xs">{current.sub}</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const AnimatedParagraph = () => {
   const text = "The first decentralized lending protocol powered by AI. We replace archaic FICO scores with Social Underwriting—unlocking capital based on your character, not just your history.";
   const words = text.split(' ');
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   useEffect(() => {
-    // Filter out indices that correspond to the bold "Key Terms" so we don't highlight them
     const candidates = words.map((word, index) => {
       const isKeyTerm = word.includes('Social') || word.includes('Underwriting');
       return isKeyTerm ? null : index;
     }).filter((index): index is number => index !== null);
 
     const cycleHighlight = () => {
-      // 1. Pick a random word from candidates
       const randomIndex = candidates[Math.floor(Math.random() * candidates.length)];
       setActiveIndex(randomIndex);
-
-      // 2. Clear the highlight after 1.2 seconds (allowing it to fade out)
-      setTimeout(() => {
-        setActiveIndex(null);
-      }, 1200); 
+      setTimeout(() => setActiveIndex(null), 1200); 
     };
 
-    // Start the first cycle immediately
     cycleHighlight();
-
-    // Repeat every 2.5 seconds (providing a gap between words)
     const interval = setInterval(cycleHighlight, 2500);
-
     return () => clearInterval(interval);
-  }, []); // Empty dependency array ensures this runs once on mount
+  }, []); 
 
   return (
-    <p className="text-xl leading-relaxed max-w-lg">
+    <p className="text-xl leading-relaxed max-w-lg text-zinc-300">
       {words.map((word, i) => {
         const isKeyTerm = word.includes('Social') || word.includes('Underwriting');
-        
-        if (isKeyTerm) {
-          return <strong key={i} className="text-white font-bold">{word} </strong>;
-        }
-
+        if (isKeyTerm) return <strong key={i} className="text-white font-bold">{word} </strong>;
         const isActive = i === activeIndex;
-
         return (
           <span
             key={i}
             className={`inline-block px-1 rounded transition-all duration-700 ease-in-out ${
               isActive 
                 ? "bg-[#00e599]/20 text-white shadow-[0_0_15px_rgba(0,229,153,0.4)] scale-105" 
-                : "bg-transparent text-zinc-400"
+                : "bg-transparent"
             }`}
           >
             {word}{' '}
@@ -76,7 +105,7 @@ export const LandingPage: React.FC<Props> = ({ onLaunch, onDevAdminLogin, onOpen
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
@@ -103,9 +132,10 @@ export const LandingPage: React.FC<Props> = ({ onLaunch, onDevAdminLogin, onOpen
       </nav>
 
       {/* Hero Section */}
-      <section className="relative z-10 pt-20 pb-32 px-6 flex-1">
+      <section className="relative z-10 pt-20 pb-32 px-6">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           
+          {/* Hero Text */}
           <div className="space-y-8 animate-fade-in">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-[#00e599] text-xs font-bold uppercase tracking-wider">
               <span className="w-2 h-2 rounded-full bg-[#00e599] animate-pulse"></span>
@@ -116,15 +146,14 @@ export const LandingPage: React.FC<Props> = ({ onLaunch, onDevAdminLogin, onOpen
               Is Your Currency.
             </h1>
             
-            {/* Animated Paragraph Component */}
             <AnimatedParagraph />
 
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <Button size="lg" onClick={onLaunch} className="text-lg px-10">
+              <Button size="lg" onClick={() => scrollToSection('borrowers')} className="text-lg px-10">
                 Start Borrowing
               </Button>
-              <Button size="lg" variant="secondary" onClick={onLaunch} className="text-lg px-10">
-                Become a Lender
+              <Button size="lg" variant="secondary" onClick={() => scrollToSection('lenders')} className="text-lg px-10">
+                Start Lending
               </Button>
             </div>
             <p className="text-xs text-zinc-600 pt-2">
@@ -132,63 +161,56 @@ export const LandingPage: React.FC<Props> = ({ onLaunch, onDevAdminLogin, onOpen
             </p>
           </div>
 
-          <div className="relative animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          {/* AI Visual */}
+          <div className="relative animate-fade-in mt-10 lg:mt-0" style={{ animationDelay: '0.2s' }}>
             <div className="absolute inset-0 bg-gradient-to-tr from-[#00e599]/20 to-transparent rounded-full blur-3xl"></div>
-            <div className="relative bg-zinc-900/50 backdrop-blur-xl border border-zinc-800 rounded-3xl p-8 shadow-2xl">
+            
+            <LiveToasts />
+
+            <div className="relative bg-[#0a0a0a]/80 backdrop-blur-xl border border-zinc-800 rounded-3xl p-8 shadow-2xl">
               <div className="flex justify-between items-center mb-8 border-b border-zinc-800 pb-6">
                  <div>
-                   <h3 className="text-2xl font-bold text-white">AI Analysis</h3>
-                   <p className="text-zinc-500 text-sm">Real-time Risk Engine</p>
+                   <h3 className="text-2xl font-bold text-white">Trust Analysis</h3>
+                   <p className="text-zinc-500 text-sm">Real-time Reputation Engine</p>
                  </div>
                  <div className="text-right">
                    <div className="text-[#00e599] font-mono text-xl font-bold">APPROVED</div>
-                   <div className="text-xs text-zinc-500">Tier 2 Verified</div>
+                   <div className="text-xs text-zinc-500">Instant Verification</div>
                  </div>
               </div>
               
-              <div className="flex justify-center mb-8">
+              <div className="flex justify-center mb-8 relative">
                 <div className="w-48 h-48">
                    <ScoreGauge score={85} />
                 </div>
+                {/* Connecting Lines (Decorative) */}
+                <div className="absolute top-1/2 left-0 w-full h-px bg-zinc-800 -z-10"></div>
+                <div className="absolute top-0 left-1/2 w-px h-full bg-zinc-800 -z-10"></div>
               </div>
 
-              <div className="space-y-4">
-                <div className="flex justify-between items-center p-3 rounded-lg bg-black/40 border border-zinc-800">
-                   <span className="text-zinc-400 text-sm">Repayment Streak</span>
-                   <span className="text-white font-mono font-bold">12 Months 🔥</span>
-                </div>
-                <div className="flex justify-between items-center p-3 rounded-lg bg-black/40 border border-zinc-800">
-                   <span className="text-zinc-400 text-sm">Community Trust</span>
-                   <span className="text-[#00e599] font-mono font-bold">High (Top 5%)</span>
-                </div>
-                <div className="p-3 rounded-lg bg-[#00e599]/10 border border-[#00e599]/20">
-                   <p className="text-xs text-[#00e599] italic">
-                     "User demonstrates strong social capital and consistent micro-repayments. Recommended for credit limit increase."
-                   </p>
-                </div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                 <div className="p-3 rounded-xl bg-zinc-900 border border-zinc-800">
+                    <div className="text-lg">🤝</div>
+                    <div className="text-[10px] uppercase text-zinc-500 font-bold mt-1">Social</div>
+                    <div className="text-white font-bold text-xs">Vouched</div>
+                 </div>
+                 <div className="p-3 rounded-xl bg-zinc-900 border border-zinc-800">
+                    <div className="text-lg">⛓️</div>
+                    <div className="text-[10px] uppercase text-zinc-500 font-bold mt-1">On-Chain</div>
+                    <div className="text-white font-bold text-xs">3 yrs</div>
+                 </div>
+                 <div className="p-3 rounded-xl bg-zinc-900 border border-zinc-800">
+                    <div className="text-lg">🔥</div>
+                    <div className="text-[10px] uppercase text-zinc-500 font-bold mt-1">Streak</div>
+                    <div className="text-[#00e599] font-bold text-xs">12 Mo</div>
+                 </div>
               </div>
-            </div>
 
-            {/* Floating Card 1 */}
-            <div className="absolute -bottom-10 -left-10 bg-black border border-zinc-800 p-4 rounded-xl shadow-xl flex items-center gap-3 animate-bounce" style={{ animationDuration: '3s' }}>
-               <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
-                 🛡️
-               </div>
-               <div>
-                 <div className="text-xs text-zinc-500 font-bold uppercase">Fresh Start</div>
-                 <div className="text-sm font-bold text-white">Charity Backed</div>
-               </div>
-            </div>
-
-            {/* Floating Card 2 */}
-            <div className="absolute -top-5 -right-5 bg-black border border-zinc-800 p-4 rounded-xl shadow-xl flex items-center gap-3 animate-bounce" style={{ animationDuration: '4s' }}>
-               <div className="w-10 h-10 rounded-full bg-[#00e599]/20 flex items-center justify-center text-[#00e599]">
-                 💸
-               </div>
-               <div>
-                 <div className="text-xs text-zinc-500 font-bold uppercase">Instant Funding</div>
-                 <div className="text-sm font-bold text-white">Smart Contract Executed</div>
-               </div>
+              <div className="mt-6 p-4 rounded-xl bg-[#00e599]/5 border border-[#00e599]/20">
+                 <p className="text-xs text-[#00e599] italic text-center">
+                   "User demonstrates strong social capital and consistent micro-repayments. Recommended for credit limit increase."
+                 </p>
+              </div>
             </div>
           </div>
 
@@ -217,56 +239,119 @@ export const LandingPage: React.FC<Props> = ({ onLaunch, onDevAdminLogin, onOpen
         </div>
       </section>
 
-      {/* Feature Grid */}
-      <section className="py-24 px-6 bg-zinc-900/20">
+      {/* Borrower Section */}
+      <section id="borrowers" className="py-24 px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">Banking for the Rest of Us.</h2>
-            <p className="text-zinc-400 max-w-2xl mx-auto">
-              Traditional banks rely on outdated metrics. P³ Securities uses blockchain transparency and AI to build a fairer financial system.
-            </p>
+          <div className="bg-zinc-900/30 border border-zinc-800 rounded-3xl overflow-hidden flex flex-col md:flex-row">
+             <div className="p-10 md:p-16 flex-1 flex flex-col justify-center">
+                <div className="inline-block px-3 py-1 rounded bg-blue-500/10 text-blue-400 text-xs font-bold uppercase tracking-wider mb-4 w-fit">
+                  For Borrowers
+                </div>
+                <h2 className="text-4xl font-bold text-white mb-6">Need Capital? <br/>Build Credit.</h2>
+                <p className="text-zinc-400 mb-8 text-lg leading-relaxed">
+                  Stop getting rejected by banks for having a "thin file". We look at the whole picture. 
+                  Start small with our <strong>Fresh Start</strong> program and unlock larger amounts as you prove your reliability.
+                </p>
+                <ul className="space-y-4 mb-10">
+                  <li className="flex items-center gap-3 text-zinc-300">
+                    <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-sm">✓</span>
+                    <span>No FICO Score Required</span>
+                  </li>
+                  <li className="flex items-center gap-3 text-zinc-300">
+                    <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-sm">✓</span>
+                    <span>Instant "Fresh Start" Approval (Charity Backed)</span>
+                  </li>
+                  <li className="flex items-center gap-3 text-zinc-300">
+                    <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-sm">✓</span>
+                    <span>Funds sent directly to your Wallet</span>
+                  </li>
+                </ul>
+                <Button onClick={onLaunch} className="w-fit px-8 py-3">Start Borrowing Now</Button>
+             </div>
+             <div className="flex-1 bg-gradient-to-br from-zinc-900 to-black relative min-h-[400px]">
+                <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
+                {/* Abstract Visual for Borrowing */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                   <div className="relative w-64 h-80 bg-black border border-zinc-800 rounded-2xl p-6 shadow-2xl rotate-3">
+                      <div className="flex justify-between items-center mb-6">
+                        <div className="h-2 w-12 bg-zinc-800 rounded"></div>
+                        <div className="h-2 w-4 bg-zinc-800 rounded"></div>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="h-20 w-full bg-zinc-900 rounded-xl border border-zinc-800 flex items-center justify-center">
+                           <span className="text-2xl font-bold text-white">$500</span>
+                        </div>
+                        <div className="h-2 w-full bg-zinc-800 rounded"></div>
+                        <div className="h-2 w-3/4 bg-zinc-800 rounded"></div>
+                        <div className="mt-8 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg text-center">
+                           <span className="text-blue-400 font-bold text-sm">Funded Instantly</span>
+                        </div>
+                      </div>
+                   </div>
+                </div>
+             </div>
           </div>
+        </div>
+      </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div id="borrowers" className="p-8 rounded-3xl bg-black border border-zinc-800 hover:border-[#00e599] transition-colors group relative overflow-hidden">
-              <div className="absolute inset-0 bg-grid-pattern opacity-5 group-hover:opacity-10 transition-opacity"></div>
-              <div className="w-14 h-14 rounded-2xl bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-[#00e599] transition-colors relative z-10">
-                {/* Fair Lending Icon */}
-                <svg className="w-7 h-7 text-white group-hover:text-black transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3 relative z-10">Fair Lending (ECOA)</h3>
-              <p className="text-zinc-400 text-sm leading-relaxed relative z-10">
-                Our "Blind AI" algorithms are audited to remove bias. We don't care about your zip code or background—only your actions.
-              </p>
-            </div>
-            <div id="lenders" className="p-8 rounded-3xl bg-black border border-zinc-800 hover:border-[#00e599] transition-colors group relative overflow-hidden">
-               <div className="absolute inset-0 bg-grid-pattern opacity-5 group-hover:opacity-10 transition-opacity"></div>
-              <div className="w-14 h-14 rounded-2xl bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-[#00e599] transition-colors relative z-10">
-                {/* Impact Yield Icon */}
-                <svg className="w-7 h-7 text-white group-hover:text-black transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3 relative z-10">Impact Yield</h3>
-              <p className="text-zinc-400 text-sm leading-relaxed relative z-10">
-                Lenders earn competitive APY while sponsoring "Fresh Start" microloans. It's profit with a purpose.
-              </p>
-            </div>
-            <div id="compliance" className="p-8 rounded-3xl bg-black border border-zinc-800 hover:border-[#00e599] transition-colors group relative overflow-hidden">
-               <div className="absolute inset-0 bg-grid-pattern opacity-5 group-hover:opacity-10 transition-opacity"></div>
-              <div className="w-14 h-14 rounded-2xl bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-[#00e599] transition-colors relative z-10">
-                {/* Secure Icon */}
-                <svg className="w-7 h-7 text-white group-hover:text-black transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3 relative z-10">Secure & Compliant</h3>
-              <p className="text-zinc-400 text-sm leading-relaxed relative z-10">
-                Built on audited smart contracts. We are pursuing full NMLS licensing and adhere to BSA/AML regulations.
-              </p>
-            </div>
+      {/* Lender Section */}
+      <section id="lenders" className="py-24 px-6 bg-zinc-900/20">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-black border border-zinc-800 rounded-3xl overflow-hidden flex flex-col md:flex-row-reverse">
+             <div className="p-10 md:p-16 flex-1 flex flex-col justify-center">
+                <div className="inline-block px-3 py-1 rounded bg-[#00e599]/10 text-[#00e599] text-xs font-bold uppercase tracking-wider mb-4 w-fit">
+                  For Lenders
+                </div>
+                <h2 className="text-4xl font-bold text-white mb-6">Grow Wealth.<br/>Make an Impact.</h2>
+                <p className="text-zinc-400 mb-8 text-lg leading-relaxed">
+                  Earn competitive yields while helping real people break the debt cycle. 
+                  Our AI does the heavy lifting, vetting borrowers and assigning risk scores so you can lend with confidence.
+                </p>
+                <ul className="space-y-4 mb-10">
+                  <li className="flex items-center gap-3 text-zinc-300">
+                    <span className="w-6 h-6 rounded-full bg-[#00e599]/20 text-[#00e599] flex items-center justify-center text-sm">✓</span>
+                    <span>Earn 5-15% APY on Crypto Assets</span>
+                  </li>
+                  <li className="flex items-center gap-3 text-zinc-300">
+                    <span className="w-6 h-6 rounded-full bg-[#00e599]/20 text-[#00e599] flex items-center justify-center text-sm">✓</span>
+                    <span>Automated AI Matchmaking</span>
+                  </li>
+                  <li className="flex items-center gap-3 text-zinc-300">
+                    <span className="w-6 h-6 rounded-full bg-[#00e599]/20 text-[#00e599] flex items-center justify-center text-sm">✓</span>
+                    <span>Direct Peer-to-Peer Smart Contracts</span>
+                  </li>
+                </ul>
+                <Button onClick={onLaunch} variant="secondary" className="w-fit px-8 py-3 border-[#00e599]/50 hover:border-[#00e599] text-white">Become a Lender</Button>
+             </div>
+             <div className="flex-1 bg-gradient-to-bl from-zinc-900 to-black relative min-h-[400px]">
+                <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
+                {/* Abstract Visual for Lending */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                   <div className="relative w-64 h-80 bg-zinc-900 border border-zinc-700 rounded-2xl p-6 shadow-2xl -rotate-3">
+                      <div className="flex justify-between items-center mb-6">
+                        <div className="h-8 w-8 rounded-full bg-[#00e599] flex items-center justify-center text-black font-bold">P3</div>
+                        <div className="text-[#00e599] font-mono text-xs">+12% APY</div>
+                      </div>
+                      <div className="space-y-3">
+                        <div className="p-3 bg-black rounded-lg border border-zinc-800 flex justify-between items-center">
+                           <div className="h-2 w-16 bg-zinc-800 rounded"></div>
+                           <div className="text-[#00e599] text-xs font-bold">+$24.50</div>
+                        </div>
+                        <div className="p-3 bg-black rounded-lg border border-zinc-800 flex justify-between items-center">
+                           <div className="h-2 w-20 bg-zinc-800 rounded"></div>
+                           <div className="text-[#00e599] text-xs font-bold">+$12.00</div>
+                        </div>
+                        <div className="p-3 bg-black rounded-lg border border-zinc-800 flex justify-between items-center">
+                           <div className="h-2 w-12 bg-zinc-800 rounded"></div>
+                           <div className="text-[#00e599] text-xs font-bold">+$8.40</div>
+                        </div>
+                      </div>
+                      <div className="mt-8 text-center text-zinc-500 text-xs">
+                        Portfolio Performance
+                      </div>
+                   </div>
+                </div>
+             </div>
           </div>
         </div>
       </section>
