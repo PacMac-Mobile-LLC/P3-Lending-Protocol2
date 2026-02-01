@@ -87,11 +87,12 @@ export interface LoanOffer {
   interestRate: number;
   minReputationScore: number;
   terms: string;
+  status?: 'ACTIVE' | 'PAUSED'; // Added status
 }
 
 export interface MatchResult {
   offerId: string;
-  requestId: string;
+  requestId: string; // The ID of the item being matched against
   matchScore: number;
   reasoning: string;
 }

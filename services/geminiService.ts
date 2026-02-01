@@ -132,7 +132,7 @@ export const analyzeReputation = async (profile: UserProfile): Promise<{ score: 
   }
 };
 
-// AI Matchmaker: Finds the best loan offers for a request
+// AI Matchmaker (Borrower View): Finds Offers for a Request
 export const matchLoanOffers = async (request: LoanRequest, offers: LoanOffer[]): Promise<MatchResult[]> => {
   if (offers.length === 0) return [];
   const ai = getAI();
@@ -184,6 +184,69 @@ export const matchLoanOffers = async (request: LoanRequest, offers: LoanOffer[])
 
   } catch (error) {
     console.error("Matching Error:", error);
+    return [];
+  }
+};
+
+// AI Matchmaker (Lender View): Finds Requests for an Offer
+export const matchBorrowers = async (offer: LoanOffer, requests: LoanRequest[]): Promise<MatchResult[]> => {
+  if (requests.length === 0) return [];
+  const ai = getAI();
+  if (!ai) return [];
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `Act as a P3 Lending Matchmaker (Lender Side). Find qualified borrowers for this specific Loan Offer.
+      
+      Lender Offer Details:
+      Max Amount: $${offer.maxAmount}
+      Interest Rate: ${offer.interestRate}%
+      Min Reputation Score Required: ${offer.minReputationScore}
+
+      Available Borrower Requests:
+      ${JSON.stringify(requests)}
+
+      MATCHING LOGIC:
+      1. Filter out borrowers who need more money than the 'Max Amount'.
+      2. Filter out borrowers whose 'Reputation Score' is lower than 'Min Reputation Score' (unless they are Charity Guaranteed/Fresh Start).
+      3. Filter out borrowers who set a 'Max Interest Rate' lower than the lender's 'Interest Rate' (unless their max rate is 0/flexible).
+      4. Assign a high 'matchScore' to borrowers with good history (Reputation > 70) or verified social causes.
+
+      Return a list of matches. Rank them by 'matchScore' (0-100).
+      The 'requestId' in the response MUST correspond to the 'id' of the borrower request.
+      `,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              requestId: { type: Type.STRING },
+              matchScore: { type: Type.INTEGER },
+              reasoning: { type: Type.STRING }
+            },
+            required: ["requestId", "matchScore", "reasoning"]
+          }
+        }
+      }
+    });
+
+    const text = response.text;
+    if (!text) return [];
+    
+    // Parse response and map back to MatchResult structure
+    const matches = JSON.parse(text);
+    return matches.map((m: any) => ({
+      offerId: offer.id,
+      requestId: m.requestId,
+      matchScore: m.matchScore,
+      reasoning: m.reasoning
+    }));
+
+  } catch (error) {
+    console.error("Borrower Matching Error:", error);
     return [];
   }
 };

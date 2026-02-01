@@ -1,9 +1,10 @@
-import { UserProfile, LoanRequest, LoanType, KYCTier, KYCStatus } from '../types';
+import { UserProfile, LoanRequest, LoanOffer, LoanType, KYCTier, KYCStatus } from '../types';
 
 // We now generate keys dynamically based on the User ID
 const getKeys = (userId: string) => ({
   USER: `p3_user_${userId}`,
   MY_REQUESTS: `p3_my_requests_${userId}`,
+  MY_OFFERS: `p3_my_offers_${userId}`, // New Key
 });
 
 // Fallback data if no local data exists
@@ -30,7 +31,6 @@ const INITIAL_USER_TEMPLATE: UserProfile = {
 
 export const PersistenceService = {
   // --- User Profile ---
-  // Now accepts a Netlify User object to seed/load data
   loadUser: (netlifyUser: any): UserProfile => {
     try {
       if (!netlifyUser) return INITIAL_USER_TEMPLATE;
@@ -99,11 +99,28 @@ export const PersistenceService = {
     return updated;
   },
 
+  // --- Loan Offers (Lender Side) ---
+  getMyOffers: (userId: string): LoanOffer[] => {
+    try {
+      const keys = getKeys(userId);
+      const data = localStorage.getItem(keys.MY_OFFERS);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  saveMyOffers: (userId: string, offers: LoanOffer[]) => {
+    const keys = getKeys(userId);
+    localStorage.setItem(keys.MY_OFFERS, JSON.stringify(offers));
+  },
+
   // --- Reset ---
   clearAll: (userId: string) => {
     const keys = getKeys(userId);
     localStorage.removeItem(keys.USER);
     localStorage.removeItem(keys.MY_REQUESTS);
+    localStorage.removeItem(keys.MY_OFFERS);
     window.location.reload();
   }
 };

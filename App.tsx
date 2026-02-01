@@ -9,12 +9,13 @@ import { Logo } from './components/Logo';
 import { analyzeReputation, analyzeRiskProfile } from './services/geminiService';
 import { shortenAddress } from './services/walletService';
 import { PersistenceService } from './services/persistence';
-import { AuthService } from './services/netlifyAuth'; // New Service
+import { AuthService } from './services/netlifyAuth'; 
 import { KYCVerificationModal } from './components/KYCVerificationModal';
 import { WalletConnectModal } from './components/WalletConnectModal';
 import { RiskDashboard } from './components/RiskDashboard';
 import { SnowEffect } from './components/SnowEffect';
 import { NewsTicker } from './components/NewsTicker';
+import { LenderDashboard } from './components/LenderDashboard'; // New Component
 
 // Mock Charities
 const MOCK_CHARITIES: Charity[] = [
@@ -30,21 +31,27 @@ const MOCK_OFFERS: LoanOffer[] = [
   { id: 'o4', lenderId: 'l4', lenderName: 'SafeHarbor', maxAmount: 15000, interestRate: 4.8, minReputationScore: 85, terms: 'Collateralized' },
 ];
 
+// Expanded Mock Requests for Lender Matching
 const MOCK_COMMUNITY_REQUESTS: LoanRequest[] = [
   { id: 'cr1', borrowerId: 'new1', borrowerName: 'Sarah J.', amount: 200, purpose: 'Textbooks for semester', type: LoanType.MICROLOAN, maxInterestRate: 0, status: 'PENDING', reputationScoreSnapshot: 20, isSponsorship: true },
   { id: 'cr2', borrowerId: 'new2', borrowerName: 'Mike D.', amount: 450, purpose: 'Bike repair for delivery job', type: LoanType.MICROLOAN, maxInterestRate: 0, status: 'PENDING', reputationScoreSnapshot: 35, isSponsorship: true },
+  { id: 'req1', borrowerId: 'b1', borrowerName: 'Alex Chen', amount: 5000, purpose: 'Business Expansion', type: LoanType.BUSINESS, maxInterestRate: 8, status: 'PENDING', reputationScoreSnapshot: 78 },
+  { id: 'req2', borrowerId: 'b2', borrowerName: 'Jordan Smith', amount: 1200, purpose: 'Medical Emergency', type: LoanType.EMERGENCY, maxInterestRate: 15, status: 'PENDING', reputationScoreSnapshot: 65 },
+  { id: 'req3', borrowerId: 'b3', borrowerName: 'Taylor Doe', amount: 8000, purpose: 'Home Office Setup', type: LoanType.PERSONAL, maxInterestRate: 6, status: 'PENDING', reputationScoreSnapshot: 88 },
+  { id: 'req4', borrowerId: 'b4', borrowerName: 'Casey L.', amount: 500, purpose: 'Laptop Repair', type: LoanType.PERSONAL, maxInterestRate: 10, status: 'PENDING', reputationScoreSnapshot: 45 }
 ];
 
 const App: React.FC = () => {
   const [appReady, setAppReady] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isVerifyingEmail, setIsVerifyingEmail] = useState(false); // New state for email verification
+  const [isVerifyingEmail, setIsVerifyingEmail] = useState(false); 
   const [user, setUser] = useState<UserProfile | null>(null);
   
   const [charities, setCharities] = useState<Charity[]>(MOCK_CHARITIES);
   const [activeView, setActiveView] = useState<'borrow' | 'lend' | 'mentorship' | 'profile'>('borrow');
   
   const [myRequests, setMyRequests] = useState<LoanRequest[]>([]);
+  const [myOffers, setMyOffers] = useState<LoanOffer[]>([]); // New State
   const [communityRequests, setCommunityRequests] = useState<LoanRequest[]>(MOCK_COMMUNITY_REQUESTS);
   
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -73,28 +80,24 @@ const App: React.FC = () => {
   const [isCharityGuaranteed, setIsCharityGuaranteed] = useState(false);
   const [selectedCharity, setSelectedCharity] = useState<string>(MOCK_CHARITIES[0].id);
 
-  // Initialize Netlify Identity & Load Data
   useEffect(() => {
-    // Check for confirmation token in URL immediately
     if (window.location.hash.includes('confirmation_token')) {
       setIsVerifyingEmail(true);
     }
 
     AuthService.init();
 
-    // Handler for successful login
     const handleLogin = async (netlifyUser: any) => {
       console.log("Logged in:", netlifyUser);
       setIsAuthenticated(true);
-      setIsVerifyingEmail(false); // Stop verifying loading state
+      setIsVerifyingEmail(false); 
       const p3User = PersistenceService.loadUser(netlifyUser);
       setUser(p3User);
       setMyRequests(PersistenceService.getMyRequests(p3User.id));
-      AuthService.close(); // Close widget if open
+      setMyOffers(PersistenceService.getMyOffers(p3User.id)); // Load Offers
+      AuthService.close(); 
 
-      // Check if user has "unavailable" analysis from a previous failed run and retry automatically
       if (p3User.riskAnalysis?.includes("unavailable") || p3User.reputationScore === 50) {
-        console.log("Retrying AI Analysis...");
         setIsAnalyzing(true);
         const result = await analyzeReputation(p3User);
         setUser(prev => {
@@ -112,37 +115,32 @@ const App: React.FC = () => {
       }
     };
 
-    // Handler for logout
     const handleLogout = () => {
       console.log("Logged out");
       setIsAuthenticated(false);
       setUser(null);
       setMyRequests([]);
+      setMyOffers([]);
     };
 
-    // Check if already logged in on load
     const currentUser = AuthService.currentUser();
     if (currentUser) {
       handleLogin(currentUser);
     } else {
-      // Not logged in
       setIsAuthenticated(false);
     }
 
-    // Subscribe to events
     AuthService.on('login', handleLogin);
     AuthService.on('logout', handleLogout);
     
     setAppReady(true);
 
-    // Cleanup
     return () => {
       AuthService.off('login', handleLogin);
       AuthService.off('logout', handleLogout);
     };
   }, []);
 
-  // Easter Egg Listener
   useEffect(() => {
     const sequence = "make it snow";
     let history = "";
@@ -183,16 +181,12 @@ const App: React.FC = () => {
     }
   };
 
-  // Handlers
   const handleProfileUpdate = async (updatedUser: UserProfile) => {
     if (!user) return;
     setIsAnalyzing(true);
-    
     setUser(updatedUser); 
     PersistenceService.saveUser(updatedUser);
-
     const result = await analyzeReputation(updatedUser);
-    
     setUser(prev => {
       if (!prev) return null;
       const finalUser = {
@@ -204,7 +198,6 @@ const App: React.FC = () => {
       PersistenceService.saveUser(finalUser);
       return finalUser;
     });
-    
     setIsAnalyzing(false);
   };
 
@@ -239,7 +232,6 @@ const App: React.FC = () => {
   const handleCreateRequest = (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-
     if (!wallet.isConnected) {
       alert("Please connect your wallet first.");
       setShowWalletModal(true);
@@ -275,14 +267,22 @@ const App: React.FC = () => {
     setLoanAmount(1000);
   };
 
+  // New Handler for Creating Offers
+  const handleCreateOffer = (offer: LoanOffer) => {
+    if(!user) return;
+    setMyOffers(prev => {
+      const updated = [offer, ...prev];
+      PersistenceService.saveMyOffers(user.id, updated);
+      return updated;
+    });
+  };
+
   const handleFundRequest = (req: LoanRequest) => {
      if (!wallet.isConnected) {
       setShowWalletModal(true);
       return;
     }
     if (!user) return;
-
-    // Simulate On-Chain Smart Contract Deployment
     const mockContract = "0x" + Array.from({length: 40}, () => Math.floor(Math.random()*16).toString(16)).join("");
     const mockTx = "0x" + Array.from({length: 64}, () => Math.floor(Math.random()*16).toString(16)).join("");
 
@@ -369,18 +369,8 @@ const App: React.FC = () => {
     setIsAnalyzing(false);
   };
 
-  const boostScore = () => {
-    setUser(prev => {
-      if (!prev) return null;
-      const updated = { ...prev, reputationScore: 85, successfulRepayments: 12, currentStreak: 5 };
-      PersistenceService.saveUser(updated);
-      return updated;
-    });
-  };
-
   if (!appReady) return <div className="h-screen bg-[#050505] flex items-center justify-center text-white">Loading P3 Protocol...</div>;
 
-  // --- LOGIN VIEW ---
   if (!isAuthenticated || !user) {
     return (
       <div className="h-screen bg-[#050505] flex flex-col items-center justify-center relative overflow-hidden">
@@ -422,9 +412,6 @@ const App: React.FC = () => {
     );
   }
 
-  // --- MAIN APP VIEW ---
-
-  // Render Sidebar Item
   const NavItem = ({ view, label, icon }: { view: typeof activeView, label: string, icon: React.ReactNode }) => (
     <button 
       onClick={() => setActiveView(view)}
@@ -441,19 +428,15 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-[#050505] text-zinc-200 font-sans selection:bg-[#00e599] selection:text-black overflow-hidden relative">
-      
       {showSnow && <SnowEffect />}
-      
       {showKYCModal && <KYCVerificationModal currentTier={user.kycTier} onClose={() => setShowKYCModal(false)} onUpgradeComplete={handleKYCUpgrade} />}
       {showRiskModal && <RiskDashboard report={riskReport} isLoading={isRiskLoading} onRefresh={refreshRiskAnalysis} onClose={() => setShowRiskModal(false)} />}
       <WalletConnectModal isOpen={showWalletModal} onClose={() => setShowWalletModal(false)} onConnect={(info) => setWallet(info)} />
 
-      {/* SIDEBAR */}
       <aside className="w-64 bg-[#0a0a0a] border-r border-zinc-900 flex flex-col z-50">
         <div className="p-6">
           <Logo />
         </div>
-
         <nav className="flex-1 px-4 space-y-2 mt-4">
           <NavItem 
             view="borrow" 
@@ -476,8 +459,6 @@ const App: React.FC = () => {
             icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>} 
           />
         </nav>
-
-        {/* Charity Widget in Sidebar */}
         <div className="p-4 mx-4 mb-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
            <div className="flex items-center gap-2 mb-3">
              <span className="text-pink-500">♥</span>
@@ -492,7 +473,6 @@ const App: React.FC = () => {
              ))}
            </div>
         </div>
-
         <div className="p-4 border-t border-zinc-900">
            <Button variant="ghost" size="sm" className="w-full justify-start text-zinc-500 hover:text-red-400" onClick={() => AuthService.logout()}>
              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
@@ -506,19 +486,16 @@ const App: React.FC = () => {
         </div>
       </aside>
 
-      {/* MAIN CONTENT */}
       <main className="flex-1 flex flex-col relative overflow-hidden z-10">
         <div className="absolute inset-0 bg-grid-pattern pointer-events-none -z-10"></div>
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black pointer-events-none -z-10"></div>
 
-        {/* TOP BAR */}
         <header className="h-16 border-b border-zinc-800/50 backdrop-blur-sm flex items-center justify-between px-8 z-10 bg-[#050505]/80">
            <div className="flex items-center gap-4">
               <h1 className="text-xl font-bold text-white tracking-tight">
                 {activeView === 'borrow' ? 'My Dashboard' : activeView === 'lend' ? 'Lending Marketplace' : activeView === 'mentorship' ? 'Mentorship Hub' : 'Profile Settings'}
               </h1>
            </div>
-           
            <div className="flex items-center gap-4">
               <button 
                 onClick={requestNotificationPermission}
@@ -531,11 +508,9 @@ const App: React.FC = () => {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path><circle cx="19" cy="5" r="2" fill="#ef4444" stroke="none" /></svg>
                 )}
               </button>
-           
               <Button size="sm" variant="secondary" onClick={handleRiskAnalysis} className="border border-zinc-700">
                 <span className="mr-1">🛡️</span> Risk Profile
               </Button>
-
               {wallet.isConnected ? (
                 <div className="flex items-center gap-3 bg-zinc-900/80 pl-4 pr-1 py-1 rounded-full border border-zinc-800">
                    <div className="text-right">
@@ -556,12 +531,9 @@ const App: React.FC = () => {
 
         <NewsTicker />
 
-        {/* SCROLLABLE CONTENT */}
         <div className="flex-1 overflow-y-auto p-8 relative z-0 custom-scrollbar">
-           
            {activeView === 'borrow' && (
              <div className="max-w-6xl mx-auto animate-fade-in space-y-8">
-                {/* User Stats Hero */}
                 <UserProfileCard 
                   user={user} 
                   onUpdate={handleProfileUpdate} 
@@ -570,9 +542,7 @@ const App: React.FC = () => {
                   onEditClick={() => setActiveView('profile')}
                   isAnalyzing={isAnalyzing}
                 />
-
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-                   {/* Create Loan Form */}
                    <div className="md:col-span-5">
                       <div className="glass-panel rounded-2xl p-6 sticky top-4">
                         <div className="flex justify-between items-center mb-6">
@@ -581,7 +551,6 @@ const App: React.FC = () => {
                              <span className="text-[10px] bg-red-500/10 text-red-400 px-2 py-1 rounded border border-red-500/20">KYC Required</span>
                            )}
                         </div>
-
                         <form onSubmit={handleCreateRequest} className="space-y-5">
                            <div>
                               <div className="flex justify-between mb-1">
@@ -598,7 +567,6 @@ const App: React.FC = () => {
                                 />
                               </div>
                            </div>
-
                            <div className="flex gap-3">
                              <div 
                                 onClick={() => { setIsMicroloan(false); setLoanAmount(1000); }}
@@ -613,7 +581,6 @@ const App: React.FC = () => {
                                <div className="text-xs font-bold">Microloan</div>
                              </div>
                            </div>
-
                            {isMicroloan && (
                              <div className="flex items-center gap-3 p-3 rounded-xl bg-pink-900/10 border border-pink-500/20 cursor-pointer" onClick={() => setIsCharityGuaranteed(!isCharityGuaranteed)}>
                                <div className={`w-4 h-4 rounded border flex items-center justify-center ${isCharityGuaranteed ? 'bg-pink-500 border-pink-500' : 'border-zinc-600'}`}>
@@ -622,7 +589,6 @@ const App: React.FC = () => {
                                <span className="text-xs text-pink-300 font-medium">Fresh Start (Charity Guarantee)</span>
                              </div>
                            )}
-
                            <div>
                               <label className="block text-[10px] uppercase tracking-wider text-zinc-500 font-bold mb-1">Purpose</label>
                               <input 
@@ -633,13 +599,10 @@ const App: React.FC = () => {
                                 placeholder="e.g. Server costs"
                               />
                            </div>
-
                            <Button className="w-full" size="md">Post Request</Button>
                         </form>
                       </div>
                    </div>
-
-                   {/* Active Requests List */}
                    <div className="md:col-span-7">
                       <Marketplace 
                         activeRequests={myRequests}
@@ -658,22 +621,13 @@ const App: React.FC = () => {
 
            {activeView === 'lend' && (
              <div className="max-w-6xl mx-auto animate-fade-in">
-               <div className="glass-panel rounded-2xl p-8 text-center border-dashed">
-                  <h2 className="text-2xl font-bold text-white mb-4">Lending Order Book</h2>
-                  <p className="text-zinc-500 mb-8">Direct P2P lending marketplace coming in v2.0. Use "Borrow" tab to simulate matching.</p>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                     {MOCK_OFFERS.map(offer => (
-                        <div key={offer.id} className="bg-black border border-zinc-800 p-6 rounded-xl text-left hover:border-zinc-600 transition-all">
-                           <div className="text-[#00e599] font-bold text-lg mb-1">{offer.lenderName}</div>
-                           <div className="text-3xl font-mono text-white mb-4">{offer.interestRate}% <span className="text-xs text-zinc-500">APR</span></div>
-                           <div className="flex justify-between text-xs text-zinc-400 border-t border-zinc-800 pt-3">
-                              <span>Max: ${offer.maxAmount}</span>
-                              <span>Min Score: {offer.minReputationScore}</span>
-                           </div>
-                        </div>
-                     ))}
-                  </div>
-               </div>
+                {/* Replaced static list with functional Dashboard */}
+                <LenderDashboard 
+                  user={user}
+                  myOffers={myOffers}
+                  communityRequests={communityRequests}
+                  onCreateOffer={handleCreateOffer}
+                />
              </div>
            )}
 
@@ -686,7 +640,6 @@ const App: React.FC = () => {
            {activeView === 'profile' && (
              <ProfileSettings user={user} onSave={handleProfileUpdate} />
            )}
-
         </div>
       </main>
     </div>
