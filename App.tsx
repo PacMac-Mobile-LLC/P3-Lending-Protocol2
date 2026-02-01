@@ -531,115 +531,154 @@ const App: React.FC = () => {
 
         <NewsTicker />
 
-        <div className="flex-1 overflow-y-auto p-8 relative z-0 custom-scrollbar">
-           {activeView === 'borrow' && (
-             <div className="max-w-6xl mx-auto animate-fade-in space-y-8">
-                <UserProfileCard 
-                  user={user} 
-                  onUpdate={handleProfileUpdate} 
-                  onVerifyClick={() => setShowKYCModal(true)}
-                  onAnalyzeRisk={handleRiskAnalysis}
-                  onEditClick={() => setActiveView('profile')}
-                  isAnalyzing={isAnalyzing}
-                />
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-                   <div className="md:col-span-5">
-                      <div className="glass-panel rounded-2xl p-6 sticky top-4">
-                        <div className="flex justify-between items-center mb-6">
-                           <h3 className="text-lg font-bold text-white">New Request</h3>
-                           {user.kycTier === KYCTier.TIER_0 && (
-                             <span className="text-[10px] bg-red-500/10 text-red-400 px-2 py-1 rounded border border-red-500/20">KYC Required</span>
-                           )}
-                        </div>
-                        <form onSubmit={handleCreateRequest} className="space-y-5">
-                           <div>
-                              <div className="flex justify-between mb-1">
-                                <label className="text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Amount</label>
-                                <span className="text-[10px] text-zinc-500">Max: ${user.kycLimit}</span>
-                              </div>
-                              <div className="relative group">
-                                <span className="absolute left-4 top-3 text-zinc-500">$</span>
-                                <input 
-                                  type="number" 
-                                  value={loanAmount}
-                                  onChange={(e) => setLoanAmount(Number(e.target.value))}
-                                  className="w-full bg-black/50 border border-zinc-800 rounded-xl py-2.5 pl-8 pr-4 text-white focus:border-[#00e599] outline-none font-mono text-lg transition-all"
-                                />
-                              </div>
-                           </div>
-                           <div className="flex gap-3">
-                             <div 
-                                onClick={() => { setIsMicroloan(false); setLoanAmount(1000); }}
-                                className={`flex-1 p-3 rounded-xl border cursor-pointer text-center transition-all ${!isMicroloan ? 'bg-zinc-800 border-zinc-600' : 'bg-black/30 border-zinc-800 text-zinc-500'}`}
-                             >
-                               <div className="text-xs font-bold">Personal</div>
+        <div className="flex-1 overflow-y-auto p-8 relative z-0 custom-scrollbar flex flex-col">
+           <div className="flex-1">
+             {activeView === 'borrow' && (
+               <div className="max-w-6xl mx-auto animate-fade-in space-y-8">
+                  <UserProfileCard 
+                    user={user} 
+                    onUpdate={handleProfileUpdate} 
+                    onVerifyClick={() => setShowKYCModal(true)}
+                    onAnalyzeRisk={handleRiskAnalysis}
+                    onEditClick={() => setActiveView('profile')}
+                    isAnalyzing={isAnalyzing}
+                  />
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+                     <div className="md:col-span-5">
+                        <div className="glass-panel rounded-2xl p-6 sticky top-4">
+                          <div className="flex justify-between items-center mb-6">
+                             <h3 className="text-lg font-bold text-white">New Request</h3>
+                             {user.kycTier === KYCTier.TIER_0 && (
+                               <span className="text-[10px] bg-red-500/10 text-red-400 px-2 py-1 rounded border border-red-500/20">KYC Required</span>
+                             )}
+                          </div>
+                          <form onSubmit={handleCreateRequest} className="space-y-5">
+                             <div>
+                                <div className="flex justify-between mb-1">
+                                  <label className="text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Amount</label>
+                                  <span className="text-[10px] text-zinc-500">Max: ${user.kycLimit}</span>
+                                </div>
+                                <div className="relative group">
+                                  <span className="absolute left-4 top-3 text-zinc-500">$</span>
+                                  <input 
+                                    type="number" 
+                                    value={loanAmount}
+                                    onChange={(e) => setLoanAmount(Number(e.target.value))}
+                                    className="w-full bg-black/50 border border-zinc-800 rounded-xl py-2.5 pl-8 pr-4 text-white focus:border-[#00e599] outline-none font-mono text-lg transition-all"
+                                  />
+                                </div>
                              </div>
-                             <div 
-                                onClick={() => { setIsMicroloan(true); setLoanAmount(200); }}
-                                className={`flex-1 p-3 rounded-xl border cursor-pointer text-center transition-all ${isMicroloan ? 'bg-[#00e599]/10 border-[#00e599] text-[#00e599]' : 'bg-black/30 border-zinc-800 text-zinc-500'}`}
-                             >
-                               <div className="text-xs font-bold">Microloan</div>
-                             </div>
-                           </div>
-                           {isMicroloan && (
-                             <div className="flex items-center gap-3 p-3 rounded-xl bg-pink-900/10 border border-pink-500/20 cursor-pointer" onClick={() => setIsCharityGuaranteed(!isCharityGuaranteed)}>
-                               <div className={`w-4 h-4 rounded border flex items-center justify-center ${isCharityGuaranteed ? 'bg-pink-500 border-pink-500' : 'border-zinc-600'}`}>
-                                  {isCharityGuaranteed && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeWidth="3" d="M5 13l4 4L19 7"/></svg>}
+                             <div className="flex gap-3">
+                               <div 
+                                  onClick={() => { setIsMicroloan(false); setLoanAmount(1000); }}
+                                  className={`flex-1 p-3 rounded-xl border cursor-pointer text-center transition-all ${!isMicroloan ? 'bg-zinc-800 border-zinc-600' : 'bg-black/30 border-zinc-800 text-zinc-500'}`}
+                               >
+                                 <div className="text-xs font-bold">Personal</div>
                                </div>
-                               <span className="text-xs text-pink-300 font-medium">Fresh Start (Charity Guarantee)</span>
+                               <div 
+                                  onClick={() => { setIsMicroloan(true); setLoanAmount(200); }}
+                                  className={`flex-1 p-3 rounded-xl border cursor-pointer text-center transition-all ${isMicroloan ? 'bg-[#00e599]/10 border-[#00e599] text-[#00e599]' : 'bg-black/30 border-zinc-800 text-zinc-500'}`}
+                               >
+                                 <div className="text-xs font-bold">Microloan</div>
+                               </div>
                              </div>
-                           )}
-                           <div>
-                              <label className="block text-[10px] uppercase tracking-wider text-zinc-500 font-bold mb-1">Purpose</label>
-                              <input 
-                                type="text" 
-                                value={loanPurpose}
-                                onChange={(e) => setLoanPurpose(e.target.value)}
-                                className="w-full bg-black/50 border border-zinc-800 rounded-xl p-2.5 text-white focus:border-[#00e599] outline-none text-sm"
-                                placeholder="e.g. Server costs"
-                              />
-                           </div>
-                           <Button className="w-full" size="md">Post Request</Button>
-                        </form>
-                      </div>
-                   </div>
-                   <div className="md:col-span-7">
-                      <Marketplace 
-                        activeRequests={myRequests}
-                        availableOffers={MOCK_OFFERS}
-                        charities={charities}
-                        onRequestMatch={async () => setIsMatching(true)}
-                        onFundRequest={handleFundRequest}
-                        onReleaseEscrow={handleReleaseEscrow}
-                        onRepayLoan={handleRepayLoan}
-                        isMatching={isMatching}
-                      />
-                   </div>
-                </div>
-             </div>
-           )}
+                             {isMicroloan && (
+                               <div className="flex items-center gap-3 p-3 rounded-xl bg-pink-900/10 border border-pink-500/20 cursor-pointer" onClick={() => setIsCharityGuaranteed(!isCharityGuaranteed)}>
+                                 <div className={`w-4 h-4 rounded border flex items-center justify-center ${isCharityGuaranteed ? 'bg-pink-500 border-pink-500' : 'border-zinc-600'}`}>
+                                    {isCharityGuaranteed && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeWidth="3" d="M5 13l4 4L19 7"/></svg>}
+                                 </div>
+                                 <span className="text-xs text-pink-300 font-medium">Fresh Start (Charity Guarantee)</span>
+                               </div>
+                             )}
+                             <div>
+                                <label className="block text-[10px] uppercase tracking-wider text-zinc-500 font-bold mb-1">Purpose</label>
+                                <input 
+                                  type="text" 
+                                  value={loanPurpose}
+                                  onChange={(e) => setLoanPurpose(e.target.value)}
+                                  className="w-full bg-black/50 border border-zinc-800 rounded-xl p-2.5 text-white focus:border-[#00e599] outline-none text-sm"
+                                  placeholder="e.g. Server costs"
+                                />
+                             </div>
+                             <Button className="w-full" size="md">Post Request</Button>
+                          </form>
+                        </div>
+                     </div>
+                     <div className="md:col-span-7">
+                        <Marketplace 
+                          activeRequests={myRequests}
+                          availableOffers={MOCK_OFFERS}
+                          charities={charities}
+                          onRequestMatch={async () => setIsMatching(true)}
+                          onFundRequest={handleFundRequest}
+                          onReleaseEscrow={handleReleaseEscrow}
+                          onRepayLoan={handleRepayLoan}
+                          isMatching={isMatching}
+                        />
+                     </div>
+                  </div>
+               </div>
+             )}
 
-           {activeView === 'lend' && (
-             <div className="max-w-6xl mx-auto animate-fade-in">
-                {/* Replaced static list with functional Dashboard */}
-                <LenderDashboard 
-                  user={user}
-                  myOffers={myOffers}
-                  communityRequests={communityRequests}
-                  onCreateOffer={handleCreateOffer}
-                />
-             </div>
-           )}
+             {activeView === 'lend' && (
+               <div className="max-w-6xl mx-auto animate-fade-in">
+                  <LenderDashboard 
+                    user={user}
+                    myOffers={myOffers}
+                    communityRequests={communityRequests}
+                    onCreateOffer={handleCreateOffer}
+                  />
+               </div>
+             )}
 
-           {activeView === 'mentorship' && (
-             <div className="max-w-5xl mx-auto">
-               <MentorshipDashboard user={user} communityRequests={communityRequests} onSponsor={handleSponsorRequest} />
-             </div>
-           )}
+             {activeView === 'mentorship' && (
+               <div className="max-w-5xl mx-auto">
+                 <MentorshipDashboard user={user} communityRequests={communityRequests} onSponsor={handleSponsorRequest} />
+               </div>
+             )}
 
-           {activeView === 'profile' && (
-             <ProfileSettings user={user} onSave={handleProfileUpdate} />
-           )}
+             {activeView === 'profile' && (
+               <ProfileSettings user={user} onSave={handleProfileUpdate} />
+             )}
+           </div>
+
+           {/* Legal & Compliance Footer */}
+           <div className="max-w-6xl mx-auto w-full mt-12 pt-8 pb-4 border-t border-zinc-900 text-center md:text-left">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                 <div className="col-span-1 md:col-span-2">
+                    <div className="flex items-center gap-2 mb-4">
+                       <span className="font-bold text-white tracking-tighter text-lg">P<span className="text-[#00e599]">3</span></span>
+                       <span className="text-xs text-zinc-500 uppercase tracking-widest">Compliance</span>
+                    </div>
+                    <p className="text-[10px] text-zinc-500 leading-relaxed max-w-md">
+                      P3 Lending is a decentralized technology platform, not a bank or depository institution. 
+                      Loans are not FDIC insured. Crypto assets are highly volatile. 
+                      Participation involves significant risk, including potential loss of principal.
+                    </p>
+                 </div>
+                 <div>
+                    <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-3">Legal</h4>
+                    <ul className="space-y-2 text-[10px] text-zinc-500">
+                       <li><a href="#" className="hover:text-[#00e599]">Terms of Service</a></li>
+                       <li><a href="#" className="hover:text-[#00e599]">Privacy Policy</a></li>
+                       <li><a href="#" className="hover:text-[#00e599]">E-Sign Consent</a></li>
+                       <li><a href="#" className="hover:text-[#00e599]">State Disclosures</a></li>
+                    </ul>
+                 </div>
+                 <div>
+                    <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-3">Resources</h4>
+                    <ul className="space-y-2 text-[10px] text-zinc-500">
+                       <li><a href="#" className="hover:text-[#00e599]">Fair Lending (ECOA)</a></li>
+                       <li><a href="#" className="hover:text-[#00e599]">Responsible Security</a></li>
+                       <li><a href="#" className="hover:text-[#00e599]">Support & Safety</a></li>
+                    </ul>
+                 </div>
+              </div>
+              <div className="mt-8 pt-4 border-t border-zinc-900 text-[10px] text-zinc-600 flex justify-between items-center">
+                 <span>© 2024 P3 Lending Protocol. All rights reserved.</span>
+                 <span>NMLS ID: 123456 (Pending)</span>
+              </div>
+           </div>
         </div>
       </main>
     </div>
