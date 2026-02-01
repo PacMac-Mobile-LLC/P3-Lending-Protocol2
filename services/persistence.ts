@@ -1,4 +1,4 @@
-import { UserProfile, LoanRequest, LoanOffer, LoanType, KYCTier, KYCStatus, EmployeeProfile, ReferralData, InternalTicket } from '../types';
+import { UserProfile, LoanRequest, LoanOffer, LoanType, KYCTier, KYCStatus, EmployeeProfile, ReferralData, InternalTicket, InternalChatMessage } from '../types';
 import { SecurityService } from './security';
 
 // We now generate keys dynamically based on the User ID
@@ -10,6 +10,7 @@ const getKeys = (userId: string) => ({
 
 const EMPLOYEES_KEY = 'p3_admin_employees';
 const INTERNAL_TICKETS_KEY = 'p3_internal_tickets';
+const INTERNAL_CHAT_KEY = 'p3_internal_chat_history';
 
 // Fallback data if no local data exists
 const INITIAL_USER_TEMPLATE: UserProfile = {
@@ -239,6 +240,37 @@ export const PersistenceService = {
     const current = PersistenceService.getInternalTickets();
     const updated = current.map(t => t.id === ticketId ? { ...t, status: 'RESOLVED' as const } : t);
     localStorage.setItem(INTERNAL_TICKETS_KEY, JSON.stringify(updated));
+    return updated;
+  },
+
+  // --- Internal Chat ---
+  getChatHistory: (): InternalChatMessage[] => {
+    try {
+      const data = localStorage.getItem(INTERNAL_CHAT_KEY);
+      // Pre-seed with a welcome message if empty
+      if (!data) {
+        const welcome: InternalChatMessage = {
+          id: 'msg_welcome',
+          senderId: 'emp_super_admin',
+          senderName: 'System Root',
+          role: 'ADMIN',
+          message: 'Welcome to the P3 Internal Channel. All logs are encrypted.',
+          timestamp: Date.now()
+        };
+        PersistenceService.addChatMessage(welcome);
+        return [welcome];
+      }
+      return JSON.parse(data);
+    } catch (e) {
+      return [];
+    }
+  },
+
+  addChatMessage: (msg: InternalChatMessage) => {
+    const current = PersistenceService.getChatHistory();
+    // Keep last 100 messages
+    const updated = [...current, msg].slice(-100); 
+    localStorage.setItem(INTERNAL_CHAT_KEY, JSON.stringify(updated));
     return updated;
   },
 

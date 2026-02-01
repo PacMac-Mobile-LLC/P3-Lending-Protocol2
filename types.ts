@@ -196,3 +196,12 @@ export interface InternalTicket {
   status: 'OPEN' | 'RESOLVED';
   createdAt: number;
 }
+
+export interface InternalChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  role: AdminRole;
+  message: string;
+  timestamp: number;
+}
