@@ -1,10 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Logo } from './Logo';
 import { Button } from './Button';
-import { UserProfile, EmployeeProfile, AdminRole, KYCTier, KYCStatus, Dispute } from '../types';
+import { UserProfile, EmployeeProfile, AdminRole, KYCTier, KYCStatus, Dispute, InternalTicket } from '../types';
 import { PersistenceService } from '../services/persistence';
 import { SecurityService } from '../services/security';
 import { ScoreGauge } from './ScoreGauge';
+
+// Extend window definition for Tawk.to
+declare global {
+  interface Window {
+    Tawk_API?: any;
+  }
+}
 
 interface Props {
   currentAdmin: EmployeeProfile;
@@ -17,10 +24,11 @@ const MOCK_DISPUTES: Dispute[] = [
 ];
 
 export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'USERS' | 'KYC' | 'DISPUTES' | 'TEAM'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'USERS' | 'KYC' | 'DISPUTES' | 'TEAM' | 'KNOWLEDGE'>('OVERVIEW');
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [employees, setEmployees] = useState<EmployeeProfile[]>([]);
   const [disputes, setDisputes] = useState<Dispute[]>(MOCK_DISPUTES);
+  const [internalTickets, setInternalTickets] = useState<InternalTicket[]>([]);
   
   // User Management State
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,10 +38,25 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
   const [showAddEmployee, setShowAddEmployee] = useState(false);
   const [newEmpData, setNewEmpData] = useState({ name: '', email: '', role: 'SUPPORT' as AdminRole });
 
+  // Ticket Creation State
+  const [newTicket, setNewTicket] = useState({ subject: '', description: '', priority: 'LOW' as 'LOW' | 'MEDIUM' | 'HIGH' });
+
   useEffect(() => {
     // Load data
     setUsers(PersistenceService.getAllUsers());
     setEmployees(PersistenceService.getEmployees());
+    setInternalTickets(PersistenceService.getInternalTickets());
+
+    // Hide Tawk.to when in Admin Mode
+    if (window.Tawk_API && window.Tawk_API.hideWidget) {
+      window.Tawk_API.hideWidget();
+    }
+    return () => {
+      // Show again when leaving admin mode
+      if (window.Tawk_API && window.Tawk_API.showWidget) {
+        window.Tawk_API.showWidget();
+      }
+    };
   }, []);
 
   const handleAddEmployee = (e: React.FormEvent) => {
@@ -133,6 +156,29 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
     setDisputes(prev => prev.map(d => d.id === disputeId ? { ...d, status: 'RESOLVED', resolution } : d));
   };
 
+  // Internal Ticket Actions
+  const handleCreateTicket = (e: React.FormEvent) => {
+    e.preventDefault();
+    const ticket: InternalTicket = {
+      id: `tick_${Date.now()}`,
+      authorId: currentAdmin.id,
+      authorName: currentAdmin.name,
+      subject: newTicket.subject,
+      description: newTicket.description,
+      priority: newTicket.priority,
+      status: 'OPEN',
+      createdAt: Date.now()
+    };
+    const updated = PersistenceService.addInternalTicket(ticket);
+    setInternalTickets(updated);
+    setNewTicket({ subject: '', description: '', priority: 'LOW' });
+  };
+
+  const handleResolveInternalTicket = (id: string) => {
+    const updated = PersistenceService.resolveInternalTicket(id);
+    setInternalTickets(updated);
+  };
+
   const filteredUsers = users.filter(u => 
     u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     u.id.toLowerCase().includes(searchTerm.toLowerCase())
@@ -140,6 +186,7 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
 
   const pendingKYCUsers = users.filter(u => u.kycStatus === KYCStatus.PENDING);
   const openDisputes = disputes.filter(d => d.status === 'OPEN');
+  const openTickets = internalTickets.filter(t => t.status === 'OPEN');
 
   return (
     <div className="flex h-screen bg-[#050505] text-zinc-200 font-sans overflow-hidden">
@@ -189,6 +236,16 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
             {openDisputes.length > 0 && <span className="bg-red-500 text-white text-xs font-bold px-1.5 rounded-full">{openDisputes.length}</span>}
           </button>
 
+          <button 
+            onClick={() => setActiveTab('KNOWLEDGE')}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${activeTab === 'KNOWLEDGE' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-white'}`}
+          >
+             <div className="flex items-center gap-3">
+              <span>📚</span> Knowledge & Tickets
+            </div>
+            {openTickets.length > 0 && <span className="bg-blue-500 text-white text-xs font-bold px-1.5 rounded-full">{openTickets.length}</span>}
+          </button>
+
           {currentAdmin.role === 'ADMIN' && (
             <button 
               onClick={() => setActiveTab('TEAM')}
@@ -226,6 +283,7 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
             {activeTab === 'USERS' && 'Customer Support'}
             {activeTab === 'KYC' && 'KYC Compliance Queue'}
             {activeTab === 'DISPUTES' && 'Arbitration Center'}
+            {activeTab === 'KNOWLEDGE' && 'Employee Knowledge Base'}
             {activeTab === 'TEAM' && 'Employee Onboarding'}
           </h1>
           <div className="text-xs text-zinc-500 font-mono">
@@ -481,6 +539,116 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
                   ))}
                 </div>
              </div>
+          )}
+
+          {/* KNOWLEDGE & TICKETS TAB */}
+          {activeTab === 'KNOWLEDGE' && (
+            <div className="grid grid-cols-12 gap-6 h-full animate-fade-in">
+              
+              {/* LEFT: SOPs */}
+              <div className="col-span-4 bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden flex flex-col">
+                 <div className="p-4 border-b border-zinc-800 bg-black/20">
+                   <h3 className="font-bold text-white text-sm uppercase tracking-wide">Standard Operating Procedures</h3>
+                 </div>
+                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+                    <div className="bg-black/40 border border-zinc-800 p-4 rounded-lg">
+                       <h4 className="text-white font-bold mb-2">1. KYC Verification</h4>
+                       <p className="text-xs text-zinc-400 leading-relaxed">
+                         Check Govt ID expiration date. Ensure face match confidence is &gt;90%. For Tier 3, request bank statements proving 3 months of income.
+                       </p>
+                    </div>
+                    <div className="bg-black/40 border border-zinc-800 p-4 rounded-lg">
+                       <h4 className="text-white font-bold mb-2">2. Handling Disputes</h4>
+                       <p className="text-xs text-zinc-400 leading-relaxed">
+                         Review transaction hash on Etherscan first. If funds moved but platform status didn't update, manually reconcile. If user is unresponsive for 48h, default judgment to reporter.
+                       </p>
+                    </div>
+                    <div className="bg-black/40 border border-zinc-800 p-4 rounded-lg">
+                       <h4 className="text-white font-bold mb-2">3. Account Freezing</h4>
+                       <p className="text-xs text-zinc-400 leading-relaxed text-red-300">
+                         <strong>CRITICAL:</strong> Only freeze accounts with explicit evidence of fraud, money laundering, or terrorist financing. Requires Risk Officer approval for &gt;24h freezes.
+                       </p>
+                    </div>
+                 </div>
+              </div>
+
+              {/* RIGHT: Escalation Tickets */}
+              <div className="col-span-8 flex flex-col gap-6">
+                 {/* Create Ticket */}
+                 <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+                    <h3 className="font-bold text-white mb-4">Internal Q&A / Escalation Desk</h3>
+                    <form onSubmit={handleCreateTicket} className="flex gap-4 items-start">
+                       <div className="flex-1 space-y-3">
+                          <input 
+                            required
+                            type="text" 
+                            placeholder="Subject / Question" 
+                            className="w-full bg-black border border-zinc-800 rounded-lg p-2 text-white outline-none focus:border-[#00e599] text-sm"
+                            value={newTicket.subject}
+                            onChange={e => setNewTicket({...newTicket, subject: e.target.value})}
+                          />
+                          <textarea 
+                            required
+                            placeholder="Describe the issue or question..." 
+                            className="w-full bg-black border border-zinc-800 rounded-lg p-2 text-white outline-none focus:border-[#00e599] text-sm min-h-[60px]"
+                            value={newTicket.description}
+                            onChange={e => setNewTicket({...newTicket, description: e.target.value})}
+                          />
+                       </div>
+                       <div className="w-32 space-y-3">
+                          <select 
+                            className="w-full bg-black border border-zinc-800 rounded-lg p-2 text-white outline-none focus:border-[#00e599] text-sm"
+                            value={newTicket.priority}
+                            onChange={e => setNewTicket({...newTicket, priority: e.target.value as any})}
+                          >
+                            <option value="LOW">Low</option>
+                            <option value="MEDIUM">Medium</option>
+                            <option value="HIGH">High</option>
+                          </select>
+                          <Button type="submit" className="w-full text-xs" size="sm">Create Ticket</Button>
+                       </div>
+                    </form>
+                 </div>
+
+                 {/* Ticket List */}
+                 <div className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden flex flex-col">
+                    <div className="p-4 border-b border-zinc-800 bg-black/20 flex justify-between">
+                       <h3 className="font-bold text-white text-sm uppercase tracking-wide">Active Tickets</h3>
+                       <span className="text-xs text-zinc-500">{internalTickets.length} Total</span>
+                    </div>
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
+                       {internalTickets.length === 0 ? (
+                         <div className="text-center text-zinc-600 py-10">No active tickets.</div>
+                       ) : (
+                         internalTickets.map(ticket => (
+                           <div key={ticket.id} className="bg-black/40 border border-zinc-800 rounded-lg p-4 flex justify-between items-start hover:border-zinc-700 transition-colors">
+                              <div className="flex-1">
+                                 <div className="flex items-center gap-3 mb-1">
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${ticket.priority === 'HIGH' ? 'bg-red-500/20 text-red-500' : ticket.priority === 'MEDIUM' ? 'bg-amber-500/20 text-amber-500' : 'bg-blue-500/20 text-blue-500'}`}>
+                                      {ticket.priority}
+                                    </span>
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${ticket.status === 'OPEN' ? 'bg-green-500/20 text-green-500' : 'bg-zinc-700 text-zinc-400'}`}>
+                                      {ticket.status}
+                                    </span>
+                                    <span className="text-[10px] text-zinc-500">
+                                      {new Date(ticket.createdAt).toLocaleString()} by {ticket.authorName}
+                                    </span>
+                                 </div>
+                                 <h4 className="text-white font-bold">{ticket.subject}</h4>
+                                 <p className="text-sm text-zinc-400 mt-1">{ticket.description}</p>
+                              </div>
+                              {ticket.status === 'OPEN' && (
+                                <Button size="sm" variant="outline" className="ml-4 h-8 text-xs" onClick={() => handleResolveInternalTicket(ticket.id)}>
+                                  Resolve
+                                </Button>
+                              )}
+                           </div>
+                         ))
+                       )}
+                    </div>
+                 </div>
+              </div>
+            </div>
           )}
 
           {/* TEAM TAB (C-Suite Only) */}

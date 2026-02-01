@@ -184,3 +184,15 @@ export interface Dispute {
   createdAt: number;
   resolution?: string;
 }
+
+// Internal Knowledge Base
+export interface InternalTicket {
+  id: string;
+  authorId: string;
+  authorName: string;
+  subject: string;
+  description: string;
+  priority: 'LOW' | 'MEDIUM' | 'HIGH';
+  status: 'OPEN' | 'RESOLVED';
+  createdAt: number;
+}

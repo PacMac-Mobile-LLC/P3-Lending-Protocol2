@@ -1,4 +1,4 @@
-import { UserProfile, LoanRequest, LoanOffer, LoanType, KYCTier, KYCStatus, EmployeeProfile, ReferralData } from '../types';
+import { UserProfile, LoanRequest, LoanOffer, LoanType, KYCTier, KYCStatus, EmployeeProfile, ReferralData, InternalTicket } from '../types';
 import { SecurityService } from './security';
 
 // We now generate keys dynamically based on the User ID
@@ -9,6 +9,7 @@ const getKeys = (userId: string) => ({
 });
 
 const EMPLOYEES_KEY = 'p3_admin_employees';
+const INTERNAL_TICKETS_KEY = 'p3_internal_tickets';
 
 // Fallback data if no local data exists
 const INITIAL_USER_TEMPLATE: UserProfile = {
@@ -218,6 +219,26 @@ export const PersistenceService = {
     const current = PersistenceService.getEmployees();
     const updated = current.map(e => e.id === emp.id ? emp : e);
     localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(updated));
+    return updated;
+  },
+
+  // --- Internal Knowledge Base / Tickets ---
+  getInternalTickets: (): InternalTicket[] => {
+    const data = localStorage.getItem(INTERNAL_TICKETS_KEY);
+    return data ? JSON.parse(data) : [];
+  },
+  
+  addInternalTicket: (ticket: InternalTicket) => {
+    const current = PersistenceService.getInternalTickets();
+    const updated = [ticket, ...current]; // Newest first
+    localStorage.setItem(INTERNAL_TICKETS_KEY, JSON.stringify(updated));
+    return updated;
+  },
+
+  resolveInternalTicket: (ticketId: string) => {
+    const current = PersistenceService.getInternalTickets();
+    const updated = current.map(t => t.id === ticketId ? { ...t, status: 'RESOLVED' as const } : t);
+    localStorage.setItem(INTERNAL_TICKETS_KEY, JSON.stringify(updated));
     return updated;
   },
 
