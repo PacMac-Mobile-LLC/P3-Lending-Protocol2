@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { LoanRequest, LoanOffer, MatchResult, Charity } from '../types';
 import { Button } from './Button';
 import { matchLoanOffers } from '../services/geminiService';
+import { shortenAddress } from '../services/walletService';
 
 interface Props {
   activeRequests: LoanRequest[];
@@ -101,13 +102,29 @@ export const Marketplace: React.FC<Props> = ({
                 </div>
                 
                 {req.status === 'ESCROW_LOCKED' && (
-                  <div className="mb-4 bg-amber-900/10 border border-amber-900/30 rounded-lg p-3 flex items-start gap-3">
-                    <div className="mt-0.5 text-amber-500">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                  <div className="mb-4 bg-amber-900/10 border border-amber-900/30 rounded-lg p-3 space-y-2">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 text-amber-500">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-amber-500/90 font-bold">
+                          Smart Contract Escrow
+                        </p>
+                        <p className="text-[10px] text-amber-500/70 leading-relaxed mt-0.5">
+                          Funds are currently held by the P3 Protocol Escrow Contract. Release required to activate loan.
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-xs text-amber-500/90 leading-relaxed">
-                      Funds are held in Escrow.
-                    </p>
+                    
+                    <div className="flex items-center justify-between pl-7 border-t border-amber-500/10 pt-2">
+                      <div className="text-[10px] text-zinc-500">
+                        Contract: <span className="font-mono text-zinc-400">0x71...9A21</span>
+                      </div>
+                      <a href="#" className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1">
+                        View on Etherscan ↗
+                      </a>
+                    </div>
                   </div>
                 )}
                 
@@ -126,10 +143,10 @@ export const Marketplace: React.FC<Props> = ({
                       <Button 
                         size="sm" 
                         variant="secondary"
-                        className="flex-1"
+                        className="flex-1 group"
                         onClick={() => onFundRequest(req)}
                       >
-                        Simulate Fund
+                        <span className="group-hover:text-[#00e599] transition-colors">⚡ Execute Smart Contract</span>
                       </Button>
                      </>
                   )}
@@ -139,7 +156,7 @@ export const Marketplace: React.FC<Props> = ({
                       className="w-full bg-amber-600 hover:bg-amber-500 text-white border-none" 
                       onClick={() => onReleaseEscrow(req)}
                     >
-                      Release Escrow
+                      Sign Release (Wallet)
                     </Button>
                   )}
                   {req.status === 'ACTIVE' && (

@@ -73,6 +73,10 @@ export interface LoanRequest {
   isSponsorship?: boolean; // If true, this is a microloan funded by a mentor
   mentorId?: string;
   isCharityGuaranteed?: boolean; // Fresh Start protocol
+  
+  // Smart Contract Escrow Data
+  smartContractAddress?: string;
+  escrowTxHash?: string;
 }
 
 export interface LoanOffer {
