@@ -282,8 +282,17 @@ const App: React.FC = () => {
     }
     if (!user) return;
 
+    // Simulate On-Chain Smart Contract Deployment
+    const mockContract = "0x" + Array.from({length: 40}, () => Math.floor(Math.random()*16).toString(16)).join("");
+    const mockTx = "0x" + Array.from({length: 64}, () => Math.floor(Math.random()*16).toString(16)).join("");
+
     setMyRequests(prev => {
-      const updated = prev.map(r => r.id === req.id ? { ...r, status: 'ESCROW_LOCKED' as const } : r);
+      const updated = prev.map(r => r.id === req.id ? { 
+        ...r, 
+        status: 'ESCROW_LOCKED' as const,
+        smartContractAddress: mockContract,
+        escrowTxHash: mockTx
+      } : r);
       PersistenceService.saveMyRequests(user.id, updated);
       return updated;
     });

@@ -119,9 +119,9 @@ export const Marketplace: React.FC<Props> = ({
                     
                     <div className="flex items-center justify-between pl-7 border-t border-amber-500/10 pt-2">
                       <div className="text-[10px] text-zinc-500">
-                        Contract: <span className="font-mono text-zinc-400">0x71...9A21</span>
+                        Contract: <span className="font-mono text-zinc-400">{req.smartContractAddress ? shortenAddress(req.smartContractAddress) : 'Pending...'}</span>
                       </div>
-                      <a href="#" className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1">
+                      <a href={`https://etherscan.io/tx/${req.escrowTxHash}`} target="_blank" rel="noreferrer" className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1">
                         View on Etherscan ↗
                       </a>
                     </div>
