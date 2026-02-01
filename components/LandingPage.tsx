@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Logo } from './Logo';
 import { Button } from './Button';
-import { ScoreGauge } from './ScoreGauge';
 import { Footer } from './Footer';
 import { LegalDocType } from './LegalModal';
 
@@ -30,8 +29,8 @@ const LiveToasts = () => {
       setTimeout(() => {
         setIndex((prev) => (prev + 1) % events.length);
         setVisible(true);
-      }, 500); // Wait for fade out before switching
-    }, 4000); // Change every 4 seconds
+      }, 500);
+    }, 4000);
 
     return () => clearInterval(interval);
   }, []);
@@ -40,14 +39,17 @@ const LiveToasts = () => {
 
   return (
     <div 
-      className={`absolute -top-12 -right-4 md:-right-10 transition-all duration-500 ease-in-out transform ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+      className={`fixed top-24 right-6 z-40 transition-all duration-500 ease-in-out transform ${visible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'}`}
     >
-      <div className="bg-[#050505] border border-zinc-800 p-4 rounded-xl shadow-2xl flex items-center gap-4 w-72">
+      <div className="bg-[#050505]/90 backdrop-blur-md border border-zinc-800 p-4 rounded-xl shadow-[0_0_30px_rgba(0,0,0,0.5)] flex items-center gap-4 w-72">
         <div className="w-10 h-10 rounded-full bg-[#00e599]/20 flex items-center justify-center text-lg">
           {current.icon}
         </div>
         <div>
-          <div className="text-[#00e599] font-bold text-xs uppercase tracking-wider mb-0.5">Live Activity</div>
+          <div className="text-[#00e599] font-bold text-xs uppercase tracking-wider mb-0.5 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#00e599] animate-pulse"></span>
+            Live Protocol
+          </div>
           <div className="text-white font-bold text-sm">{current.title}</div>
           <div className="text-zinc-500 text-xs">{current.sub}</div>
         </div>
@@ -56,52 +58,113 @@ const LiveToasts = () => {
   );
 };
 
-const AnimatedParagraph = () => {
-  const text = "The first decentralized lending protocol powered by AI. We replace archaic FICO scores with Social Underwriting—unlocking capital based on your character, not just your history.";
-  const words = text.split(' ');
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+// --- Waitlist Modal Component ---
+const WaitlistModal = ({ isOpen, onClose, onLaunchApp }: { isOpen: boolean; onClose: () => void; onLaunchApp: () => void }) => {
+  const [step, setStep] = useState<'FORM' | 'SUCCESS'>('FORM');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    const candidates = words.map((word, index) => {
-      const isKeyTerm = word.includes('Social') || word.includes('Underwriting');
-      return isKeyTerm ? null : index;
-    }).filter((index): index is number => index !== null);
+  if (!isOpen) return null;
 
-    const cycleHighlight = () => {
-      const randomIndex = candidates[Math.floor(Math.random() * candidates.length)];
-      setActiveIndex(randomIndex);
-      setTimeout(() => setActiveIndex(null), 1200); 
-    };
-
-    cycleHighlight();
-    const interval = setInterval(cycleHighlight, 2500);
-    return () => clearInterval(interval);
-  }, []); 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    // Simulate API call
+    setTimeout(() => {
+      setIsSubmitting(false);
+      setStep('SUCCESS');
+    }, 1500);
+  };
 
   return (
-    <p className="text-xl leading-relaxed max-w-lg text-zinc-300">
-      {words.map((word, i) => {
-        const isKeyTerm = word.includes('Social') || word.includes('Underwriting');
-        if (isKeyTerm) return <strong key={i} className="text-white font-bold">{word} </strong>;
-        const isActive = i === activeIndex;
-        return (
-          <span
-            key={i}
-            className={`inline-block px-1 rounded transition-all duration-700 ease-in-out ${
-              isActive 
-                ? "bg-[#00e599]/20 text-white shadow-[0_0_15px_rgba(0,229,153,0.4)] scale-105" 
-                : "bg-transparent"
-            }`}
-          >
-            {word}{' '}
-          </span>
-        );
-      })}
-    </p>
+    <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center z-[100] p-4 animate-fade-in">
+      <div className="relative w-full max-w-md">
+        <div className="absolute inset-0 bg-grid-pattern opacity-10 pointer-events-none"></div>
+        <button onClick={onClose} className="absolute -top-12 right-0 text-zinc-500 hover:text-white transition-colors">
+          Close ✕
+        </button>
+
+        {step === 'FORM' ? (
+          <div className="bg-[#0a0a0a] border border-zinc-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+            <div className="w-12 h-12 bg-[#00e599]/10 rounded-xl flex items-center justify-center mb-6 border border-[#00e599]/20">
+              <span className="text-2xl">🚀</span>
+            </div>
+            <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">Join the Revolution</h2>
+            <p className="text-zinc-400 text-sm mb-8 leading-relaxed">
+              Secure your spot in the P3 Protocol. We are onboarding users in batches based on Reputation Score.
+            </p>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">Full Name</label>
+                <input 
+                  type="text" 
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Satoshi Nakamoto"
+                  className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 text-white focus:border-[#00e599] outline-none transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">Email Address</label>
+                <input 
+                  type="email" 
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="satoshi@gmx.com"
+                  className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 text-white focus:border-[#00e599] outline-none transition-colors"
+                />
+              </div>
+              
+              <Button type="submit" className="w-full py-4 text-base" isLoading={isSubmitting}>
+                Get Early Access
+              </Button>
+              <p className="text-[10px] text-zinc-600 text-center mt-4">
+                By joining, you agree to our Terms of Service. No spam, just decentralized finance.
+              </p>
+            </form>
+          </div>
+        ) : (
+          <div className="bg-[#0a0a0a] border border-zinc-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden text-center animate-fade-in">
+             <div className="relative inline-block mb-6">
+                <div className="w-16 h-16 bg-zinc-900 rounded-2xl flex items-center justify-center relative z-10 border border-zinc-800">
+                  <span className="font-bold text-white text-3xl">P</span>
+                </div>
+                <div className="absolute -top-2 -right-2 bg-[#00e599] text-black text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center z-20 shadow-lg">
+                  3
+                </div>
+             </div>
+             
+             <h2 className="text-3xl font-bold text-white mb-2">You're on the list, <span className="text-[#00e599]">{name.split(' ')[0]}</span>.</h2>
+             <p className="text-zinc-400 text-sm mb-8 leading-relaxed max-w-xs mx-auto">
+               Your spot is secured. We are rewriting the rules of lending by replacing FICO scores with social reputation.
+             </p>
+
+             <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 mb-8">
+                <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Waitlist Position</div>
+                <div className="text-4xl font-mono font-bold text-white tracking-tighter">#4,291</div>
+             </div>
+
+             <p className="text-zinc-500 text-xs mb-4">
+               While you wait, you can check out the live beta environment.
+             </p>
+
+             <Button onClick={onLaunchApp} className="w-full py-3 bg-[#00e599] text-black hover:bg-[#00cc88]">
+               View Live Status
+             </Button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 
 export const LandingPage: React.FC<Props> = ({ onLaunch, onDevAdminLogin, onOpenDocs, onOpenLegal }) => {
+  const [showWaitlist, setShowWaitlist] = useState(false);
+
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
     if (element) {
@@ -111,248 +174,160 @@ export const LandingPage: React.FC<Props> = ({ onLaunch, onDevAdminLogin, onOpen
 
   return (
     <div className="min-h-screen bg-[#050505] text-white overflow-x-hidden relative font-sans selection:bg-[#00e599] selection:text-black flex flex-col">
+      <LiveToasts />
+      <WaitlistModal isOpen={showWaitlist} onClose={() => setShowWaitlist(false)} onLaunchApp={onLaunch} />
+
       {/* Background Effects */}
-      <div className="absolute top-0 left-0 w-full h-full bg-grid-pattern opacity-20 pointer-events-none"></div>
-      <div className="absolute top-[-10%] right-[-10%] w-[800px] h-[800px] bg-[#00e599]/10 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute top-0 left-0 w-full h-full bg-grid-pattern opacity-20 pointer-events-none fixed"></div>
+      <div className="absolute top-[-10%] right-[-10%] w-[800px] h-[800px] bg-[#00e599]/5 rounded-full blur-[120px] pointer-events-none fixed"></div>
       
       {/* Navbar */}
       <nav className="relative z-50 flex items-center justify-between px-6 py-6 max-w-7xl mx-auto w-full">
         <Logo />
-        <div className="flex items-center gap-6">
-          <button onClick={() => scrollToSection('borrowers')} className="hidden md:block text-sm font-medium text-zinc-400 hover:text-white transition-colors">For Borrowers</button>
-          <button onClick={() => scrollToSection('lenders')} className="hidden md:block text-sm font-medium text-zinc-400 hover:text-white transition-colors">For Lenders</button>
-          <button onClick={onOpenDocs} className="hidden md:block text-sm font-medium text-zinc-400 hover:text-white transition-colors">Docs & Support</button>
-          
-          <div className="flex items-center gap-2">
-            <Button onClick={onLaunch} className="shadow-[0_0_20px_rgba(0,229,153,0.4)]">
-              Launch App
-            </Button>
-          </div>
+        <div className="flex items-center gap-4">
+          <button onClick={() => setShowWaitlist(true)} className="hidden md:block bg-[#00e599] text-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-[#00cc88] transition-colors shadow-[0_0_15px_rgba(0,229,153,0.3)]">
+            Join Waitlist
+          </button>
+          <button onClick={onLaunch} className="text-sm font-medium text-zinc-500 hover:text-white transition-colors">
+            Member Login
+          </button>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="relative z-10 pt-20 pb-32 px-6">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+      <section className="relative z-10 pt-24 pb-40 px-6 text-center">
+        <div className="max-w-5xl mx-auto space-y-10 animate-fade-in">
           
-          {/* Hero Text */}
-          <div className="space-y-8 animate-fade-in">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-[#00e599] text-xs font-bold uppercase tracking-wider">
-              <span className="w-2 h-2 rounded-full bg-[#00e599] animate-pulse"></span>
-              The Reputation Revolution
-            </div>
-            <h1 className="text-6xl md:text-7xl font-bold tracking-tighter leading-[1.1]">
-              Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00e599] to-emerald-600">Reputation</span> <br/>
-              Is Your Currency.
-            </h1>
-            
-            <AnimatedParagraph />
-
-            <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <Button size="lg" onClick={() => scrollToSection('borrowers')} className="text-lg px-10">
-                Start Borrowing
-              </Button>
-              <Button size="lg" variant="secondary" onClick={() => scrollToSection('lenders')} className="text-lg px-10">
-                Start Lending
-              </Button>
-            </div>
-            <p className="text-xs text-zinc-600 pt-2">
-              *Loans are not FDIC insured. Crypto assets are volatile.
-            </p>
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900/80 border border-zinc-800 text-[#00e599] text-[10px] font-bold uppercase tracking-widest">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#00e599] animate-pulse"></span>
+            Early Access Beta
           </div>
 
-          {/* AI Visual */}
-          <div className="relative animate-fade-in mt-10 lg:mt-0" style={{ animationDelay: '0.2s' }}>
-            <div className="absolute inset-0 bg-gradient-to-tr from-[#00e599]/20 to-transparent rounded-full blur-3xl"></div>
-            
-            <LiveToasts />
+          <h1 className="text-6xl md:text-8xl font-bold tracking-tighter leading-[0.95]">
+            Credit based on<br/>
+            <span className="text-transparent bg-clip-text bg-gradient-to-b from-[#00e599] to-emerald-700">Character</span>, not History.
+          </h1>
+          
+          <p className="text-xl md:text-2xl text-zinc-400 max-w-2xl mx-auto leading-relaxed">
+            P3 is the first decentralized lending protocol powered by AI reputation scoring and social underwriting. Stop relying on FICO. Start building trust.
+          </p>
 
-            <div className="relative bg-[#0a0a0a]/80 backdrop-blur-xl border border-zinc-800 rounded-3xl p-8 shadow-2xl">
-              <div className="flex justify-between items-center mb-8 border-b border-zinc-800 pb-6">
-                 <div>
-                   <h3 className="text-2xl font-bold text-white">Trust Analysis</h3>
-                   <p className="text-zinc-500 text-sm">Real-time Reputation Engine</p>
-                 </div>
-                 <div className="text-right">
-                   <div className="text-[#00e599] font-mono text-xl font-bold">APPROVED</div>
-                   <div className="text-xs text-zinc-500">Instant Verification</div>
-                 </div>
-              </div>
-              
-              <div className="flex justify-center mb-8 relative">
-                <div className="w-48 h-48">
-                   <ScoreGauge score={85} />
-                </div>
-                {/* Connecting Lines (Decorative) */}
-                <div className="absolute top-1/2 left-0 w-full h-px bg-zinc-800 -z-10"></div>
-                <div className="absolute top-0 left-1/2 w-px h-full bg-zinc-800 -z-10"></div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 text-center">
-                 <div className="p-3 rounded-xl bg-zinc-900 border border-zinc-800">
-                    <div className="text-lg">🤝</div>
-                    <div className="text-[10px] uppercase text-zinc-500 font-bold mt-1">Social</div>
-                    <div className="text-white font-bold text-xs">Vouched</div>
-                 </div>
-                 <div className="p-3 rounded-xl bg-zinc-900 border border-zinc-800">
-                    <div className="text-lg">⛓️</div>
-                    <div className="text-[10px] uppercase text-zinc-500 font-bold mt-1">On-Chain</div>
-                    <div className="text-white font-bold text-xs">3 yrs</div>
-                 </div>
-                 <div className="p-3 rounded-xl bg-zinc-900 border border-zinc-800">
-                    <div className="text-lg">🔥</div>
-                    <div className="text-[10px] uppercase text-zinc-500 font-bold mt-1">Streak</div>
-                    <div className="text-[#00e599] font-bold text-xs">12 Mo</div>
-                 </div>
-              </div>
-
-              <div className="mt-6 p-4 rounded-xl bg-[#00e599]/5 border border-[#00e599]/20">
-                 <p className="text-xs text-[#00e599] italic text-center">
-                   "User demonstrates strong social capital and consistent micro-repayments. Recommended for credit limit increase."
-                 </p>
-              </div>
-            </div>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8">
+            <Button size="lg" onClick={() => setShowWaitlist(true)} className="h-14 px-10 text-lg shadow-[0_0_30px_rgba(0,229,153,0.3)] hover:scale-105 transition-transform">
+              Get Early Access
+            </Button>
+            <Button size="lg" variant="secondary" onClick={onOpenDocs} className="h-14 px-10 text-lg border-zinc-800 bg-zinc-900/50 hover:bg-zinc-900">
+              Read Manifesto
+            </Button>
           </div>
 
+          <p className="text-xs text-zinc-600 font-mono">
+            Limited spots available for Q1 2025.
+          </p>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="border-y border-zinc-900 bg-black/50 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 divide-x divide-zinc-900">
-          <div className="p-8 text-center">
-             <div className="text-3xl font-bold text-white font-mono">$2.4M</div>
-             <div className="text-xs text-zinc-500 uppercase tracking-widest mt-1">Total Liquidity</div>
-          </div>
-          <div className="p-8 text-center">
-             <div className="text-3xl font-bold text-[#00e599] font-mono">98.2%</div>
-             <div className="text-xs text-zinc-500 uppercase tracking-widest mt-1">Repayment Rate</div>
-          </div>
-          <div className="p-8 text-center">
-             <div className="text-3xl font-bold text-white font-mono">15k+</div>
-             <div className="text-xs text-zinc-500 uppercase tracking-widest mt-1">Verified Users</div>
-          </div>
-          <div className="p-8 text-center">
-             <div className="text-3xl font-bold text-white font-mono">4.8s</div>
-             <div className="text-xs text-zinc-500 uppercase tracking-widest mt-1">Avg. Approval Time</div>
-          </div>
+      {/* Stats Ticker */}
+      <div className="border-y border-zinc-900 bg-black/50 backdrop-blur-sm overflow-hidden py-4">
+        <div className="flex gap-16 justify-center items-center text-zinc-500 font-mono text-xs uppercase tracking-widest animate-ticker whitespace-nowrap">
+           <span>Total Liquidity: $2.4M</span>
+           <span>•</span>
+           <span>Repayment Rate: 98.2%</span>
+           <span>•</span>
+           <span>Verified Users: 15,204</span>
+           <span>•</span>
+           <span>Avg Approval: 4.8s</span>
+           <span>•</span>
+           <span>Waitlist: 4,291</span>
+           <span>•</span>
+           <span>Total Liquidity: $2.4M</span>
+           <span>•</span>
+           <span>Repayment Rate: 98.2%</span>
         </div>
-      </section>
+      </div>
 
       {/* Borrower Section */}
-      <section id="borrowers" className="py-24 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-zinc-900/30 border border-zinc-800 rounded-3xl overflow-hidden flex flex-col md:flex-row">
-             <div className="p-10 md:p-16 flex-1 flex flex-col justify-center">
-                <div className="inline-block px-3 py-1 rounded bg-blue-500/10 text-blue-400 text-xs font-bold uppercase tracking-wider mb-4 w-fit">
-                  For Borrowers
-                </div>
-                <h2 className="text-4xl font-bold text-white mb-6">Need Capital? <br/>Build Credit.</h2>
-                <p className="text-zinc-400 mb-8 text-lg leading-relaxed">
-                  Stop getting rejected by banks for having a "thin file". We look at the whole picture. 
-                  Start small with our <strong>Fresh Start</strong> program and unlock larger amounts as you prove your reliability.
-                </p>
-                <ul className="space-y-4 mb-10">
-                  <li className="flex items-center gap-3 text-zinc-300">
-                    <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-sm">✓</span>
-                    <span>No FICO Score Required</span>
-                  </li>
-                  <li className="flex items-center gap-3 text-zinc-300">
-                    <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-sm">✓</span>
-                    <span>Instant "Fresh Start" Approval (Charity Backed)</span>
-                  </li>
-                  <li className="flex items-center gap-3 text-zinc-300">
-                    <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-sm">✓</span>
-                    <span>Funds sent directly to your Wallet</span>
-                  </li>
-                </ul>
-                <Button onClick={onLaunch} className="w-fit px-8 py-3">Start Borrowing Now</Button>
-             </div>
-             <div className="flex-1 bg-gradient-to-br from-zinc-900 to-black relative min-h-[400px]">
-                <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
-                {/* Abstract Visual for Borrowing */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                   <div className="relative w-64 h-80 bg-black border border-zinc-800 rounded-2xl p-6 shadow-2xl rotate-3">
-                      <div className="flex justify-between items-center mb-6">
-                        <div className="h-2 w-12 bg-zinc-800 rounded"></div>
-                        <div className="h-2 w-4 bg-zinc-800 rounded"></div>
-                      </div>
-                      <div className="space-y-4">
-                        <div className="h-20 w-full bg-zinc-900 rounded-xl border border-zinc-800 flex items-center justify-center">
-                           <span className="text-2xl font-bold text-white">$500</span>
-                        </div>
-                        <div className="h-2 w-full bg-zinc-800 rounded"></div>
-                        <div className="h-2 w-3/4 bg-zinc-800 rounded"></div>
-                        <div className="mt-8 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg text-center">
-                           <span className="text-blue-400 font-bold text-sm">Funded Instantly</span>
-                        </div>
-                      </div>
-                   </div>
-                </div>
-             </div>
-          </div>
+      <section className="py-32 px-6 border-b border-zinc-900 bg-black relative">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-20 items-center">
+           <div className="space-y-8">
+              <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-2xl border border-blue-500/20">💸</div>
+              <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight">Need Capital?<br/>Build your score.</h2>
+              <p className="text-zinc-400 text-lg leading-relaxed">
+                Traditional banks reject you for having a "thin file". We look at the whole picture. 
+                Start small with our <strong>Fresh Start</strong> program and unlock larger amounts as you prove your reliability.
+              </p>
+              <ul className="space-y-4 text-zinc-300">
+                <li className="flex items-center gap-3"><span className="text-blue-500">✓</span> No FICO Score Required</li>
+                <li className="flex items-center gap-3"><span className="text-blue-500">✓</span> Instant "Fresh Start" Approval</li>
+                <li className="flex items-center gap-3"><span className="text-blue-500">✓</span> Funds sent directly to Wallet</li>
+              </ul>
+              <Button onClick={() => setShowWaitlist(true)} variant="outline" className="border-blue-500/50 text-blue-400 hover:bg-blue-500/10">Start Borrowing</Button>
+           </div>
+           
+           <div className="relative">
+              <div className="absolute inset-0 bg-blue-500/20 blur-[100px] rounded-full"></div>
+              <div className="relative bg-zinc-900 border border-zinc-800 rounded-3xl p-8 rotate-3 hover:rotate-0 transition-transform duration-500">
+                 <div className="flex justify-between items-center mb-8">
+                    <div className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Loan Request</div>
+                    <div className="bg-blue-500/20 text-blue-400 text-xs font-bold px-2 py-1 rounded">PENDING</div>
+                 </div>
+                 <div className="space-y-4">
+                    <div className="h-24 bg-black rounded-xl border border-zinc-800 flex items-center justify-center">
+                       <span className="text-3xl font-bold text-white">$500.00</span>
+                    </div>
+                    <div className="space-y-2">
+                       <div className="h-2 w-full bg-zinc-800 rounded"></div>
+                       <div className="h-2 w-3/4 bg-zinc-800 rounded"></div>
+                    </div>
+                 </div>
+              </div>
+           </div>
         </div>
       </section>
 
       {/* Lender Section */}
-      <section id="lenders" className="py-24 px-6 bg-zinc-900/20">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-black border border-zinc-800 rounded-3xl overflow-hidden flex flex-col md:flex-row-reverse">
-             <div className="p-10 md:p-16 flex-1 flex flex-col justify-center">
-                <div className="inline-block px-3 py-1 rounded bg-[#00e599]/10 text-[#00e599] text-xs font-bold uppercase tracking-wider mb-4 w-fit">
-                  For Lenders
-                </div>
-                <h2 className="text-4xl font-bold text-white mb-6">Grow Wealth.<br/>Make an Impact.</h2>
-                <p className="text-zinc-400 mb-8 text-lg leading-relaxed">
-                  Earn competitive yields while helping real people break the debt cycle. 
-                  Our AI does the heavy lifting, vetting borrowers and assigning risk scores so you can lend with confidence.
-                </p>
-                <ul className="space-y-4 mb-10">
-                  <li className="flex items-center gap-3 text-zinc-300">
-                    <span className="w-6 h-6 rounded-full bg-[#00e599]/20 text-[#00e599] flex items-center justify-center text-sm">✓</span>
-                    <span>Earn 5-15% APY on Crypto Assets</span>
-                  </li>
-                  <li className="flex items-center gap-3 text-zinc-300">
-                    <span className="w-6 h-6 rounded-full bg-[#00e599]/20 text-[#00e599] flex items-center justify-center text-sm">✓</span>
-                    <span>Automated AI Matchmaking</span>
-                  </li>
-                  <li className="flex items-center gap-3 text-zinc-300">
-                    <span className="w-6 h-6 rounded-full bg-[#00e599]/20 text-[#00e599] flex items-center justify-center text-sm">✓</span>
-                    <span>Direct Peer-to-Peer Smart Contracts</span>
-                  </li>
-                </ul>
-                <Button onClick={onLaunch} variant="secondary" className="w-fit px-8 py-3 border-[#00e599]/50 hover:border-[#00e599] text-white">Become a Lender</Button>
-             </div>
-             <div className="flex-1 bg-gradient-to-bl from-zinc-900 to-black relative min-h-[400px]">
-                <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
-                {/* Abstract Visual for Lending */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                   <div className="relative w-64 h-80 bg-zinc-900 border border-zinc-700 rounded-2xl p-6 shadow-2xl -rotate-3">
-                      <div className="flex justify-between items-center mb-6">
-                        <div className="h-8 w-8 rounded-full bg-[#00e599] flex items-center justify-center text-black font-bold">P3</div>
-                        <div className="text-[#00e599] font-mono text-xs">+12% APY</div>
-                      </div>
-                      <div className="space-y-3">
-                        <div className="p-3 bg-black rounded-lg border border-zinc-800 flex justify-between items-center">
-                           <div className="h-2 w-16 bg-zinc-800 rounded"></div>
-                           <div className="text-[#00e599] text-xs font-bold">+$24.50</div>
-                        </div>
-                        <div className="p-3 bg-black rounded-lg border border-zinc-800 flex justify-between items-center">
-                           <div className="h-2 w-20 bg-zinc-800 rounded"></div>
-                           <div className="text-[#00e599] text-xs font-bold">+$12.00</div>
-                        </div>
-                        <div className="p-3 bg-black rounded-lg border border-zinc-800 flex justify-between items-center">
-                           <div className="h-2 w-12 bg-zinc-800 rounded"></div>
-                           <div className="text-[#00e599] text-xs font-bold">+$8.40</div>
-                        </div>
-                      </div>
-                      <div className="mt-8 text-center text-zinc-500 text-xs">
-                        Portfolio Performance
-                      </div>
-                   </div>
-                </div>
-             </div>
-          </div>
+      <section className="py-32 px-6 bg-zinc-900/20 relative">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-20 items-center">
+           <div className="relative order-last md:order-first">
+              <div className="absolute inset-0 bg-[#00e599]/10 blur-[100px] rounded-full"></div>
+              <div className="relative bg-black border border-zinc-800 rounded-3xl p-8 -rotate-3 hover:rotate-0 transition-transform duration-500">
+                 <div className="flex justify-between items-center mb-8">
+                    <div className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Active Portfolio</div>
+                    <div className="text-[#00e599] text-xs font-bold">+12.4% APY</div>
+                 </div>
+                 <div className="space-y-3">
+                    <div className="flex justify-between items-center p-4 bg-zinc-900 rounded-xl border border-zinc-800">
+                       <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-xs">👤</div>
+                          <div className="h-2 w-20 bg-zinc-800 rounded"></div>
+                       </div>
+                       <div className="text-[#00e599] font-mono text-xs">+$24.50</div>
+                    </div>
+                    <div className="flex justify-between items-center p-4 bg-zinc-900 rounded-xl border border-zinc-800">
+                       <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-xs">👤</div>
+                          <div className="h-2 w-16 bg-zinc-800 rounded"></div>
+                       </div>
+                       <div className="text-[#00e599] font-mono text-xs">+$18.20</div>
+                    </div>
+                 </div>
+              </div>
+           </div>
+
+           <div className="space-y-8">
+              <div className="w-12 h-12 bg-[#00e599]/10 rounded-xl flex items-center justify-center text-2xl border border-[#00e599]/20">📈</div>
+              <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight">Grow Wealth.<br/>Make an Impact.</h2>
+              <p className="text-zinc-400 text-lg leading-relaxed">
+                Earn competitive yields while helping real people break the debt cycle. 
+                Our AI does the heavy lifting, vetting borrowers and assigning risk scores so you can lend with confidence.
+              </p>
+              <ul className="space-y-4 text-zinc-300">
+                <li className="flex items-center gap-3"><span className="text-[#00e599]">✓</span> Earn 5-15% APY on Crypto</li>
+                <li className="flex items-center gap-3"><span className="text-[#00e599]">✓</span> Automated AI Matchmaking</li>
+                <li className="flex items-center gap-3"><span className="text-[#00e599]">✓</span> Direct Peer-to-Peer Contracts</li>
+              </ul>
+              <Button onClick={() => setShowWaitlist(true)} variant="secondary" className="border-[#00e599]/30 text-[#00e599] hover:bg-[#00e599]/10">Become a Lender</Button>
+           </div>
         </div>
       </section>
 
