@@ -47,44 +47,48 @@ export const WalletConnectModal: React.FC<Props> = ({ isOpen, onClose, onConnect
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in">
-      <div className="bg-[#0f172a] border border-slate-700 rounded-3xl max-w-sm w-full shadow-2xl overflow-hidden relative">
+    <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in">
+      <div className="bg-[#0a0a0a] border border-zinc-800 rounded-3xl max-w-sm w-full shadow-[0_0_50px_rgba(0,229,153,0.1)] overflow-hidden relative">
+        
+        {/* Decorative Grid Background */}
+        <div className="absolute inset-0 bg-grid-pattern opacity-10 pointer-events-none"></div>
+
         <button 
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"
+          className="absolute top-4 right-4 text-zinc-500 hover:text-white transition-colors z-10"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
 
-        <div className="p-8 text-center">
-          <div className="w-16 h-16 bg-slate-800 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-inner">
-             <svg className="w-8 h-8 text-[#667eea]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+        <div className="p-8 text-center relative z-0">
+          <div className="w-16 h-16 bg-zinc-900 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-inner border border-zinc-800">
+             <svg className="w-8 h-8 text-[#00e599]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
           </div>
           
-          <h2 className="text-xl font-bold text-white mb-2">Connect Wallet</h2>
-          <p className="text-sm text-slate-400 mb-8">Choose a wallet to connect to the P³ Lending Protocol.</p>
+          <h2 className="text-xl font-bold text-white mb-2 tracking-tight">Connect Wallet</h2>
+          <p className="text-sm text-zinc-400 mb-8">Choose a wallet to connect to the P³ Lending Protocol.</p>
 
           <div className="space-y-3">
              {/* MetaMask */}
              <button 
                onClick={() => handleConnect('METAMASK')}
                disabled={!!loading}
-               className="w-full flex items-center justify-between p-4 rounded-xl bg-slate-900 border border-slate-700 hover:border-[#f6851b] hover:bg-[#f6851b]/10 transition-all group disabled:opacity-50"
+               className="w-full flex items-center justify-between p-4 rounded-xl bg-black border border-zinc-800 hover:border-[#00e599] hover:bg-zinc-900 transition-all group disabled:opacity-50"
              >
                <div className="flex items-center gap-3">
                  <div className="w-8 h-8 rounded-full bg-white p-1">
                    <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" alt="MetaMask" className="w-full h-full" />
                  </div>
-                 <span className="font-semibold text-white group-hover:text-[#f6851b] transition-colors">MetaMask</span>
+                 <span className="font-semibold text-white group-hover:text-[#00e599] transition-colors">MetaMask</span>
                </div>
-               {loading === 'METAMASK' && <div className="w-4 h-4 border-2 border-[#f6851b] border-t-transparent rounded-full animate-spin"></div>}
+               {loading === 'METAMASK' && <div className="w-4 h-4 border-2 border-[#00e599] border-t-transparent rounded-full animate-spin"></div>}
              </button>
 
              {/* Coinbase */}
              <button 
                onClick={() => handleConnect('COINBASE')}
                disabled={!!loading}
-               className="w-full flex items-center justify-between p-4 rounded-xl bg-slate-900 border border-slate-700 hover:border-[#0052ff] hover:bg-[#0052ff]/10 transition-all group disabled:opacity-50"
+               className="w-full flex items-center justify-between p-4 rounded-xl bg-black border border-zinc-800 hover:border-[#0052ff] hover:bg-zinc-900 transition-all group disabled:opacity-50"
              >
                <div className="flex items-center gap-3">
                  <div className="w-8 h-8 rounded-full bg-[#0052ff] p-1 flex items-center justify-center">
@@ -99,7 +103,7 @@ export const WalletConnectModal: React.FC<Props> = ({ isOpen, onClose, onConnect
              <button 
                onClick={() => handleConnect('WALLETCONNECT')}
                disabled={!!loading}
-               className="w-full flex items-center justify-between p-4 rounded-xl bg-slate-900 border border-slate-700 hover:border-[#3b99fc] hover:bg-[#3b99fc]/10 transition-all group disabled:opacity-50"
+               className="w-full flex items-center justify-between p-4 rounded-xl bg-black border border-zinc-800 hover:border-[#3b99fc] hover:bg-zinc-900 transition-all group disabled:opacity-50"
              >
                <div className="flex items-center gap-3">
                  <div className="w-8 h-8 rounded-full bg-[#3b99fc] p-1.5 flex items-center justify-center">
@@ -112,7 +116,7 @@ export const WalletConnectModal: React.FC<Props> = ({ isOpen, onClose, onConnect
           </div>
 
           {error && (
-            <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-300">
+            <div className="mt-4 p-3 bg-red-900/20 border border-red-900/50 rounded-lg text-xs text-red-400">
               {error}
             </div>
           )}
