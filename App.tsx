@@ -286,6 +286,37 @@ const App: React.FC = () => {
      }
   };
 
+  const handleAdminPasswordReset = (newPassword: string) => {
+    try {
+      const employees = PersistenceService.getEmployees();
+      const matchedEmp = employees.find(e => e.email.toLowerCase() === pendingAdminEmail.toLowerCase());
+
+      if (!matchedEmp) throw new Error("User not found.");
+
+      // Update the stored employee with the new password
+      const updatedEmp: EmployeeProfile = {
+        ...matchedEmp,
+        passwordHash: newPassword, // In prod, hash this
+        passwordLastSet: Date.now()
+      };
+      
+      PersistenceService.updateEmployee(updatedEmp);
+      
+      // Auto-login
+      setAdminUser(updatedEmp);
+      setIsAuthenticated(true);
+      setShowLanding(false);
+      setShowAdminLogin(false);
+      AuthService.close();
+      
+      alert("Password successfully reset. You are now logged in.");
+
+    } catch (e) {
+      console.error(e);
+      alert("Failed to reset password.");
+    }
+  };
+
   const handleProfileUpdate = async (updatedUser: UserProfile) => {
     if (!user) return;
     setIsAnalyzing(true);
@@ -516,6 +547,7 @@ const App: React.FC = () => {
       <AdminLoginModal 
         email={pendingAdminEmail} 
         onLogin={handleAdminPasswordLogin}
+        onResetPassword={handleAdminPasswordReset}
         onCancel={() => { setShowAdminLogin(false); setPendingAdminEmail(''); AuthService.logout(); }}
       />
     );

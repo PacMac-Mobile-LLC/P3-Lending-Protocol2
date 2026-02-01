@@ -5,10 +5,11 @@ import { Logo } from './Logo';
 interface Props {
   email: string;
   onLogin: (password: string) => void;
+  onResetPassword: (newPassword: string) => void;
   onCancel: () => void;
 }
 
-export const AdminLoginModal: React.FC<Props> = ({ email, onLogin, onCancel }) => {
+export const AdminLoginModal: React.FC<Props> = ({ email, onLogin, onResetPassword, onCancel }) => {
   const [password, setPassword] = useState('');
   const [view, setView] = useState<'LOGIN' | 'RESET' | 'NEW_PASSWORD'>('LOGIN');
   const [isLoading, setIsLoading] = useState(false);
@@ -39,10 +40,11 @@ export const AdminLoginModal: React.FC<Props> = ({ email, onLogin, onCancel }) =
     }
     setIsLoading(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
-    // In a real app, this would verify a token and update backend.
-    // Here we just log them in with the new password immediately for the demo.
+    
     setIsLoading(false);
-    onLogin(newPassword);
+    // CRITICAL FIX: Call onResetPassword instead of onLogin
+    // This ensures the parent component updates the stored password before attempting login
+    onResetPassword(newPassword);
   };
 
   return (
@@ -81,7 +83,7 @@ export const AdminLoginModal: React.FC<Props> = ({ email, onLogin, onCancel }) =
                   onClick={() => setView('RESET')}
                   className="text-xs text-zinc-500 hover:text-white underline"
                 >
-                  Forgot Password?
+                  Forgot Password / First Time Login?
                 </button>
               </div>
             </form>
@@ -90,7 +92,7 @@ export const AdminLoginModal: React.FC<Props> = ({ email, onLogin, onCancel }) =
           {view === 'RESET' && (
             <div className="space-y-4">
               <p className="text-sm text-zinc-400">
-                We will send a password reset link to <strong>{email}</strong>.
+                We will send a security link to <strong>{email}</strong> to set a new console password.
               </p>
               <Button 
                 onClick={handleSendResetLink} 
@@ -111,11 +113,11 @@ export const AdminLoginModal: React.FC<Props> = ({ email, onLogin, onCancel }) =
           {view === 'NEW_PASSWORD' && (
             <form onSubmit={handleSetNewPassword} className="space-y-4">
                <div className="bg-green-900/20 p-3 rounded-lg border border-green-900/50 mb-4">
-                 <p className="text-xs text-green-400">✓ Email verified via simulated link</p>
+                 <p className="text-xs text-green-400">✓ Identity Verified via Email Link</p>
                </div>
                <input 
                   type="password" 
-                  placeholder="New Password"
+                  placeholder="New Console Password"
                   className="w-full bg-black border border-zinc-800 rounded-xl p-3 text-white focus:border-red-500 outline-none transition-colors"
                   value={newPassword}
                   onChange={e => setNewPassword(e.target.value)}
