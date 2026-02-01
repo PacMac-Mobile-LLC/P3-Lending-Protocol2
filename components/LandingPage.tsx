@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Logo } from './Logo';
 import { Button } from './Button';
 import { ScoreGauge } from './ScoreGauge';
@@ -15,42 +15,60 @@ interface Props {
 const AnimatedParagraph = () => {
   const text = "The first decentralized lending protocol powered by AI. We replace archaic FICO scores with Social Underwriting—unlocking capital based on your character, not just your history.";
   const words = text.split(' ');
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    // Filter out indices that correspond to the bold "Key Terms" so we don't highlight them
+    const candidates = words.map((word, index) => {
+      const isKeyTerm = word.includes('Social') || word.includes('Underwriting');
+      return isKeyTerm ? null : index;
+    }).filter((index): index is number => index !== null);
+
+    const cycleHighlight = () => {
+      // 1. Pick a random word from candidates
+      const randomIndex = candidates[Math.floor(Math.random() * candidates.length)];
+      setActiveIndex(randomIndex);
+
+      // 2. Clear the highlight after 1.2 seconds (allowing it to fade out)
+      setTimeout(() => {
+        setActiveIndex(null);
+      }, 1200); 
+    };
+
+    // Start the first cycle immediately
+    cycleHighlight();
+
+    // Repeat every 2.5 seconds (providing a gap between words)
+    const interval = setInterval(cycleHighlight, 2500);
+
+    return () => clearInterval(interval);
+  }, []); // Empty dependency array ensures this runs once on mount
 
   return (
-    <>
-      <style>
-        {`
-          @keyframes highlight-pulse {
-            0%, 100% { background-color: transparent; color: #a1a1aa; } /* zinc-400 */
-            5%, 95% { background-color: transparent; color: #a1a1aa; }
-            50% { background-color: rgba(0, 229, 153, 0.2); color: #ffffff; text-shadow: 0 0 10px rgba(0,229,153,0.5); }
-          }
-        `}
-      </style>
-      <p className="text-xl leading-relaxed max-w-lg">
-        {words.map((word, i) => {
-          // Keep Social Underwriting permanently emphasized, animate others
-          const isKeyTerm = word.includes('Social') || word.includes('Underwriting');
-          
-          if (isKeyTerm) {
-            return <strong key={i} className="text-white font-bold">{word} </strong>;
-          }
+    <p className="text-xl leading-relaxed max-w-lg">
+      {words.map((word, i) => {
+        const isKeyTerm = word.includes('Social') || word.includes('Underwriting');
+        
+        if (isKeyTerm) {
+          return <strong key={i} className="text-white font-bold">{word} </strong>;
+        }
 
-          return (
-            <span
-              key={i}
-              className="inline-block px-1 rounded transition-all"
-              style={{
-                animation: `highlight-pulse ${4 + Math.random() * 6}s ease-in-out infinite`,
-                animationDelay: `${Math.random() * 5}s`
-              }}
-            >
-              {word}{' '}
-            </span>
-          );
-        })}
-      </p>
-    </>
+        const isActive = i === activeIndex;
+
+        return (
+          <span
+            key={i}
+            className={`inline-block px-1 rounded transition-all duration-700 ease-in-out ${
+              isActive 
+                ? "bg-[#00e599]/20 text-white shadow-[0_0_15px_rgba(0,229,153,0.4)] scale-105" 
+                : "bg-transparent text-zinc-400"
+            }`}
+          >
+            {word}{' '}
+          </span>
+        );
+      })}
+    </p>
   );
 };
 
