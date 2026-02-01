@@ -1,11 +1,13 @@
-import { UserProfile, LoanRequest, LoanOffer, LoanType, KYCTier, KYCStatus } from '../types';
+import { UserProfile, LoanRequest, LoanOffer, LoanType, KYCTier, KYCStatus, EmployeeProfile } from '../types';
 
 // We now generate keys dynamically based on the User ID
 const getKeys = (userId: string) => ({
   USER: `p3_user_${userId}`,
   MY_REQUESTS: `p3_my_requests_${userId}`,
-  MY_OFFERS: `p3_my_offers_${userId}`, // New Key
+  MY_OFFERS: `p3_my_offers_${userId}`, 
 });
+
+const EMPLOYEES_KEY = 'p3_admin_employees';
 
 // Fallback data if no local data exists
 const INITIAL_USER_TEMPLATE: UserProfile = {
@@ -28,6 +30,12 @@ const INITIAL_USER_TEMPLATE: UserProfile = {
   walletAgeDays: 120, 
   txCount: 45
 };
+
+const MOCK_EMPLOYEES: EmployeeProfile[] = [
+  { id: 'emp1', name: 'Matt H.', email: 'matt@p3securities.com', role: 'ADMIN', isActive: true },
+  { id: 'emp2', name: 'Sarah Risk', email: 'sarah@p3securities.com', role: 'RISK_OFFICER', isActive: true },
+  { id: 'emp3', name: 'Support Bot', email: 'support@p3securities.com', role: 'SUPPORT', isActive: true }
+];
 
 export const PersistenceService = {
   // --- User Profile ---
@@ -67,6 +75,45 @@ export const PersistenceService = {
       console.error("Failed to save user (likely QuotaExceeded for image)", e);
       alert("Storage limit reached. Try using a smaller profile image.");
     }
+  },
+
+  // --- Admin Methods ---
+  getAllUsers: (): UserProfile[] => {
+    const users: UserProfile[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('p3_user_')) {
+        try {
+          const userData = localStorage.getItem(key);
+          if (userData) {
+            users.push(JSON.parse(userData));
+          }
+        } catch (e) {
+          console.error("Failed to parse user", key);
+        }
+      }
+    }
+    // Add dummy users if list is empty for demo purposes
+    if (users.length === 0) {
+      return [
+        { ...INITIAL_USER_TEMPLATE, id: 'demo1', name: 'Alice Chains', reputationScore: 85, kycTier: KYCTier.TIER_2 },
+        { ...INITIAL_USER_TEMPLATE, id: 'demo2', name: 'Bob Builder', reputationScore: 45, kycTier: KYCTier.TIER_1, isFrozen: true },
+        { ...INITIAL_USER_TEMPLATE, id: 'demo3', name: 'Charlie Crypto', reputationScore: 92, kycTier: KYCTier.TIER_3 }
+      ];
+    }
+    return users;
+  },
+
+  getEmployees: (): EmployeeProfile[] => {
+    const data = localStorage.getItem(EMPLOYEES_KEY);
+    return data ? JSON.parse(data) : MOCK_EMPLOYEES;
+  },
+
+  addEmployee: (emp: EmployeeProfile) => {
+    const current = PersistenceService.getEmployees();
+    const updated = [...current, emp];
+    localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(updated));
+    return updated;
   },
 
   // --- Loan Requests ---

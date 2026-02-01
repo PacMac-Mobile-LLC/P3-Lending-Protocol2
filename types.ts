@@ -49,6 +49,8 @@ export interface UserProfile {
   kycTier: KYCTier;
   kycStatus: KYCStatus;
   kycLimit: number; // Max loan amount allowed
+  isFrozen?: boolean; // Admin action
+  adminNotes?: string;
 
   // Mentorship Stats
   mentorshipsCount?: number;
@@ -123,4 +125,16 @@ export interface RiskReport {
   factors: RiskFactor[];
   summary: string;
   timestamp: string;
+}
+
+// Admin / Employee Types
+export type AdminRole = 'SUPPORT' | 'RISK_OFFICER' | 'ADMIN';
+
+export interface EmployeeProfile {
+  id: string;
+  name: string;
+  email: string;
+  role: AdminRole;
+  isActive: boolean;
+  lastLogin?: string;
 }

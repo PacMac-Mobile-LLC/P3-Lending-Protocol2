@@ -5,9 +5,10 @@ import { ScoreGauge } from './ScoreGauge';
 
 interface Props {
   onLaunch: () => void;
+  onAdminLogin?: () => void;
 }
 
-export const LandingPage: React.FC<Props> = ({ onLaunch }) => {
+export const LandingPage: React.FC<Props> = ({ onLaunch, onAdminLogin }) => {
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
     if (element) {
@@ -28,6 +29,11 @@ export const LandingPage: React.FC<Props> = ({ onLaunch }) => {
           <button onClick={() => scrollToSection('borrowers')} className="hidden md:block text-sm font-medium text-zinc-400 hover:text-white transition-colors">For Borrowers</button>
           <button onClick={() => scrollToSection('lenders')} className="hidden md:block text-sm font-medium text-zinc-400 hover:text-white transition-colors">For Lenders</button>
           <button onClick={() => scrollToSection('compliance')} className="hidden md:block text-sm font-medium text-zinc-400 hover:text-white transition-colors">Compliance</button>
+          {onAdminLogin && (
+            <button onClick={onAdminLogin} className="text-sm font-bold text-[#00e599] hover:text-[#00cc88] transition-colors border border-[#00e599]/30 bg-[#00e599]/10 px-3 py-1 rounded-full">
+               Employee Portal
+            </button>
+          )}
           <Button onClick={onLaunch} className="shadow-[0_0_20px_rgba(0,229,153,0.4)]">
             Launch App
           </Button>

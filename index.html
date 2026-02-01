@@ -17,6 +17,7 @@
       body {
         font-family: 'Inter', sans-serif;
         background-color: #050505;
+        /* Removed overflow-hidden to allow landing page to scroll */
       }
       .font-mono {
         font-family: 'JetBrains Mono', monospace;
@@ -92,7 +93,7 @@
 }
 </script>
 </head>
-  <body class="bg-[#050505] text-white antialiased overflow-hidden">
+  <body class="bg-[#050505] text-white antialiased">
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
   </body>
