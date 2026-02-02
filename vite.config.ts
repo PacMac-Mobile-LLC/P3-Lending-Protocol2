@@ -5,11 +5,9 @@ import react from '@vitejs/plugin-react';
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
-  // The third parameter '' ensures we load all env vars, not just those prefixed with VITE_
-  // Fix: Cast process to any to resolve TypeScript error "Property 'cwd' does not exist on type 'Process'"
   const env = loadEnv(mode, (process as any).cwd(), '');
   
-  // Fallback to process.env for systems where loadEnv might miss system vars (though loadEnv usually catches them)
+  // Fallback to process.env for systems where loadEnv might miss system vars
   const apiKey = env.API_KEY || process.env.API_KEY || '';
   const coinGeckoKey = env.COINGECKO_API_KEY || process.env.COINGECKO_API_KEY || '';
 
@@ -17,9 +15,10 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     define: {
       // CRITICAL FIX: Securely inject the API Key during build.
-      // If the key is missing, it injects an empty string to prevent ReferenceErrors.
       'process.env.API_KEY': JSON.stringify(apiKey),
       'process.env.COINGECKO_API_KEY': JSON.stringify(coinGeckoKey),
+      // Polyfill global for ethers/Web3 libraries
+      'global': 'window',
     },
     build: {
       outDir: 'dist',
