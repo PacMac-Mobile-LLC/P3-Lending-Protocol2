@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { UserProfile, LoanRequest, LoanOffer, LoanType, Charity, KYCTier, KYCStatus, WalletState, RiskReport, EmployeeProfile, Asset, PortfolioItem } from './types';
 import { UserProfileCard } from './components/UserProfileCard';
@@ -165,6 +164,12 @@ const App: React.FC = () => {
   // Initialization Effect (Runs ONCE)
   useEffect(() => {
     const initApp = async () => {
+      // Safety timeout to prevent indefinite loading if DB/Auth hangs
+      const safetyTimeout = setTimeout(() => {
+        console.warn("Initialization timed out, forcing app ready state.");
+        setAppReady(true);
+      }, 3000);
+
       try {
         await PersistenceService.getEmployees().catch(() => console.warn("DB Connection Warning"));
         AuthService.init();
@@ -179,6 +184,7 @@ const App: React.FC = () => {
       } catch (e) {
         console.error("Critical App Init Error:", e);
       } finally {
+        clearTimeout(safetyTimeout);
         setAppReady(true);
       }
     };
