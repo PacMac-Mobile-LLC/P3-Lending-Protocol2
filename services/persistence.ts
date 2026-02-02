@@ -1,4 +1,4 @@
-import { UserProfile, LoanRequest, LoanOffer, EmployeeProfile, ReferralData, InternalTicket, ChatMessage, Dispute, KYCTier, KYCStatus } from '../types';
+import { UserProfile, LoanRequest, LoanOffer, EmployeeProfile, ReferralData, InternalTicket, ChatMessage, Dispute, KYCTier, KYCStatus, WaitlistEntry } from '../types';
 import { supabase } from '../supabaseClient';
 
 // INITIAL TEMPLATE REMAINING FOR FALLBACK
@@ -24,9 +24,79 @@ const INITIAL_USER_TEMPLATE: UserProfile = {
   referrals: []
 };
 
+const BASE_WAITLIST_COUNT = 4291;
+
 // NOTE: All methods are now ASYNC because they hit the database.
 export const PersistenceService = {
   
+  // --- Waitlist Management ---
+
+  addToWaitlist: async (name: string, email: string) => {
+    try {
+      // Check if exists first to prevent unique constraint errors if not handled by DB
+      const existing = await PersistenceService.getWaitlistPosition(email);
+      if (existing) return; // Already in list
+
+      await supabase.from('waitlist').insert({
+        name,
+        email,
+        status: 'PENDING',
+        created_at: new Date().toISOString()
+      });
+    } catch (e) {
+      console.error("Failed to add to waitlist", e);
+    }
+  },
+
+  getWaitlist: async (): Promise<WaitlistEntry[]> => {
+    const { data } = await supabase.from('waitlist').select('*').order('created_at', { ascending: false });
+    return data ? data.map((r: any) => ({
+      id: r.id,
+      name: r.name,
+      email: r.email,
+      status: r.status,
+      created_at: r.created_at
+    })) : [];
+  },
+
+  // Returns the user's specific position and name if found
+  getWaitlistPosition: async (email: string): Promise<{ position: number; name: string } | null> => {
+    try {
+      // Fetch all emails/names ordered by date to calculate rank
+      // (For production scale, use a SQL count query or window function instead)
+      const { data } = await supabase
+        .from('waitlist')
+        .select('email, name')
+        .order('created_at', { ascending: true });
+
+      if (!data) return null;
+
+      const index = data.findIndex((e: any) => e.email.toLowerCase() === email.trim().toLowerCase());
+      if (index === -1) return null;
+
+      return {
+        position: BASE_WAITLIST_COUNT + index + 1,
+        name: data[index].name
+      };
+    } catch (e) {
+      console.error("Error fetching position", e);
+      return null;
+    }
+  },
+
+  getWaitlistCount: async (): Promise<number> => {
+    try {
+      const { count } = await supabase.from('waitlist').select('*', { count: 'exact', head: true });
+      return BASE_WAITLIST_COUNT + (count || 0);
+    } catch (e) {
+      return BASE_WAITLIST_COUNT;
+    }
+  },
+
+  updateWaitlistStatus: async (id: string, status: 'INVITED' | 'ONBOARDED') => {
+    await supabase.from('waitlist').update({ status }).eq('id', id);
+  },
+
   // --- User Profile ---
   
   loadUser: async (netlifyUser: any, pendingReferralCode?: string | null): Promise<UserProfile> => {
@@ -64,6 +134,14 @@ export const PersistenceService = {
           email: netlifyUser.email,
           data: newUser 
         });
+
+        // If they were on waitlist, update status to ONBOARDED
+        try {
+          const { data: waitlistData } = await supabase.from('waitlist').select('*').eq('email', netlifyUser.email).single();
+          if (waitlistData) {
+            await PersistenceService.updateWaitlistStatus(waitlistData.id, 'ONBOARDED');
+          }
+        } catch (ignore) {}
 
         return newUser;
       }
@@ -208,8 +286,8 @@ export const PersistenceService = {
   // --- Chat & Realtime ---
 
   getChatHistory: async (): Promise<ChatMessage[]> => {
-    const { data } = await supabase.from('chats').select('*').order('created_at', { ascending: true }).limit(200);
-    return data ? data.map((r: any) => r.data) : [];
+    const { data } = await supabase.from('chats').select('*').order('created_at', { ascending: false }).limit(200);
+    return data ? data.map((r: any) => r.data).reverse() : [];
   },
 
   addChatMessage: async (msg: ChatMessage) => {

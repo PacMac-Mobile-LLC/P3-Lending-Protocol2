@@ -78,6 +78,14 @@ export interface UserProfile {
   txCount?: number;
 }
 
+export interface WaitlistEntry {
+  id: string;
+  name: string;
+  email: string;
+  status: 'PENDING' | 'INVITED' | 'ONBOARDED';
+  created_at: string;
+}
+
 export interface LoanRequest {
   id: string;
   borrowerId: string;

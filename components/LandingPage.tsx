@@ -3,6 +3,7 @@ import { Logo } from './Logo';
 import { Button } from './Button';
 import { Footer } from './Footer';
 import { LegalDocType } from './LegalModal';
+import { PersistenceService } from '../services/persistence';
 
 interface Props {
   onLaunch: () => void;
@@ -60,27 +61,87 @@ const LiveToasts = () => {
 
 // --- Waitlist Modal Component ---
 const WaitlistModal = ({ isOpen, onClose, onLaunchApp }: { isOpen: boolean; onClose: () => void; onLaunchApp: () => void }) => {
-  const [step, setStep] = useState<'FORM' | 'SUCCESS'>('FORM');
+  // Modes: JOIN (Sign up), CHECK (Check existing), RESULT (Show status)
+  const [mode, setMode] = useState<'JOIN' | 'CHECK' | 'RESULT'>('JOIN');
+  
+  // Data
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [position, setPosition] = useState<number | null>(null);
   const [referralLink, setReferralLink] = useState('');
-  const [waitlistPosition, setWaitlistPosition] = useState(4291);
+  
+  // UI States
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  // Reset on open
+  useEffect(() => {
+    if (isOpen) {
+      setMode('JOIN');
+      setName('');
+      setEmail('');
+      setPosition(null);
+      setErrorMsg('');
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleJoinSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    // Simulate API call and Link Generation
-    setTimeout(() => {
-      // Create a mock referral code based on email hash simulation
-      const mockCode = btoa(email).substring(0, 8).toUpperCase();
-      setReferralLink(`https://p3lending.space?ref=${mockCode}`);
+    
+    try {
+      // 1. Add to DB
+      await PersistenceService.addToWaitlist(name, email);
+      
+      // 2. Fetch Calculated Position
+      const result = await PersistenceService.getWaitlistPosition(email);
+      
+      if (result) {
+        setPosition(result.position);
+        generateLink(email);
+        setMode('RESULT');
+      } else {
+        // Fallback if fetch fails right after insert (rare)
+        setPosition(4292); 
+        setMode('RESULT');
+      }
+    } catch (err) {
+      console.error("Failed to join waitlist", err);
+      setErrorMsg("Something went wrong. Please try again.");
+    } finally {
       setIsSubmitting(false);
-      setStep('SUCCESS');
-    }, 1500);
+    }
+  };
+
+  const handleCheckSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setErrorMsg('');
+
+    try {
+      const result = await PersistenceService.getWaitlistPosition(email);
+      
+      if (result) {
+        setPosition(result.position);
+        setName(result.name); // Set name from DB
+        generateLink(email);
+        setMode('RESULT');
+      } else {
+        setErrorMsg("Email not found on the waitlist.");
+      }
+    } catch (err) {
+      setErrorMsg("Error checking status.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const generateLink = (userEmail: string) => {
+    const mockCode = btoa(userEmail).substring(0, 8).toUpperCase();
+    setReferralLink(`https://p3lending.space?ref=${mockCode}`);
   };
 
   const handleCopyLink = () => {
@@ -102,7 +163,7 @@ const WaitlistModal = ({ isOpen, onClose, onLaunchApp }: { isOpen: boolean; onCl
           Close ✕
         </button>
 
-        {step === 'FORM' ? (
+        {mode === 'JOIN' && (
           <div className="bg-[#0a0a0a] border border-zinc-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
             <div className="w-12 h-12 bg-[#00e599]/10 rounded-xl flex items-center justify-center mb-6 border border-[#00e599]/20">
               <span className="text-2xl">🚀</span>
@@ -112,7 +173,7 @@ const WaitlistModal = ({ isOpen, onClose, onLaunchApp }: { isOpen: boolean; onCl
               Secure your spot in the P3 Protocol. We are onboarding users in batches based on Reputation Score.
             </p>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleJoinSubmit} className="space-y-4">
               <div>
                 <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">Full Name</label>
                 <input 
@@ -139,12 +200,55 @@ const WaitlistModal = ({ isOpen, onClose, onLaunchApp }: { isOpen: boolean; onCl
               <Button type="submit" className="w-full py-4 text-base" isLoading={isSubmitting}>
                 Get Early Access
               </Button>
-              <p className="text-[10px] text-zinc-600 text-center mt-4">
-                By joining, you agree to our Terms of Service. No spam, just decentralized finance.
-              </p>
+              
+              <div className="text-center mt-4">
+                <button type="button" onClick={() => setMode('CHECK')} className="text-xs text-zinc-500 hover:text-white underline transition-colors">
+                  Already on the list? Check your spot.
+                </button>
+              </div>
             </form>
           </div>
-        ) : (
+        )}
+
+        {mode === 'CHECK' && (
+          <div className="bg-[#0a0a0a] border border-zinc-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden animate-fade-in">
+            <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center mb-6 border border-blue-500/20">
+              <span className="text-2xl">🔍</span>
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">Check Status</h2>
+            <p className="text-zinc-400 text-sm mb-8">
+              Enter the email address you used to sign up to see your current position in line.
+            </p>
+
+            <form onSubmit={handleCheckSubmit} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">Email Address</label>
+                <input 
+                  type="email" 
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="satoshi@gmx.com"
+                  className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 text-white focus:border-blue-500 outline-none transition-colors"
+                />
+              </div>
+              
+              {errorMsg && <p className="text-xs text-red-500">{errorMsg}</p>}
+
+              <Button type="submit" className="w-full py-4 text-base" isLoading={isSubmitting}>
+                Check Position
+              </Button>
+              
+              <div className="text-center mt-4">
+                <button type="button" onClick={() => setMode('JOIN')} className="text-xs text-zinc-500 hover:text-white underline transition-colors">
+                  ← Back to Join
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {mode === 'RESULT' && (
           <div className="bg-[#0a0a0a] border border-zinc-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden text-center animate-fade-in">
              <div className="relative inline-block mb-6">
                 <div className="w-16 h-16 bg-zinc-900 rounded-2xl flex items-center justify-center relative z-10 border border-zinc-800">
@@ -155,14 +259,18 @@ const WaitlistModal = ({ isOpen, onClose, onLaunchApp }: { isOpen: boolean; onCl
                 </div>
              </div>
              
-             <h2 className="text-3xl font-bold text-white mb-2">You're on the list, <span className="text-[#00e599]">{name.split(' ')[0]}</span>.</h2>
+             <h2 className="text-3xl font-bold text-white mb-2">
+                You're on the list, <span className="text-[#00e599]">{name.split(' ')[0]}</span>.
+             </h2>
              <p className="text-zinc-400 text-sm mb-6 leading-relaxed max-w-xs mx-auto">
                Your spot is secured. We are rewriting the rules of lending by replacing FICO scores with social reputation.
              </p>
 
              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 mb-6">
                 <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Waitlist Position</div>
-                <div className="text-4xl font-mono font-bold text-white tracking-tighter">#{waitlistPosition.toLocaleString()}</div>
+                <div className="text-4xl font-mono font-bold text-white tracking-tighter">
+                  #{position ? position.toLocaleString() : '---'}
+                </div>
              </div>
              
              {/* Gamification / Share Section */}
@@ -211,6 +319,14 @@ const WaitlistModal = ({ isOpen, onClose, onLaunchApp }: { isOpen: boolean; onCl
 
 export const LandingPage: React.FC<Props> = ({ onLaunch, onDevAdminLogin, onOpenDocs, onOpenLegal }) => {
   const [showWaitlist, setShowWaitlist] = useState(false);
+  const [totalWaitlist, setTotalWaitlist] = useState(4291);
+
+  useEffect(() => {
+    // Fetch live waitlist count for the ticker
+    PersistenceService.getWaitlistCount().then(count => {
+      setTotalWaitlist(count);
+    });
+  }, []);
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
@@ -298,7 +414,7 @@ export const LandingPage: React.FC<Props> = ({ onLaunch, onDevAdminLogin, onOpen
            <span>•</span>
            <span>Avg Approval: 4.8s</span>
            <span>•</span>
-           <span>Waitlist: 4,291</span>
+           <span className="text-[#00e599] font-bold">Waitlist: {totalWaitlist.toLocaleString()}</span>
            <span>•</span>
            <span>Total Liquidity: $2.4M</span>
            <span>•</span>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Logo } from './Logo';
 import { Button } from './Button';
-import { UserProfile, EmployeeProfile, AdminRole, KYCTier, KYCStatus, Dispute, InternalTicket } from '../types';
+import { UserProfile, EmployeeProfile, AdminRole, KYCTier, KYCStatus, Dispute, InternalTicket, WaitlistEntry } from '../types';
 import { PersistenceService } from '../services/persistence';
 import { SecurityService } from '../services/security';
 import { ScoreGauge } from './ScoreGauge';
@@ -20,11 +20,12 @@ interface Props {
 }
 
 export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'USERS' | 'KYC' | 'DISPUTES' | 'TEAM' | 'KNOWLEDGE'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'USERS' | 'WAITLIST' | 'KYC' | 'DISPUTES' | 'TEAM' | 'KNOWLEDGE'>('OVERVIEW');
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [employees, setEmployees] = useState<EmployeeProfile[]>([]);
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [internalTickets, setInternalTickets] = useState<InternalTicket[]>([]);
+  const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
   const [isChatOpen, setIsChatOpen] = useState(false);
   
   // User Management State
@@ -53,6 +54,9 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
         
         const d = await PersistenceService.getAllDisputes();
         setDisputes(d || []);
+
+        const w = await PersistenceService.getWaitlist();
+        setWaitlist(w || []);
       } catch (err) {
         console.error("Admin dashboard failed to load data", err);
       }
@@ -165,6 +169,13 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
     }
   };
 
+  const handleInviteWaitlist = async (id: string) => {
+    await PersistenceService.updateWaitlistStatus(id, 'INVITED');
+    // Simulation:
+    alert("Invitation email sent (simulated). User marked as INVITED.");
+    setWaitlist(prev => prev.map(w => w.id === id ? { ...w, status: 'INVITED' } : w));
+  };
+
   // Internal Ticket Actions
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -221,6 +232,15 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeTab === 'OVERVIEW' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-white'}`}
           >
             <span>📊</span> Overview
+          </button>
+          <button 
+            onClick={() => setActiveTab('WAITLIST')}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${activeTab === 'WAITLIST' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-white'}`}
+          >
+             <div className="flex items-center gap-3">
+              <span>⏳</span> Waitlist Queue
+            </div>
+            {waitlist.filter(w => w.status === 'PENDING').length > 0 && <span className="bg-[#00e599] text-black text-xs font-bold px-1.5 rounded-full">{waitlist.filter(w => w.status === 'PENDING').length}</span>}
           </button>
           <button 
             onClick={() => setActiveTab('USERS')}
@@ -293,6 +313,7 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
         <header className="h-16 border-b border-zinc-900 flex items-center justify-between px-8 bg-[#050505]">
           <h1 className="text-lg font-bold text-white">
             {activeTab === 'OVERVIEW' && 'Platform Overview'}
+            {activeTab === 'WAITLIST' && 'Beta Waitlist Management'}
             {activeTab === 'USERS' && 'Customer Support'}
             {activeTab === 'KYC' && 'KYC Compliance Queue'}
             {activeTab === 'DISPUTES' && 'Arbitration Center'}
@@ -331,13 +352,52 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
                   <div className="text-3xl font-bold text-[#00e599]">{safeUsers.filter(u => u.kycTier === KYCTier.TIER_2 || u.kycTier === KYCTier.TIER_3).length}</div>
                 </div>
                 <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
-                  <div className="text-zinc-500 text-xs uppercase font-bold tracking-wider mb-2">Frozen Accounts</div>
-                  <div className="text-3xl font-bold text-red-500">{safeUsers.filter(u => u.isFrozen).length}</div>
+                  <div className="text-zinc-500 text-xs uppercase font-bold tracking-wider mb-2">Waitlist</div>
+                  <div className="text-3xl font-bold text-blue-400">{waitlist.filter(w => w.status === 'PENDING').length}</div>
                 </div>
                 <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
                    <div className="text-zinc-500 text-xs uppercase font-bold tracking-wider mb-2">Platform Risk Score</div>
                    <div className="text-3xl font-bold text-amber-500">LOW</div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'WAITLIST' && (
+            <div className="animate-fade-in">
+               <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+                <table className="w-full text-left text-sm text-zinc-400">
+                   <thead className="bg-black text-white text-xs uppercase tracking-wider">
+                     <tr><th className="p-4">Date</th><th className="p-4">Name</th><th className="p-4">Email</th><th className="p-4">Status</th><th className="p-4 text-right">Actions</th></tr>
+                   </thead>
+                   <tbody>
+                     {waitlist.length === 0 ? (
+                       <tr><td colSpan={5} className="p-8 text-center text-zinc-500">No users in waitlist.</td></tr>
+                     ) : (
+                       waitlist.map(w => (
+                         <tr key={w.id} className="border-t border-zinc-800 hover:bg-black/40">
+                           <td className="p-4 font-mono text-xs">{new Date(w.created_at).toLocaleDateString()}</td>
+                           <td className="p-4 text-white font-bold">{w.name}</td>
+                           <td className="p-4">{w.email}</td>
+                           <td className="p-4">
+                             <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
+                               w.status === 'ONBOARDED' ? 'bg-green-500/20 text-green-500' :
+                               w.status === 'INVITED' ? 'bg-blue-500/20 text-blue-500' :
+                               'bg-zinc-800 text-zinc-400'
+                             }`}>
+                               {w.status}
+                             </span>
+                           </td>
+                           <td className="p-4 text-right">
+                             {w.status === 'PENDING' && (
+                               <Button size="sm" onClick={() => handleInviteWaitlist(w.id)}>Invite</Button>
+                             )}
+                           </td>
+                         </tr>
+                       ))
+                     )}
+                   </tbody>
+                </table>
               </div>
             </div>
           )}
