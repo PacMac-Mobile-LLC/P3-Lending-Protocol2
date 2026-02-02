@@ -1,6 +1,7 @@
 
 // CoinGecko Public API
 const API_BASE = 'https://api.coingecko.com/api/v3';
+const API_KEY = 'CG-Eb9ELfdnWvzbgsYn2P3sMXLJ'; // Provided Demo API Key
 
 export const ASSET_IDS = {
   'BTC': 'bitcoin',
@@ -25,14 +26,14 @@ export const MarketDataService = {
   getPrices: async (ids: string[]): Promise<MarketData | null> => {
     try {
       const response = await fetch(
-        `${API_BASE}/simple/price?ids=${ids.join(',')}&vs_currencies=usd&include_24hr_change=true&include_market_cap=true`,
+        `${API_BASE}/simple/price?ids=${ids.join(',')}&vs_currencies=usd&include_24hr_change=true&include_market_cap=true&x_cg_demo_api_key=${API_KEY}`,
         { method: 'GET', headers: { 'Accept': 'application/json' } }
       );
       
-      if (!response.ok) throw new Error("API Limit or Error");
+      if (!response.ok) throw new Error(`API Error: ${response.status}`);
       return await response.json();
     } catch (error) {
-      console.warn("Using fallback data due to API limit:", error);
+      console.warn("Market Data Fetch Error:", error);
       return null;
     }
   },
@@ -49,11 +50,11 @@ export const MarketDataService = {
       if (days === 'ALL') apiDays = 'max';
 
       const response = await fetch(
-        `${API_BASE}/coins/${coinId}/market_chart?vs_currency=usd&days=${apiDays}`,
+        `${API_BASE}/coins/${coinId}/market_chart?vs_currency=usd&days=${apiDays}&x_cg_demo_api_key=${API_KEY}`,
         { method: 'GET', headers: { 'Accept': 'application/json' } }
       );
 
-      if (!response.ok) throw new Error("Chart API Error");
+      if (!response.ok) throw new Error(`Chart API Error: ${response.status}`);
       
       const data = await response.json();
       // CoinGecko returns [timestamp, price] arrays
@@ -68,6 +69,7 @@ export const MarketDataService = {
   },
 
   formatMarketCap: (num: number): string => {
+    if (!num) return '-';
     if (num >= 1e12) return (num / 1e12).toFixed(2) + 'T';
     if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B';
     if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
