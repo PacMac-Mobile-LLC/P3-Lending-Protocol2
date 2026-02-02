@@ -26,7 +26,7 @@ import { AdminLoginModal } from './components/AdminLoginModal';
 import { Footer } from './components/Footer';
 import { KnowledgeBase } from './components/KnowledgeBase';
 import { CustomerChatWidget } from './components/CustomerChatWidget';
-import { TradingDashboard } from './components/TradingDashboard'; // Import new component
+import { TradingDashboard } from './components/TradingDashboard'; 
 
 type AppView = 'borrow' | 'lend' | 'trade' | 'mentorship' | 'profile' | 'knowledge_base';
 
@@ -106,6 +106,8 @@ const App: React.FC = () => {
   const handleLogin = async (netlifyUser: any) => {
     console.log("Logged in:", netlifyUser);
     setIsVerifyingEmail(false); 
+    setIsAuthenticated(true);
+    setShowLanding(false);
     
     const email = netlifyUser.email || '';
 
@@ -122,9 +124,6 @@ const App: React.FC = () => {
          }
       }
     } catch (e) { console.error("Admin check failed", e); }
-
-    setIsAuthenticated(true);
-    setShowLanding(false);
     
     const pendingRef = localStorage.getItem('p3_pending_ref');
     const p3User = await PersistenceService.loadUser(netlifyUser, pendingRef);
@@ -307,6 +306,7 @@ const App: React.FC = () => {
 
   if (!appReady) return <div className="h-screen bg-[#050505] flex items-center justify-center text-white font-mono animate-pulse">Loading P3 Protocol...</div>;
 
+  // Handle Authentication State
   if (!isAuthenticated && showLanding && !showAdminLogin) {
     if (activeView === 'knowledge_base') return <KnowledgeBase onBack={() => setActiveView('borrow')} onOpenLegal={(type) => setActiveLegalDoc(type)} />;
     return <><LegalModal type={activeLegalDoc} onClose={() => setActiveLegalDoc(null)} /><LandingPage onLaunch={() => setShowLanding(false)} onDevAdminLogin={() => {}} onOpenDocs={() => setActiveView('knowledge_base')} onOpenLegal={(type) => setActiveLegalDoc(type)} /></>;
@@ -314,6 +314,23 @@ const App: React.FC = () => {
 
   if (showAdminLogin) return <AdminLoginModal email={pendingAdminEmail} onLogin={handleAdminPasswordLogin} onResetPassword={handleAdminPasswordReset} onCancel={() => { setShowAdminLogin(false); setPendingAdminEmail(''); AuthService.logout(); }} />;
 
+  // User is authenticated but data is loading
+  if (isAuthenticated && !user && !adminUser) {
+    return (
+      <div className="h-screen bg-[#050505] flex flex-col items-center justify-center relative overflow-hidden">
+         <div className="absolute inset-0 bg-grid-pattern pointer-events-none opacity-20"></div>
+         <div className="z-10 text-center space-y-8 animate-fade-in">
+           {isVerifyingEmail ? (
+             <div className="flex flex-col items-center gap-4 animate-pulse"><div className="w-12 h-12 border-4 border-[#00e599] border-t-transparent rounded-full animate-spin"></div><h2 className="text-2xl font-bold text-white">Verifying Email...</h2></div>
+           ) : (
+             <div className="flex flex-col items-center gap-4 animate-pulse"><div className="w-12 h-12 border-4 border-[#00e599] border-t-transparent rounded-full animate-spin"></div><h2 className="text-xl font-bold text-white">Loading Profile...</h2></div>
+           )}
+         </div>
+      </div>
+    );
+  }
+
+  // Not authenticated and not loading (Login Screen)
   if (!isAuthenticated && !user && !adminUser) {
     return (
       <div className="h-screen bg-[#050505] flex flex-col items-center justify-center relative overflow-hidden">
@@ -321,11 +338,7 @@ const App: React.FC = () => {
          <div className="absolute top-6 left-6 z-20"><Button variant="ghost" size="sm" onClick={() => setShowLanding(true)}>← Back to Home</Button></div>
          <div className="z-10 text-center space-y-8 animate-fade-in">
            <div className="transform scale-150 mb-8"><Logo showText={false} /></div>
-           {isVerifyingEmail ? (
-             <div className="flex flex-col items-center gap-4 animate-pulse"><div className="w-12 h-12 border-4 border-[#00e599] border-t-transparent rounded-full animate-spin"></div><h2 className="text-2xl font-bold text-white">Verifying Email...</h2></div>
-           ) : (
-             <><h1 className="text-4xl font-bold text-white tracking-tighter">P<span className="text-[#00e599]">3</span> Securities Dashboard</h1><p className="text-zinc-400 max-w-md mx-auto">The future of reputation-based finance. Sign in to access your dashboard.</p><div className="flex flex-col gap-4 items-center"><Button size="lg" onClick={() => AuthService.open('login')} className="min-w-[200px] shadow-[0_0_30px_rgba(0,229,153,0.3)]">Connect Identity</Button><p className="text-xs text-zinc-600">Employee Login enabled via @p3lending.space email</p></div></>
-           )}
+           <><h1 className="text-4xl font-bold text-white tracking-tighter">P<span className="text-[#00e599]">3</span> Securities Dashboard</h1><p className="text-zinc-400 max-w-md mx-auto">The future of reputation-based finance. Sign in to access your dashboard.</p><div className="flex flex-col gap-4 items-center"><Button size="lg" onClick={() => AuthService.open('login')} className="min-w-[200px] shadow-[0_0_30px_rgba(0,229,153,0.3)]">Connect Identity</Button><p className="text-xs text-zinc-600">Employee Login enabled via @p3lending.space email</p></div></>
          </div>
       </div>
     );
@@ -392,7 +405,6 @@ const App: React.FC = () => {
           <NewsTicker />
 
           <div className="flex-1 overflow-y-auto relative z-0 custom-scrollbar flex flex-col">
-             {/* If we are trading, we want the full screen, otherwise container */}
              <div className={activeView === 'trade' ? 'h-full' : 'flex-1 p-8'}>
                {activeView === 'borrow' && (
                  <div className="max-w-6xl mx-auto animate-fade-in space-y-8">
