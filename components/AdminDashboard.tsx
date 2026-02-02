@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Logo } from './Logo';
 import { Button } from './Button';
@@ -27,6 +28,9 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
   const [internalTickets, setInternalTickets] = useState<InternalTicket[]>([]);
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  
+  // New State for Chat Blinking
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   
   // Waitlist Batch Logic
   const [batchSize, setBatchSize] = useState(10);
@@ -232,8 +236,13 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
 
   return (
     <div className="flex h-screen bg-[#050505] text-zinc-200 font-sans overflow-hidden">
-      {/* Internal Chat Widget */}
-      <AdminChatWidget currentUser={currentAdmin} isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+      {/* Internal Chat Widget - Always mounted but hidden if closed */}
+      <AdminChatWidget 
+        currentUser={currentAdmin} 
+        isOpen={isChatOpen} 
+        onClose={() => setIsChatOpen(false)} 
+        onUnreadChange={setHasUnreadMessages}
+      />
 
       {/* Admin Sidebar */}
       <aside className="w-64 bg-[#0a0a0a] border-r border-zinc-900 flex flex-col z-50">
@@ -344,13 +353,22 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
           <div className="flex items-center gap-4">
              <button 
                onClick={() => setIsChatOpen(!isChatOpen)}
-               className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${isChatOpen ? 'bg-[#00e599]/10 border-[#00e599]/50 text-[#00e599]' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'}`}
+               className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all 
+                 ${isChatOpen 
+                   ? 'bg-[#00e599]/10 border-[#00e599]/50 text-[#00e599]' 
+                   : hasUnreadMessages 
+                     ? 'bg-orange-500/20 border-orange-500 text-orange-500 animate-pulse' 
+                     : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'
+                 }`}
              >
                 <div className="relative">
                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-                   <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#00e599] rounded-full border-2 border-[#050505]"></span>
+                   {/* Blink Badge */}
+                   <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-[#050505] transition-colors ${hasUnreadMessages ? 'bg-orange-500 animate-bounce' : 'bg-[#00e599]'}`}></span>
                 </div>
-                <span className="text-xs font-bold">Team Chat</span>
+                <span className="text-xs font-bold">
+                  {hasUnreadMessages ? 'New Message' : 'Team Chat'}
+                </span>
              </button>
              <div className="text-xs text-zinc-500 font-mono">
                System Status: <span className="text-[#00e599]">OPERATIONAL</span> • <span className="text-red-500">ADMIN MODE</span>
