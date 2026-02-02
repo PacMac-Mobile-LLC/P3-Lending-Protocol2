@@ -17,8 +17,9 @@ export default defineConfig(({ mode }) => {
       // CRITICAL FIX: Securely inject the API Key during build.
       'process.env.API_KEY': JSON.stringify(apiKey),
       'process.env.COINGECKO_API_KEY': JSON.stringify(coinGeckoKey),
-      // Polyfill global for ethers/Web3 libraries
-      'global': 'window',
+      // Polyfill global for ethers/Web3 libraries. 
+      // We rely on index.html script tag for this to avoid build-time var collisions.
+      // 'global': 'window', 
     },
     build: {
       outDir: 'dist',
