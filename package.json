@@ -1,3 +1,4 @@
+
 {
   "name": "p3-lending-dashboard",
   "private": true,
@@ -15,6 +16,8 @@
     "@stripe/stripe-js": "^2.4.0",
     "@supabase/supabase-js": "^2.39.0",
     "ethers": "^6.11.1",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.2",
     "lucide-react": "^0.344.0",
     "netlify-identity-widget": "^1.9.2",
     "react": "^18.2.0",

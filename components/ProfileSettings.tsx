@@ -1,6 +1,8 @@
+
 import React, { useState, useRef } from 'react';
 import { UserProfile } from '../types';
 import { Button } from './Button';
+import { DocumentService } from '../services/documentService';
 
 interface Props {
   user: UserProfile;
@@ -36,6 +38,10 @@ export const ProfileSettings: React.FC<Props> = ({ user, onSave, onDeposit }) =>
     await new Promise(resolve => setTimeout(resolve, 800));
     onSave(formData);
     setIsSaving(false);
+  };
+
+  const handleDownloadStatement = () => {
+    DocumentService.generateStatement(user);
   };
 
   return (
@@ -89,6 +95,39 @@ export const ProfileSettings: React.FC<Props> = ({ user, onSave, onDeposit }) =>
                )}
             </div>
           </div>
+        </div>
+
+        {/* Documents & Statements Section (NEW) */}
+        <div className="glass-panel p-8 rounded-2xl space-y-6 border border-zinc-800/50">
+           <h3 className="text-lg font-bold text-white border-b border-zinc-800 pb-4 mb-6">Documents & Statements</h3>
+           
+           <div className="flex items-center justify-between p-4 bg-zinc-900/50 rounded-xl border border-zinc-800 hover:border-[#00e599]/30 transition-colors">
+              <div className="flex items-center gap-4">
+                 <div className="w-10 h-10 bg-red-900/20 text-red-500 rounded-lg flex items-center justify-center">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                 </div>
+                 <div>
+                    <h4 className="text-white font-bold text-sm">Monthly Statement (Feb 2025)</h4>
+                    <p className="text-xs text-zinc-500">PDF • 1.2 MB • Generated Automatically</p>
+                 </div>
+              </div>
+              <Button type="button" size="sm" variant="outline" onClick={handleDownloadStatement}>
+                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                 Download
+              </Button>
+           </div>
+
+           <div className="p-4 bg-zinc-900/30 rounded-xl border border-zinc-800/50 opacity-75">
+              <div className="flex items-center gap-4">
+                 <div className="w-10 h-10 bg-zinc-800 text-zinc-500 rounded-lg flex items-center justify-center">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                 </div>
+                 <div>
+                    <h4 className="text-zinc-400 font-bold text-sm">Annual Tax Form 1099-INT</h4>
+                    <p className="text-xs text-zinc-600">Available Jan 31, 2026</p>
+                 </div>
+              </div>
+           </div>
         </div>
 
         {/* Deposit Funds Section (For Testing Referrals) */}
