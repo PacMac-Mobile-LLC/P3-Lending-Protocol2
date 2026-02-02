@@ -464,9 +464,8 @@ const App: React.FC = () => {
                )}
 
                {activeView === 'profile' && <ProfileSettings user={user} onSave={handleProfileUpdate} onDeposit={handleDeposit} />}
-               {activeView === 'knowledge_base' && <KnowledgeBase onBack={() => setActiveView('borrow')} onOpenLegal={(type) => setActiveLegalDoc(type)} />}
              </div>
-             {activeView !== 'knowledge_base' && activeView !== 'trade' && <Footer onOpenLegal={(type) => setActiveLegalDoc(type)} />}
+             {activeView !== 'trade' && <Footer onOpenLegal={(type) => setActiveLegalDoc(type)} />}
           </div>
         </main>
       </div>
