@@ -76,6 +76,27 @@ export interface UserProfile {
   // Blockchain Data (Simulated for Risk Engine)
   walletAgeDays?: number;
   txCount?: number;
+  
+  // Trading Portfolio
+  portfolio?: PortfolioItem[];
+}
+
+export interface PortfolioItem {
+  assetId: string;
+  symbol: string;
+  amount: number;
+  avgBuyPrice: number;
+}
+
+export interface Asset {
+  id: string;
+  symbol: string;
+  name: string;
+  currentPrice: number;
+  priceChange24h: number;
+  marketCap?: string;
+  description?: string;
+  color: string;
 }
 
 export interface WaitlistEntry {

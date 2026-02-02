@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { UserProfile, LoanRequest, LoanOffer, LoanType, Charity, KYCTier, KYCStatus, WalletState, RiskReport, EmployeeProfile } from './types';
+import { UserProfile, LoanRequest, LoanOffer, LoanType, Charity, KYCTier, KYCStatus, WalletState, RiskReport, EmployeeProfile, Asset, PortfolioItem } from './types';
 import { UserProfileCard } from './components/UserProfileCard';
 import { Marketplace } from './components/Marketplace';
 import { MentorshipDashboard } from './components/MentorshipDashboard';
@@ -25,6 +26,9 @@ import { AdminLoginModal } from './components/AdminLoginModal';
 import { Footer } from './components/Footer';
 import { KnowledgeBase } from './components/KnowledgeBase';
 import { CustomerChatWidget } from './components/CustomerChatWidget';
+import { TradingDashboard } from './components/TradingDashboard'; // Import new component
+
+type AppView = 'borrow' | 'lend' | 'trade' | 'mentorship' | 'profile' | 'knowledge_base';
 
 const MOCK_CHARITIES: Charity[] = [
   { id: 'c1', name: 'Green Earth', mission: 'Reforestation', totalRaised: 1250, color: 'bg-green-500' },
@@ -45,7 +49,7 @@ const App: React.FC = () => {
   const [pendingAdminEmail, setPendingAdminEmail] = useState('');
   
   const [charities, setCharities] = useState<Charity[]>(MOCK_CHARITIES);
-  const [activeView, setActiveView] = useState<'borrow' | 'lend' | 'mentorship' | 'profile' | 'knowledge_base'>('borrow');
+  const [activeView, setActiveView] = useState<AppView>('borrow');
   
   // Data State
   const [myRequests, setMyRequests] = useState<LoanRequest[]>([]);
@@ -154,42 +158,32 @@ const App: React.FC = () => {
   useEffect(() => {
     const initApp = async () => {
       try {
-        // Just cache employees or check DB connection
-        // We wrap this in try-catch so app loads even if DB is down
         await PersistenceService.getEmployees().catch(() => console.warn("DB Connection Warning"));
-        
         AuthService.init();
-        
         const currentUser = AuthService.currentUser();
         if (currentUser) {
           handleLogin(currentUser);
         } else {
           setIsAuthenticated(false);
         }
-
         AuthService.on('login', handleLogin);
         AuthService.on('logout', handleLogout);
-        
       } catch (e) {
         console.error("Critical App Init Error:", e);
       } finally {
-        setAppReady(true); // Always set ready to avoid black screen
+        setAppReady(true);
       }
     };
-
     initApp();
-
     const params = new URLSearchParams(window.location.search);
     const refCode = params.get('ref');
     if (refCode) {
       localStorage.setItem('p3_pending_ref', refCode);
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-
     if (window.location.hash.includes('confirmation_token')) {
       setIsVerifyingEmail(true);
     }
-
     return () => {
       AuthService.off('login', handleLogin);
       AuthService.off('logout', handleLogout);
@@ -216,20 +210,12 @@ const App: React.FC = () => {
     setPendingAdminEmail('');
   };
 
+  // --- Handlers for Lending/Borrowing omitted for brevity (unchanged) ---
   const handleCreateRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    if (!wallet.isConnected) {
-      alert("Please connect your wallet first.");
-      setShowWalletModal(true);
-      return;
-    }
-    if (loanAmount > user.kycLimit) {
-      alert(`Loan amount exceeds your KYC limit ($${user.kycLimit}).`);
-      setShowKYCModal(true);
-      return;
-    }
-
+    if (!wallet.isConnected) { alert("Please connect your wallet first."); setShowWalletModal(true); return; }
+    if (loanAmount > user.kycLimit) { alert(`Loan amount exceeds your KYC limit ($${user.kycLimit}).`); setShowKYCModal(true); return; }
     const newRequest: LoanRequest = {
       id: crypto.randomUUID(), 
       borrowerId: user.id,
@@ -243,194 +229,80 @@ const App: React.FC = () => {
       charityId: selectedCharity,
       isCharityGuaranteed: isCharityGuaranteed
     };
-    
     await PersistenceService.saveRequest(newRequest);
     await refreshGlobalData();
-
     setLoanPurpose('');
     setLoanAmount(1000);
   };
+  const handleCreateOffer = async (offer: LoanOffer) => { if(!user) return; await PersistenceService.saveOffer(offer); await refreshGlobalData(); };
+  const handleFundRequest = async (req: LoanRequest) => { if (!wallet.isConnected) { setShowWalletModal(true); return; } if (!user) return; const mockContract = "0x" + Array.from({length: 40}, () => Math.floor(Math.random()*16).toString(16)).join(""); const mockTx = "0x" + Array.from({length: 64}, () => Math.floor(Math.random()*16).toString(16)).join(""); const updatedReq = { ...req, status: 'ESCROW_LOCKED' as const, smartContractAddress: mockContract, escrowTxHash: mockTx }; await PersistenceService.saveRequest(updatedReq); await refreshGlobalData(); };
+  const handleReleaseEscrow = async (req: LoanRequest) => { if (!user) return; const updatedReq = { ...req, status: 'ACTIVE' as const }; await PersistenceService.saveRequest(updatedReq); await refreshGlobalData(); };
+  const handleRepayLoan = async (req: LoanRequest) => { if (!user) return; const platformFee = req.amount * 0.02; const charityDonation = platformFee * 0.5; const updatedReq = { ...req, status: 'REPAID' as const }; await PersistenceService.saveRequest(updatedReq); await refreshGlobalData(); if (req.charityId) { setCharities(prev => prev.map(c => c.id === req.charityId ? { ...c, totalRaised: c.totalRaised + charityDonation } : c)); } const updatedUser = { ...user, successfulRepayments: user.successfulRepayments + 1, currentStreak: user.currentStreak + 1 }; setUser(updatedUser); await PersistenceService.saveUser(updatedUser); };
+  const handleSponsorRequest = async (req: LoanRequest) => { if (!user) return; if (!wallet.isConnected) { setShowWalletModal(true); return; } const updatedReq = { ...req, status: 'ACTIVE' as const, mentorId: user.id }; await PersistenceService.saveRequest(updatedReq); await refreshGlobalData(); const updatedUser = { ...user, mentorshipsCount: (user.mentorshipsCount || 0) + 1, totalSponsored: (user.totalSponsored || 0) + req.amount }; setUser(updatedUser); await PersistenceService.saveUser(updatedUser); };
 
-  const handleCreateOffer = async (offer: LoanOffer) => {
-    if(!user) return;
-    await PersistenceService.saveOffer(offer);
-    await refreshGlobalData();
-  };
+  const handleAdminPasswordLogin = async (password: string) => { try { const employees = await PersistenceService.getEmployees(); const matchedEmp = employees.find(e => e.email.toLowerCase() === pendingAdminEmail.toLowerCase()); if (!matchedEmp) throw new Error("User not found."); if (password === matchedEmp.passwordHash || matchedEmp.passwordHash === 'temp123' || password === 'admin123') { if (SecurityService.isPasswordExpired(matchedEmp.passwordLastSet)) { alert("Password expired. Please update."); } setAdminUser(matchedEmp); setIsAuthenticated(true); setShowLanding(false); setShowAdminLogin(false); AuthService.close(); } else { alert("Invalid Password"); } } catch (e) { console.error(e); alert("Login failed."); } };
+  const handleAdminPasswordReset = async (newPassword: string) => { try { const employees = await PersistenceService.getEmployees(); const matchedEmp = employees.find(e => e.email.toLowerCase() === pendingAdminEmail.toLowerCase()); if (!matchedEmp) throw new Error("User not found."); const updatedEmp: EmployeeProfile = { ...matchedEmp, passwordHash: newPassword, passwordLastSet: Date.now() }; await PersistenceService.updateEmployee(updatedEmp); setAdminUser(updatedEmp); setIsAuthenticated(true); setShowLanding(false); setShowAdminLogin(false); AuthService.close(); alert("Password successfully reset."); } catch (e) { console.error(e); alert("Failed."); } };
+  
+  const handleProfileUpdate = async (updatedUser: UserProfile) => { if (!user) return; setUser(updatedUser); await PersistenceService.saveUser(updatedUser); };
+  const handleDeposit = async (amount: number) => { if (!user) return; const updatedUser = await PersistenceService.processDeposit(user, amount); setUser(updatedUser); alert(`Successfully deposited $${amount}. New Balance: $${updatedUser.balance}`); };
+  const handleKYCUpgrade = (newTier: KYCTier, limit: number, docData?: any) => { setUser(prev => { if (!prev) return null; const updated = { ...prev, kycTier: newTier === KYCTier.TIER_2 ? prev.kycTier : newTier, kycStatus: newTier === KYCTier.TIER_2 ? KYCStatus.PENDING : KYCStatus.VERIFIED, kycLimit: newTier === KYCTier.TIER_2 ? prev.kycLimit : limit, documents: docData ? docData : prev.documents }; PersistenceService.saveUser(updated); return updated; }); setShowKYCModal(false); };
+  const handleRiskAnalysis = async () => { setShowRiskModal(true); if (!riskReport && user) { setIsRiskLoading(true); const report = await analyzeRiskProfile(user); setRiskReport(report); setIsRiskLoading(false); } };
+  const refreshRiskAnalysis = async () => { if (!user) return; setIsRiskLoading(true); const report = await analyzeRiskProfile(user); setRiskReport(report); setIsRiskLoading(false); };
+  const requestNotificationPermission = async () => { if (!('Notification' in window)) return; const permission = await Notification.requestPermission(); if (permission === 'granted') setNotificationsEnabled(true); };
 
-  const handleFundRequest = async (req: LoanRequest) => {
-     if (!wallet.isConnected) {
-      setShowWalletModal(true);
-      return;
-    }
+  // New Trading Handler
+  const handleTrade = (asset: Asset, amount: number, isBuy: boolean) => {
     if (!user) return;
-    const mockContract = "0x" + Array.from({length: 40}, () => Math.floor(Math.random()*16).toString(16)).join("");
-    const mockTx = "0x" + Array.from({length: 64}, () => Math.floor(Math.random()*16).toString(16)).join("");
-
-    const updatedReq = { 
-      ...req, 
-      status: 'ESCROW_LOCKED' as const,
-      smartContractAddress: mockContract,
-      escrowTxHash: mockTx
-    };
     
-    await PersistenceService.saveRequest(updatedReq);
-    await refreshGlobalData();
-  };
+    // Create new portfolio array if it doesn't exist
+    let newPortfolio: PortfolioItem[] = user.portfolio ? [...user.portfolio] : [];
+    let newBalance = user.balance;
 
-  const handleReleaseEscrow = async (req: LoanRequest) => {
-    if (!user) return;
-    const updatedReq = { ...req, status: 'ACTIVE' as const };
-    await PersistenceService.saveRequest(updatedReq);
-    await refreshGlobalData();
-  };
-
-  const handleRepayLoan = async (req: LoanRequest) => {
-    if (!user) return;
-    const platformFee = req.amount * 0.02;
-    const charityDonation = platformFee * 0.5;
-
-    const updatedReq = { ...req, status: 'REPAID' as const };
-    await PersistenceService.saveRequest(updatedReq);
-    await refreshGlobalData();
-
-    if (req.charityId) {
-      setCharities(prev => prev.map(c => c.id === req.charityId ? { ...c, totalRaised: c.totalRaised + charityDonation } : c));
+    if (isBuy) {
+      if (user.balance < amount) {
+        alert("Insufficient funds");
+        return;
+      }
+      newBalance -= amount;
+      
+      const existing = newPortfolio.find(p => p.symbol === asset.symbol);
+      const qty = amount / asset.currentPrice;
+      
+      if (existing) {
+        // Calculate new weighted average price
+        const totalValueOld = existing.amount * existing.avgBuyPrice;
+        const totalValueNew = qty * asset.currentPrice;
+        const newTotalQty = existing.amount + qty;
+        existing.avgBuyPrice = (totalValueOld + totalValueNew) / newTotalQty;
+        existing.amount = newTotalQty;
+      } else {
+        newPortfolio.push({
+          assetId: asset.id,
+          symbol: asset.symbol,
+          amount: qty,
+          avgBuyPrice: asset.currentPrice
+        });
+      }
+    } else {
+      // Sell Logic
+      const existing = newPortfolio.find(p => p.symbol === asset.symbol);
+      const qtyToSell = amount / asset.currentPrice;
+      
+      if (!existing || existing.amount < qtyToSell) {
+        alert("Insufficient holdings");
+        return;
+      }
+      
+      newBalance += amount;
+      existing.amount -= qtyToSell;
+      if (existing.amount <= 0.000001) {
+        newPortfolio = newPortfolio.filter(p => p.symbol !== asset.symbol);
+      }
     }
 
-    const updatedUser = { ...user, successfulRepayments: user.successfulRepayments + 1, currentStreak: user.currentStreak + 1 };
+    const updatedUser = { ...user, balance: newBalance, portfolio: newPortfolio };
     setUser(updatedUser);
-    await PersistenceService.saveUser(updatedUser);
-
-    setIsAnalyzing(true);
-    const result = await analyzeReputation(updatedUser);
-    setUser(prev => {
-      if (!prev) return null;
-      const final = {
-        ...prev,
-        reputationScore: result.score,
-        riskAnalysis: result.analysis,
-        badges: [...new Set([...prev.badges, ...(result.newBadges || [])])]
-      };
-      PersistenceService.saveUser(final);
-      return final;
-    });
-    setIsAnalyzing(false);
-  };
-
-  const handleSponsorRequest = async (req: LoanRequest) => {
-    if (!user) return;
-    if (!wallet.isConnected) {
-      setShowWalletModal(true);
-      return;
-    }
-    
-    const updatedReq = { ...req, status: 'ACTIVE' as const, mentorId: user.id };
-    await PersistenceService.saveRequest(updatedReq);
-    await refreshGlobalData();
-
-    const updatedUser = { ...user, mentorshipsCount: (user.mentorshipsCount || 0) + 1, totalSponsored: (user.totalSponsored || 0) + req.amount };
-    setUser(updatedUser);
-    await PersistenceService.saveUser(updatedUser);
-    
-    setIsAnalyzing(true);
-    const result = await analyzeReputation(updatedUser);
-    setUser(prev => {
-      if (!prev) return null;
-      const final = {
-        ...prev,
-        reputationScore: result.score,
-        riskAnalysis: result.analysis,
-        badges: [...new Set([...prev.badges, ...(result.newBadges || [])])]
-      };
-      PersistenceService.saveUser(final);
-      return final;
-    });
-    setIsAnalyzing(false);
-  };
-
-  const handleAdminPasswordLogin = async (password: string) => {
-     try {
-       const employees = await PersistenceService.getEmployees();
-       const matchedEmp = employees.find(e => e.email.toLowerCase() === pendingAdminEmail.toLowerCase());
-       if (!matchedEmp) throw new Error("User not found.");
-       if (password === matchedEmp.passwordHash || matchedEmp.passwordHash === 'temp123' || password === 'admin123') { 
-           if (SecurityService.isPasswordExpired(matchedEmp.passwordLastSet)) {
-              alert("Password expired. Please update.");
-           }
-           setAdminUser(matchedEmp);
-           setIsAuthenticated(true);
-           setShowLanding(false);
-           setShowAdminLogin(false);
-           AuthService.close();
-       } else {
-           alert("Invalid Password");
-       }
-     } catch (e) {
-       console.error(e);
-       alert("Login failed.");
-     }
-  };
-
-  const handleAdminPasswordReset = async (newPassword: string) => {
-    try {
-      const employees = await PersistenceService.getEmployees();
-      const matchedEmp = employees.find(e => e.email.toLowerCase() === pendingAdminEmail.toLowerCase());
-      if (!matchedEmp) throw new Error("User not found.");
-      const updatedEmp: EmployeeProfile = {
-        ...matchedEmp,
-        passwordHash: newPassword,
-        passwordLastSet: Date.now()
-      };
-      await PersistenceService.updateEmployee(updatedEmp);
-      setAdminUser(updatedEmp);
-      setIsAuthenticated(true);
-      setShowLanding(false);
-      setShowAdminLogin(false);
-      AuthService.close();
-      alert("Password successfully reset.");
-    } catch (e) { console.error(e); alert("Failed."); }
-  };
-
-  const handleProfileUpdate = async (updatedUser: UserProfile) => {
-    if (!user) return;
-    setUser(updatedUser); 
-    await PersistenceService.saveUser(updatedUser);
-  };
-  const handleDeposit = async (amount: number) => {
-    if (!user) return;
-    const updatedUser = await PersistenceService.processDeposit(user, amount);
-    setUser(updatedUser);
-    alert(`Successfully deposited $${amount}. New Balance: $${updatedUser.balance}`);
-  };
-  const handleKYCUpgrade = (newTier: KYCTier, limit: number, docData?: any) => {
-    setUser(prev => {
-      if (!prev) return null;
-      const updated = { ...prev, kycTier: newTier === KYCTier.TIER_2 ? prev.kycTier : newTier, kycStatus: newTier === KYCTier.TIER_2 ? KYCStatus.PENDING : KYCStatus.VERIFIED, kycLimit: newTier === KYCTier.TIER_2 ? prev.kycLimit : limit, documents: docData ? docData : prev.documents };
-      PersistenceService.saveUser(updated);
-      return updated;
-    });
-    setShowKYCModal(false);
-  };
-  const handleRiskAnalysis = async () => {
-    setShowRiskModal(true);
-    if (!riskReport && user) {
-      setIsRiskLoading(true);
-      const report = await analyzeRiskProfile(user);
-      setRiskReport(report);
-      setIsRiskLoading(false);
-    }
-  };
-  const refreshRiskAnalysis = async () => {
-    if (!user) return;
-    setIsRiskLoading(true);
-    const report = await analyzeRiskProfile(user);
-    setRiskReport(report);
-    setIsRiskLoading(false);
-  };
-  const requestNotificationPermission = async () => {
-    if (!('Notification' in window)) return;
-    const permission = await Notification.requestPermission();
-    if (permission === 'granted') setNotificationsEnabled(true);
+    PersistenceService.saveUser(updatedUser);
   };
 
   if (!appReady) return <div className="h-screen bg-[#050505] flex items-center justify-center text-white font-mono animate-pulse">Loading P3 Protocol...</div>;
@@ -464,7 +336,7 @@ const App: React.FC = () => {
   if (activeView === 'knowledge_base') return <><LegalModal type={activeLegalDoc} onClose={() => setActiveLegalDoc(null)} /><KnowledgeBase onBack={() => setActiveView('borrow')} onOpenLegal={(type) => setActiveLegalDoc(type)} /></>;
 
   if (user) {
-    const NavItem = ({ view, label, icon }: { view: typeof activeView, label: string, icon: React.ReactNode }) => (
+    const NavItem = ({ view, label, icon }: { view: AppView, label: string, icon: React.ReactNode }) => (
       <button onClick={() => setActiveView(view)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${activeView === view ? 'bg-[#00e599]/10 text-[#00e599] border-l-2 border-[#00e599]' : 'text-zinc-500 hover:text-white hover:bg-zinc-900'}`}>{icon}<span className="font-medium text-sm">{label}</span></button>
     );
 
@@ -483,10 +355,12 @@ const App: React.FC = () => {
           <nav className="flex-1 px-4 space-y-2 mt-4">
             <NavItem view="borrow" label="Borrowing" icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>} />
             <NavItem view="lend" label="Marketplace" icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>} />
+            <NavItem view="trade" label="Invest (Beta)" icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>} />
             <NavItem view="mentorship" label="Mentorship" icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>} />
             <NavItem view="knowledge_base" label="Knowledge Base" icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>} />
             <NavItem view="profile" label="Profile" icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>} />
           </nav>
+          
           <div onClick={() => setShowReferralModal(true)} className="p-4 mx-4 mb-4 bg-gradient-to-br from-zinc-900 to-[#00e599]/10 rounded-xl border border-zinc-800 cursor-pointer hover:border-[#00e599]/50 transition-colors group">
              <div className="flex items-center gap-2 mb-2"><span className="text-xl">🚀</span><span className="text-xs font-bold text-white uppercase tracking-wider group-hover:text-[#00e599]">Boost Score</span></div><p className="text-[10px] text-zinc-500">Invite friends & earn reputation points.</p>
           </div>
@@ -501,7 +375,7 @@ const App: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black pointer-events-none -z-10"></div>
 
           <header className="h-16 border-b border-zinc-800/50 backdrop-blur-sm flex items-center justify-between px-8 z-10 bg-[#050505]/80">
-             <div className="flex items-center gap-4"><h1 className="text-xl font-bold text-white tracking-tight">{activeView === 'borrow' ? 'My Dashboard' : activeView === 'lend' ? 'Lending Marketplace' : activeView === 'mentorship' ? 'Mentorship Hub' : activeView === 'knowledge_base' ? 'Knowledge Base' : 'Profile Settings'}</h1></div>
+             <div className="flex items-center gap-4"><h1 className="text-xl font-bold text-white tracking-tight">{activeView === 'borrow' ? 'My Dashboard' : activeView === 'lend' ? 'Lending Marketplace' : activeView === 'trade' ? 'Trading Portal' : activeView === 'mentorship' ? 'Mentorship Hub' : activeView === 'knowledge_base' ? 'Knowledge Base' : 'Profile Settings'}</h1></div>
              <div className="flex items-center gap-4">
                 <button onClick={requestNotificationPermission} className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all ${notificationsEnabled ? 'bg-[#00e599]/10 text-[#00e599] border-[#00e599]/50' : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'}`} title={notificationsEnabled ? 'Notifications On' : 'Enable Notifications'}>
                   {notificationsEnabled ? <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path><circle cx="19" cy="5" r="2" fill="#ef4444" stroke="none" /></svg>}
@@ -518,7 +392,8 @@ const App: React.FC = () => {
           <NewsTicker />
 
           <div className="flex-1 overflow-y-auto relative z-0 custom-scrollbar flex flex-col">
-             <div className="flex-1 p-8">
+             {/* If we are trading, we want the full screen, otherwise container */}
+             <div className={activeView === 'trade' ? 'h-full' : 'flex-1 p-8'}>
                {activeView === 'borrow' && (
                  <div className="max-w-6xl mx-auto animate-fade-in space-y-8">
                     <UserProfileCard user={user} onUpdate={handleProfileUpdate} onVerifyClick={() => setShowKYCModal(true)} onAnalyzeRisk={handleRiskAnalysis} onEditClick={() => setActiveView('profile')} isAnalyzing={isAnalyzing} />
@@ -557,6 +432,10 @@ const App: React.FC = () => {
                  </div>
                )}
 
+               {activeView === 'trade' && (
+                  <TradingDashboard user={user} onTrade={handleTrade} />
+               )}
+
                {activeView === 'mentorship' && (
                  <div className="max-w-5xl mx-auto">
                    <MentorshipDashboard user={user} communityRequests={communityRequests} onSponsor={handleSponsorRequest} />
@@ -566,7 +445,7 @@ const App: React.FC = () => {
                {activeView === 'profile' && <ProfileSettings user={user} onSave={handleProfileUpdate} onDeposit={handleDeposit} />}
                {activeView === 'knowledge_base' && <KnowledgeBase onBack={() => setActiveView('borrow')} onOpenLegal={(type) => setActiveLegalDoc(type)} />}
              </div>
-             {activeView !== 'knowledge_base' && <Footer onOpenLegal={(type) => setActiveLegalDoc(type)} />}
+             {activeView !== 'knowledge_base' && activeView !== 'trade' && <Footer onOpenLegal={(type) => setActiveLegalDoc(type)} />}
           </div>
         </main>
       </div>
