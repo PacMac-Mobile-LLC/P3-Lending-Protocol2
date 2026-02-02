@@ -197,9 +197,15 @@
   <body class="bg-[#050505] text-white antialiased">
     <div id="root">
         <!-- Minimal Loading State to verify HTML rendering -->
-        <div style="height: 100vh; display: flex; align-items: center; justify-content: center; color: #333;">
-            Loading P3 Protocol...
+        <div style="height: 100vh; display: flex; align-items: center; justify-content: center; color: #666; font-family: 'Inter', sans-serif;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+               <div style="width: 2rem; height: 2rem; border: 2px solid #00e599; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+               <span style="color: #a1a1aa; font-size: 0.875rem; letter-spacing: 0.05em;">INITIALIZING PROTOCOL...</span>
+            </div>
         </div>
+        <style>
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        </style>
     </div>
     <script type="module" src="./index.tsx"></script>
   </body>
