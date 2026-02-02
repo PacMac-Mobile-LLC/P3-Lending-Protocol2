@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { LoanOffer, LoanRequest, MatchResult, UserProfile } from '../types';
 import { Button } from './Button';
@@ -291,7 +292,7 @@ export const LenderDashboard: React.FC<Props> = ({ user, myOffers, communityRequ
                                <div className="text-xs text-zinc-500">Score: <span className="text-[#00e599] font-mono">{req.reputationScoreSnapshot}</span></div>
                              </div>
                              <div className="bg-[#00e599] text-black text-[10px] font-bold px-2 py-1 rounded">
-                               {match.matchScore}% Match
+                               {match.matchScore}% Verified Match
                              </div>
                           </div>
 

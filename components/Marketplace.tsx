@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { LoanRequest, LoanOffer, MatchResult, Charity } from '../types';
 import { Button } from './Button';
@@ -185,7 +186,7 @@ export const Marketplace: React.FC<Props> = ({
         <div className="p-6 border-b border-zinc-800 bg-zinc-900/50">
           <h3 className="font-bold text-white flex items-center gap-3">
             <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
-            Marketplace Matches
+            Algorithmic Matching (Beta)
           </h3>
         </div>
         <div className="overflow-y-auto p-6 flex-1 custom-scrollbar">
@@ -194,7 +195,7 @@ export const Marketplace: React.FC<Props> = ({
               <div className="w-16 h-16 rounded-2xl bg-black border border-zinc-800 flex items-center justify-center">
                  <svg className="w-6 h-6 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
               </div>
-              <p className="font-medium text-sm">Select a pending request to view AI matches.</p>
+              <p className="font-medium text-sm">Select a pending request to find merit-based offers.</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -206,8 +207,8 @@ export const Marketplace: React.FC<Props> = ({
                     <div key={idx} className="bg-black rounded-xl p-5 border border-zinc-800 hover:border-zinc-600 transition-all group">
                       <div className="flex justify-between items-start mb-3">
                         <h4 className="text-white font-bold">{offer.lenderName}</h4>
-                        <div className="text-[10px] font-bold text-black bg-[#00e599] px-2 py-1 rounded">
-                           {match.matchScore}% Match
+                        <div className="text-[10px] font-bold text-black bg-[#00e599] px-2 py-1 rounded flex items-center gap-1">
+                           <span className="text-xs">✦</span> {match.matchScore}% Merit Match
                          </div>
                       </div>
                       
@@ -241,9 +242,9 @@ export const Marketplace: React.FC<Props> = ({
                    {isMatching && selectedRequest ? (
                      <div className="flex flex-col items-center gap-2">
                        <div className="w-6 h-6 border-2 border-[#00e599] border-t-transparent rounded-full animate-spin"></div>
-                       <span>AI Analysis in progress...</span>
+                       <span>Analyzing Reputation Score...</span>
                      </div>
-                   ) : 'No matching offers found.'}
+                   ) : 'No matching offers found based on current criteria.'}
                 </div>
               )}
             </div>
