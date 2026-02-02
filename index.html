@@ -1,10 +1,36 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#050505" />
-    <meta name="description" content="P3 Lending Dashboard - AI Driven Peer to Peer Lending" />
+    
+    <!-- Primary Meta Tags -->
+    <title>P3 Lending | AI-Powered Peer-to-Peer Social Finance Protocol</title>
+    <meta name="title" content="P3 Lending | AI-Powered Peer-to-Peer Social Finance Protocol">
+    <meta name="description" content="The first DeFi lending marketplace using AI reputation scoring instead of FICO. Borrow crypto instantly based on social trust, on-chain history, and character. No credit checks required.">
+    
+    <!-- Extensive Keywords for Discoverability -->
+    <meta name="keywords" content="P2P Lending, Peer to Peer Loans, AI Credit Score, Social Underwriting, DeFi Lending, Crypto Loans, No FICO Loans, Ethereum Lending, Microloans, Web3 Finance, Reputation Protocol, Smart Contract Escrow, DAO, FinTech, Blockchain Credit, Instant Crypto Loan, Borrow ETH, USDC Lending, Social Capital, Gemini AI Finance, Alternative Credit Scoring, P3 Lending, P3 Protocol">
+    
+    <!-- Open Graph / Facebook / LinkedIn -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://p3lending.space/">
+    <meta property="og:title" content="P3 Lending | Credit based on Character, not History">
+    <meta property="og:description" content="Stop relying on banks. P3 uses AI to analyze your on-chain history and social reputation to unlock instant liquidity. Join the social underwriting revolution.">
+    <meta property="og:image" content="https://p3lending.space/og-image.png">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://p3lending.space/">
+    <meta property="twitter:title" content="P3 Lending | The Future of Social Finance">
+    <meta property="twitter:description" content="Borrow and lend crypto based on reputation. AI-driven risk analysis. 0% Interest Microloans available.">
+    <meta property="twitter:image" content="https://p3lending.space/og-image.png">
+
+    <!-- AI & Bot Directives -->
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <meta name="googlebot" content="index, follow">
     
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-R27DN6F1MS"></script>
@@ -16,11 +42,45 @@
       gtag('config', 'G-R27DN6F1MS');
     </script>
 
+    <!-- Structured Data for AI & Search Engines (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FinancialProduct",
+      "name": "P3 Lending Protocol",
+      "alternateName": "P3 Securities",
+      "url": "https://p3lending.space",
+      "logo": "https://p3lending.space/logo.svg",
+      "description": "A decentralized peer-to-peer lending platform that uses Artificial Intelligence to calculate reputation scores for undercollateralized loans.",
+      "brand": {
+        "@type": "Brand",
+        "name": "P3 DAO"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "description": "0% Interest Microloans for Credit Building"
+      },
+      "featureList": [
+        "AI Reputation Scoring",
+        "Social Underwriting",
+        "Smart Contract Escrow",
+        "Instant Liquidity",
+        "No FICO Score Required"
+      ],
+      "audience": {
+        "@type": "Audience",
+        "audienceType": "DeFi Users, Unbanked, Crypto Natives"
+      }
+    }
+    </script>
+
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/logo.svg" />
+    <link rel="canonical" href="https://p3lending.space/" />
     
-    <title>P3 Lending Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
@@ -28,23 +88,19 @@
       body {
         font-family: 'Inter', sans-serif;
         background-color: #050505;
-        /* Removed overflow-hidden to allow landing page to scroll */
       }
       .font-mono {
         font-family: 'JetBrains Mono', monospace;
       }
       
-      /* Tech Grid Background */
       .bg-grid-pattern {
         background-size: 40px 40px;
         background-image: 
           linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
           linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
         mask-image: radial-gradient(circle at center, black 60%, transparent 100%); 
-        /* mask-image note: standard css property, tailwind handles prefixes usually but inline needed here or config */
       }
 
-      /* Custom Scrollbar for dark theme */
       ::-webkit-scrollbar {
         width: 6px;
         height: 6px;
@@ -75,7 +131,6 @@
         border: 1px solid rgba(255, 255, 255, 0.08);
       }
 
-      /* News Ticker Animation */
       @keyframes ticker {
         0% { transform: translateX(0); }
         100% { transform: translateX(-50%); }
