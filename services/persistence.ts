@@ -49,7 +49,8 @@ export const PersistenceService = {
   },
 
   getWaitlist: async (): Promise<WaitlistEntry[]> => {
-    const { data } = await supabase.from('waitlist').select('*').order('created_at', { ascending: false });
+    // Return oldest first to visualize the "Line"
+    const { data } = await supabase.from('waitlist').select('*').order('created_at', { ascending: true });
     return data ? data.map((r: any) => ({
       id: r.id,
       name: r.name,
@@ -63,7 +64,6 @@ export const PersistenceService = {
   getWaitlistPosition: async (email: string): Promise<{ position: number; name: string } | null> => {
     try {
       // Fetch all emails/names ordered by date to calculate rank
-      // (For production scale, use a SQL count query or window function instead)
       const { data } = await supabase
         .from('waitlist')
         .select('email, name')
@@ -95,6 +95,26 @@ export const PersistenceService = {
 
   updateWaitlistStatus: async (id: string, status: 'INVITED' | 'ONBOARDED') => {
     await supabase.from('waitlist').update({ status }).eq('id', id);
+  },
+
+  inviteWaitlistBatch: async (count: number) => {
+    // 1. Fetch the IDs of the oldest 'PENDING' users
+    const { data: pendingUsers } = await supabase
+      .from('waitlist')
+      .select('id')
+      .eq('status', 'PENDING')
+      .order('created_at', { ascending: true })
+      .limit(count);
+
+    if (!pendingUsers || pendingUsers.length === 0) return;
+
+    const idsToUpdate = pendingUsers.map((u: any) => u.id);
+
+    // 2. Update status to INVITED
+    await supabase
+      .from('waitlist')
+      .update({ status: 'INVITED' })
+      .in('id', idsToUpdate);
   },
 
   // --- User Profile ---

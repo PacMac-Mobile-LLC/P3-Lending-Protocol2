@@ -28,6 +28,10 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
   const [isChatOpen, setIsChatOpen] = useState(false);
   
+  // Waitlist Batch Logic
+  const [batchSize, setBatchSize] = useState(10);
+  const [isRollingOut, setIsRollingOut] = useState(false);
+
   // User Management State
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
@@ -174,6 +178,23 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
     // Simulation:
     alert("Invitation email sent (simulated). User marked as INVITED.");
     setWaitlist(prev => prev.map(w => w.id === id ? { ...w, status: 'INVITED' } : w));
+  };
+
+  const handleBatchRollout = async () => {
+    if (confirm(`Are you sure you want to invite the next ${batchSize} users in the queue?`)) {
+      setIsRollingOut(true);
+      try {
+        await PersistenceService.inviteWaitlistBatch(batchSize);
+        // Refresh list
+        const updated = await PersistenceService.getWaitlist();
+        setWaitlist(updated);
+        alert(`Successfully rolled out access to ${batchSize} users.`);
+      } catch (e) {
+        alert("Batch rollout failed.");
+      } finally {
+        setIsRollingOut(false);
+      }
+    }
   };
 
   // Internal Ticket Actions
@@ -365,17 +386,39 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
 
           {activeTab === 'WAITLIST' && (
             <div className="animate-fade-in">
+               <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Waitlist Queue</h3>
+                    <p className="text-xs text-zinc-500">Oldest sign-ups are at the top.</p>
+                  </div>
+                  <div className="flex items-center gap-3 bg-zinc-900 p-2 rounded-lg border border-zinc-800">
+                    <span className="text-xs text-zinc-500 font-bold uppercase ml-2">Batch Rollout:</span>
+                    <input 
+                      type="number" 
+                      min="1" 
+                      max="1000" 
+                      value={batchSize} 
+                      onChange={(e) => setBatchSize(parseInt(e.target.value))}
+                      className="w-16 bg-black border border-zinc-700 rounded px-2 py-1 text-white text-sm text-center focus:border-[#00e599] outline-none"
+                    />
+                    <Button size="sm" onClick={handleBatchRollout} isLoading={isRollingOut}>
+                      Invite Next {batchSize}
+                    </Button>
+                  </div>
+               </div>
+
                <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
                 <table className="w-full text-left text-sm text-zinc-400">
                    <thead className="bg-black text-white text-xs uppercase tracking-wider">
-                     <tr><th className="p-4">Date</th><th className="p-4">Name</th><th className="p-4">Email</th><th className="p-4">Status</th><th className="p-4 text-right">Actions</th></tr>
+                     <tr><th className="p-4">Queue #</th><th className="p-4">Date</th><th className="p-4">Name</th><th className="p-4">Email</th><th className="p-4">Status</th><th className="p-4 text-right">Actions</th></tr>
                    </thead>
                    <tbody>
                      {waitlist.length === 0 ? (
-                       <tr><td colSpan={5} className="p-8 text-center text-zinc-500">No users in waitlist.</td></tr>
+                       <tr><td colSpan={6} className="p-8 text-center text-zinc-500">No users in waitlist.</td></tr>
                      ) : (
-                       waitlist.map(w => (
+                       waitlist.map((w, index) => (
                          <tr key={w.id} className="border-t border-zinc-800 hover:bg-black/40">
+                           <td className="p-4 font-mono text-xs text-zinc-600">#{index + 1}</td>
                            <td className="p-4 font-mono text-xs">{new Date(w.created_at).toLocaleDateString()}</td>
                            <td className="p-4 text-white font-bold">{w.name}</td>
                            <td className="p-4">{w.email}</td>
