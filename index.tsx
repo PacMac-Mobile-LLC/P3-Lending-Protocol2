@@ -3,6 +3,36 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 
+// --- CRITICAL POLYFILLS FOR VITE/BROWSER COMPATIBILITY ---
+if (typeof window !== 'undefined') {
+  // Polyfill global
+  if (typeof (window as any).global === 'undefined') {
+    (window as any).global = window;
+  }
+  
+  // Polyfill process
+  if (typeof (window as any).process === 'undefined') {
+    (window as any).process = { env: {} };
+  }
+
+  // Polyfill Buffer (Essential for 'siwe' and 'ethers')
+  if (typeof (window as any).Buffer === 'undefined') {
+    (window as any).Buffer = {
+      isBuffer: (obj: any) => {
+        return obj && obj.constructor && (obj.constructor.name === 'Buffer' || obj.constructor.name === 'Uint8Array');
+      },
+      from: (data: any, encoding?: string) => {
+        if (typeof data === 'string') {
+          return new TextEncoder().encode(data);
+        }
+        return new Uint8Array(data);
+      },
+      alloc: (size: number) => new Uint8Array(size),
+    };
+  }
+}
+// ---------------------------------------------------------
+
 const rootElement = document.getElementById('root');
 if (!rootElement) {
   throw new Error("Could not find root element to mount to");
