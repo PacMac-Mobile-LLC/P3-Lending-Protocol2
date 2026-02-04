@@ -195,13 +195,39 @@
 </head>
   <body class="bg-[#050505] text-white antialiased">
     <div id="root">
-        <!-- Minimal Loading State to verify HTML rendering -->
-        <div style="height: 100vh; display: flex; align-items: center; justify-content: center; color: #666; font-family: 'Inter', sans-serif;">
+        <!-- Minimal Loading State with Error Trap -->
+        <div id="loader-container" style="height: 100vh; display: flex; align-items: center; justify-content: center; color: #666; font-family: 'Inter', sans-serif;">
             <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;">
-               <div style="width: 2rem; height: 2rem; border: 2px solid #00e599; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-               <span style="color: #a1a1aa; font-size: 0.875rem; letter-spacing: 0.05em;">INITIALIZING PROTOCOL...</span>
+               <div id="loader-spinner" style="width: 2rem; height: 2rem; border: 2px solid #00e599; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+               <span id="loader-text" style="color: #a1a1aa; font-size: 0.875rem; letter-spacing: 0.05em;">INITIALIZING PROTOCOL...</span>
             </div>
         </div>
+        
+        <script>
+          // Error Trap: If the app crashes before mounting, this will display the error on screen
+          window.addEventListener('error', function(event) {
+            const container = document.getElementById('loader-container');
+            if (container) {
+              document.getElementById('loader-spinner').style.display = 'none';
+              const text = document.getElementById('loader-text');
+              text.innerHTML = '<span style="color:#ef4444">CRITICAL STARTUP ERROR</span><br/><br/>' + event.message;
+              text.style.textAlign = 'center';
+              text.style.fontFamily = 'monospace';
+            }
+          });
+          
+          window.addEventListener('unhandledrejection', function(event) {
+            const container = document.getElementById('loader-container');
+            if (container) {
+              document.getElementById('loader-spinner').style.display = 'none';
+              const text = document.getElementById('loader-text');
+              text.innerHTML = '<span style="color:#ef4444">UNHANDLED PROMISE REJECTION</span><br/><br/>' + event.reason;
+              text.style.textAlign = 'center';
+              text.style.fontFamily = 'monospace';
+            }
+          });
+        </script>
+
         <style>
             @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         </style>
