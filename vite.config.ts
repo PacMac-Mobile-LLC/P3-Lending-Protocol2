@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react';
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
+  // Using process.cwd() is standard and reliable in most environments.
   const env = loadEnv(mode, (process as any).cwd(), '');
   
   // ROBUST KEY LOADING: Check various common names for the API Key
@@ -29,23 +30,26 @@ export default defineConfig(({ mode }) => {
     env.VITE_CLIENT_ID ||
     '';
 
-  // Debugging logs during build/start
+  // Debugging logs during build/start (visible in terminal)
+  console.log(`--- P3 BUILD CONFIG ---`);
   if (apiKey) {
-    console.log(`✅ Gemini API Key loaded: ${apiKey.substring(0, 4)}...`);
+    console.log(`✅ Gemini API Key found (${apiKey.length} chars)`);
   } else {
-    console.warn("⚠️  WARNING: Gemini API Key not found. AI features will be disabled.");
+    console.warn("⚠️  Gemini API Key MISSING");
   }
 
   if (googleClientId) {
-    console.log(`✅ Google Client ID loaded: ${googleClientId.substring(0, 10)}...`);
+    console.log(`✅ Google Client ID found (${googleClientId.length} chars)`);
   } else {
-    console.warn("⚠️  WARNING: Google Client ID not found. Login will fail.");
+    console.warn("⚠️  Google Client ID MISSING (Login will default to Demo Mode)");
   }
+  console.log(`-----------------------`);
 
   return {
     plugins: [react()],
     define: {
-      // CRITICAL FIX: Securely inject the API Key during build.
+      // CRITICAL FIX: Securely inject the keys during build.
+      // We default to empty string to prevent "undefined" string literal issues.
       'process.env.API_KEY': JSON.stringify(apiKey),
       'process.env.COINGECKO_API_KEY': JSON.stringify(coinGeckoKey),
       'process.env.GOOGLE_CLIENT_ID': JSON.stringify(googleClientId),
