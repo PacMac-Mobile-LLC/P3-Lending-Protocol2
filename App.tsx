@@ -9,7 +9,7 @@ import { Logo } from './components/Logo';
 import { analyzeReputation, analyzeRiskProfile } from './services/geminiService';
 import { shortenAddress } from './services/walletService';
 import { PersistenceService } from './services/persistence';
-import { AuthService } from './services/netlifyAuth'; 
+import { GoogleAuthService } from './services/authService'; 
 import { SecurityService } from './services/security';
 import { KYCVerificationModal } from './components/KYCVerificationModal';
 import { WalletConnectModal } from './components/WalletConnectModal';
@@ -111,13 +111,13 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLogin = async (netlifyUser: any) => {
-    console.log("Logged in:", netlifyUser);
+  const handleLogin = async (googleUser: any) => {
+    console.log("Logged in with Google:", googleUser);
     setIsVerifyingEmail(false); 
     setIsAuthenticated(true);
     setShowLanding(false);
     
-    const email = netlifyUser.email || '';
+    const email = googleUser.email || '';
 
     // Check for Admin (using async DB call)
     try {
@@ -134,12 +134,11 @@ const App: React.FC = () => {
     } catch (e) { console.error("Admin check failed", e); }
     
     const pendingRef = localStorage.getItem('p3_pending_ref');
-    const p3User = await PersistenceService.loadUser(netlifyUser, pendingRef);
+    const p3User = await PersistenceService.loadUser(googleUser, pendingRef);
     setUser(p3User);
     
     localStorage.removeItem('p3_pending_ref');
-    AuthService.close(); 
-
+    
     // Initial Load of Data
     await refreshGlobalData();
 
@@ -164,45 +163,30 @@ const App: React.FC = () => {
   // Initialization Effect (Runs ONCE)
   useEffect(() => {
     const initApp = async () => {
-      // Safety timeout to prevent indefinite loading if DB/Auth hangs
-      const safetyTimeout = setTimeout(() => {
-        console.warn("Initialization timed out, forcing app ready state.");
-        setAppReady(true);
-      }, 3000);
-
-      try {
-        await PersistenceService.getEmployees().catch(() => console.warn("DB Connection Warning"));
-        AuthService.init();
-        const currentUser = AuthService.currentUser();
-        if (currentUser) {
-          handleLogin(currentUser);
-        } else {
-          setIsAuthenticated(false);
-        }
-        AuthService.on('login', handleLogin);
-        AuthService.on('logout', handleLogout);
-      } catch (e) {
-        console.error("Critical App Init Error:", e);
-      } finally {
-        clearTimeout(safetyTimeout);
-        setAppReady(true);
-      }
+      setAppReady(true);
+      
+      // Initialize Google Auth
+      GoogleAuthService.init(handleLogin);
     };
     initApp();
+    
     const params = new URLSearchParams(window.location.search);
     const refCode = params.get('ref');
     if (refCode) {
       localStorage.setItem('p3_pending_ref', refCode);
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-    if (window.location.hash.includes('confirmation_token')) {
-      setIsVerifyingEmail(true);
-    }
-    return () => {
-      AuthService.off('login', handleLogin);
-      AuthService.off('logout', handleLogout);
-    };
   }, []); 
+
+  // Effect to render Google Button when on login screen
+  useEffect(() => {
+    if (!isAuthenticated && !user && !showAdminLogin && !showLanding) {
+      // Need a small timeout to ensure DOM element exists if switching from landing
+      setTimeout(() => {
+        GoogleAuthService.renderButton("google-signin-btn");
+      }, 100);
+    }
+  }, [isAuthenticated, user, showAdminLogin, showLanding]);
 
   // Polling Effect (Runs when User changes)
   useEffect(() => {
@@ -222,6 +206,7 @@ const App: React.FC = () => {
     setMyOffers([]);
     setShowAdminLogin(false);
     setPendingAdminEmail('');
+    GoogleAuthService.logout();
   };
 
   // --- Handlers for Lending/Borrowing omitted for brevity (unchanged) ---
@@ -254,8 +239,8 @@ const App: React.FC = () => {
   const handleRepayLoan = async (req: LoanRequest) => { if (!user) return; const platformFee = req.amount * 0.02; const charityDonation = platformFee * 0.5; const updatedReq = { ...req, status: 'REPAID' as const }; await PersistenceService.saveRequest(updatedReq); await refreshGlobalData(); if (req.charityId) { setCharities(prev => prev.map(c => c.id === req.charityId ? { ...c, totalRaised: c.totalRaised + charityDonation } : c)); } const updatedUser = { ...user, successfulRepayments: user.successfulRepayments + 1, currentStreak: user.currentStreak + 1 }; setUser(updatedUser); await PersistenceService.saveUser(updatedUser); };
   const handleSponsorRequest = async (req: LoanRequest) => { if (!user) return; if (!wallet.isConnected) { setShowWalletModal(true); return; } const updatedReq = { ...req, status: 'ACTIVE' as const, mentorId: user.id }; await PersistenceService.saveRequest(updatedReq); await refreshGlobalData(); const updatedUser = { ...user, mentorshipsCount: (user.mentorshipsCount || 0) + 1, totalSponsored: (user.totalSponsored || 0) + req.amount }; setUser(updatedUser); await PersistenceService.saveUser(updatedUser); };
 
-  const handleAdminPasswordLogin = async (password: string) => { try { const employees = await PersistenceService.getEmployees(); const matchedEmp = employees.find(e => e.email.toLowerCase() === pendingAdminEmail.toLowerCase()); if (!matchedEmp) throw new Error("User not found."); if (password === matchedEmp.passwordHash || matchedEmp.passwordHash === 'temp123' || password === 'admin123') { if (SecurityService.isPasswordExpired(matchedEmp.passwordLastSet)) { alert("Password expired. Please update."); } setAdminUser(matchedEmp); setIsAuthenticated(true); setShowLanding(false); setShowAdminLogin(false); AuthService.close(); } else { alert("Invalid Password"); } } catch (e) { console.error(e); alert("Login failed."); } };
-  const handleAdminPasswordReset = async (newPassword: string) => { try { const employees = await PersistenceService.getEmployees(); const matchedEmp = employees.find(e => e.email.toLowerCase() === pendingAdminEmail.toLowerCase()); if (!matchedEmp) throw new Error("User not found."); const updatedEmp: EmployeeProfile = { ...matchedEmp, passwordHash: newPassword, passwordLastSet: Date.now() }; await PersistenceService.updateEmployee(updatedEmp); setAdminUser(updatedEmp); setIsAuthenticated(true); setShowLanding(false); setShowAdminLogin(false); AuthService.close(); alert("Password successfully reset."); } catch (e) { console.error(e); alert("Failed."); } };
+  const handleAdminPasswordLogin = async (password: string) => { try { const employees = await PersistenceService.getEmployees(); const matchedEmp = employees.find(e => e.email.toLowerCase() === pendingAdminEmail.toLowerCase()); if (!matchedEmp) throw new Error("User not found."); if (password === matchedEmp.passwordHash || matchedEmp.passwordHash === 'temp123' || password === 'admin123') { if (SecurityService.isPasswordExpired(matchedEmp.passwordLastSet)) { alert("Password expired. Please update."); } setAdminUser(matchedEmp); setIsAuthenticated(true); setShowLanding(false); setShowAdminLogin(false); } else { alert("Invalid Password"); } } catch (e) { console.error(e); alert("Login failed."); } };
+  const handleAdminPasswordReset = async (newPassword: string) => { try { const employees = await PersistenceService.getEmployees(); const matchedEmp = employees.find(e => e.email.toLowerCase() === pendingAdminEmail.toLowerCase()); if (!matchedEmp) throw new Error("User not found."); const updatedEmp: EmployeeProfile = { ...matchedEmp, passwordHash: newPassword, passwordLastSet: Date.now() }; await PersistenceService.updateEmployee(updatedEmp); setAdminUser(updatedEmp); setIsAuthenticated(true); setShowLanding(false); setShowAdminLogin(false); alert("Password successfully reset."); } catch (e) { console.error(e); alert("Failed."); } };
   
   const handleProfileUpdate = async (updatedUser: UserProfile) => { if (!user) return; setUser(updatedUser); await PersistenceService.saveUser(updatedUser); };
   const handleDeposit = async (amount: number) => { if (!user) return; const updatedUser = await PersistenceService.processDeposit(user, amount); setUser(updatedUser); alert(`Successfully deposited $${amount}. New Balance: $${updatedUser.balance}`); };
@@ -283,7 +268,6 @@ const App: React.FC = () => {
       const qty = amount / asset.currentPrice;
       
       if (existing) {
-        // Calculate new weighted average price
         const totalValueOld = existing.amount * existing.avgBuyPrice;
         const totalValueNew = qty * asset.currentPrice;
         const newTotalQty = existing.amount + qty;
@@ -298,7 +282,6 @@ const App: React.FC = () => {
         });
       }
     } else {
-      // Sell Logic
       const existing = newPortfolio.find(p => p.symbol === asset.symbol);
       const qtyToSell = amount / asset.currentPrice;
       
@@ -327,7 +310,7 @@ const App: React.FC = () => {
     return <><LegalModal type={activeLegalDoc} onClose={() => setActiveLegalDoc(null)} /><LandingPage onLaunch={() => setShowLanding(false)} onDevAdminLogin={() => {}} onOpenDocs={() => setActiveView('knowledge_base')} onOpenLegal={(type) => setActiveLegalDoc(type)} /></>;
   }
 
-  if (showAdminLogin) return <AdminLoginModal email={pendingAdminEmail} onLogin={handleAdminPasswordLogin} onResetPassword={handleAdminPasswordReset} onCancel={() => { setShowAdminLogin(false); setPendingAdminEmail(''); AuthService.logout(); }} />;
+  if (showAdminLogin) return <AdminLoginModal email={pendingAdminEmail} onLogin={handleAdminPasswordLogin} onResetPassword={handleAdminPasswordReset} onCancel={() => { setShowAdminLogin(false); setPendingAdminEmail(''); handleLogout(); }} />;
 
   // User is authenticated but data is loading
   if (isAuthenticated && !user && !adminUser) {
@@ -353,14 +336,24 @@ const App: React.FC = () => {
          <div className="absolute top-6 left-6 z-20"><Button variant="ghost" size="sm" onClick={() => setShowLanding(true)}>← Back to Home</Button></div>
          <div className="z-10 text-center space-y-8 animate-fade-in">
            <div className="transform scale-150 mb-8"><Logo showText={false} /></div>
-           <><h1 className="text-4xl font-bold text-white tracking-tighter">P<span className="text-[#00e599]">3</span> Securities Dashboard</h1><p className="text-zinc-400 max-w-md mx-auto">The future of reputation-based finance. Sign in to access your dashboard.</p><div className="flex flex-col gap-4 items-center"><Button size="lg" onClick={() => AuthService.open('login')} className="min-w-[200px] shadow-[0_0_30px_rgba(0,229,153,0.3)]">Connect Identity</Button><p className="text-xs text-zinc-600">Employee Login enabled via @p3lending.space email</p></div></>
+           <>
+             <h1 className="text-4xl font-bold text-white tracking-tighter">P<span className="text-[#00e599]">3</span> Securities Dashboard</h1>
+             <p className="text-zinc-400 max-w-md mx-auto">The future of reputation-based finance. Sign in to access your dashboard.</p>
+             
+             {/* Google Sign In Container */}
+             <div className="flex flex-col gap-4 items-center min-h-[100px] justify-center">
+                <div id="google-signin-btn"></div>
+                <p className="text-xs text-zinc-600">Employee Login enabled via @p3lending.space email</p>
+             </div>
+           </>
          </div>
       </div>
     );
   }
 
-  if (adminUser) return <AdminDashboard currentAdmin={adminUser} onLogout={() => { setAdminUser(null); setIsAuthenticated(false); setShowLanding(true); }} />;
+  if (adminUser) return <AdminDashboard currentAdmin={adminUser} onLogout={handleLogout} />;
 
+  // ... Rest of the App logic (dashboard render) is identical ...
   if (activeView === 'knowledge_base') return <><LegalModal type={activeLegalDoc} onClose={() => setActiveLegalDoc(null)} /><KnowledgeBase onBack={() => setActiveView('borrow')} onOpenLegal={(type) => setActiveLegalDoc(type)} /></>;
 
   if (user) {
@@ -393,7 +386,7 @@ const App: React.FC = () => {
              <div className="flex items-center gap-2 mb-2"><span className="text-xl">🚀</span><span className="text-xs font-bold text-white uppercase tracking-wider group-hover:text-[#00e599]">Boost Score</span></div><p className="text-[10px] text-zinc-500">Invite friends & earn reputation points.</p>
           </div>
           <div className="p-4 border-t border-zinc-900">
-             <Button variant="ghost" size="sm" className="w-full justify-start text-zinc-500 hover:text-red-400" onClick={() => AuthService.logout()}><svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>Log Out</Button>
+             <Button variant="ghost" size="sm" className="w-full justify-start text-zinc-500 hover:text-red-400" onClick={handleLogout}><svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>Log Out</Button>
              <div className="mt-2 text-[8px] text-zinc-600 text-center"><button onClick={() => { if(confirm('Reset all data?')) PersistenceService.clearAll(user.id); }} className="hover:text-red-500">Reset My Data</button></div>
           </div>
         </aside>

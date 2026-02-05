@@ -4,9 +4,8 @@ import { UserProfile, LoanRequest, LoanOffer, MatchResult, RiskReport } from "..
 
 // Helper to safely get the API Key without crashing the app on load
 const getAI = () => {
-  // In Vite, process.env is replaced at build time by the define plugin in vite.config.ts
-  // However, accessing 'process' directly can sometimes cause ReferenceErrors in browser if not polyfilled.
-  // We check typeof process first or rely on the string replacement.
+  // In Vite, process.env is replaced at build time by the define plugin in vite.config.ts.
+  // We use a direct check on the string replacement or a safe fallback.
   
   let apiKey = '';
   try {
@@ -16,8 +15,10 @@ const getAI = () => {
     console.warn("Could not read API Key from process.env");
   }
   
+  // Explicit check for the string "undefined" which can happen during build replacement
   if (!apiKey || apiKey === 'undefined' || apiKey === '') {
-    // console.warn("Gemini API Key is missing. AI features will run in demo mode.");
+    console.warn("GeminiService: API Key is missing. Check your .env file and restart the server.");
+    // Return null to indicate demo mode/unavailable
     return null;
   }
 
@@ -134,6 +135,53 @@ export const analyzeReputation = async (profile: UserProfile): Promise<{ score: 
   } catch (error) {
     console.error("Reputation Analysis Error:", error);
     return { score: 50, analysis: "AI Service Error. Please check logs.", newBadges: [] };
+  }
+};
+
+// AI Advisor: Suggests Loan Terms for Lenders
+export const suggestLoanTerms = async (targetScore: number): Promise<{ interestRate: number; maxAmount: number; reasoning: string }> => {
+  const ai = getAI();
+  if (!ai) {
+    return { interestRate: 10, maxAmount: 500, reasoning: "Demo Mode: API Key missing. Defaulting to standard terms." };
+  }
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `Act as a DeFi Lending Advisor. A lender wants to create a loan offer for borrowers with a Reputation Score of ${targetScore} (Scale 0-100).
+      
+      Suggest optimal terms that balance risk and competitiveness.
+      
+      Rules of Thumb:
+      - Score > 80: Low Risk. Rate 3-6%. High Amount.
+      - Score 60-79: Medium Risk. Rate 7-12%. Medium Amount.
+      - Score < 60: High Risk. Rate 13-20%. Low Amount (Microloans).
+      
+      Output JSON:
+      {
+        "interestRate": number (percentage, e.g. 5.5),
+        "maxAmount": number (USD),
+        "reasoning": string (short explanation)
+      }`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            interestRate: { type: Type.NUMBER },
+            maxAmount: { type: Type.NUMBER },
+            reasoning: { type: Type.STRING }
+          },
+          required: ["interestRate", "maxAmount", "reasoning"]
+        }
+      }
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("No response");
+    return JSON.parse(text);
+  } catch (error) {
+    return { interestRate: 8, maxAmount: 1000, reasoning: "AI unavailable. Calculated market average." };
   }
 };
 

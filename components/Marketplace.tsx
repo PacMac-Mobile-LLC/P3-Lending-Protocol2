@@ -189,7 +189,7 @@ export const Marketplace: React.FC<Props> = ({
             Algorithmic Matching (Beta)
           </h3>
         </div>
-        <div className="overflow-y-auto p-6 flex-1 custom-scrollbar">
+        <div className="overflow-y-auto p-6 flex-1 custom-scrollbar bg-black/20">
           {!selectedRequest ? (
             <div className="flex flex-col items-center justify-center h-full text-zinc-600 space-y-4">
               <div className="w-16 h-16 rounded-2xl bg-black border border-zinc-800 flex items-center justify-center">
@@ -204,36 +204,42 @@ export const Marketplace: React.FC<Props> = ({
                   const offer = availableOffers.find(o => o.id === match.offerId);
                   if (!offer) return null;
                   return (
-                    <div key={idx} className="bg-black rounded-xl p-5 border border-zinc-800 hover:border-zinc-600 transition-all group">
-                      <div className="flex justify-between items-start mb-3">
-                        <h4 className="text-white font-bold">{offer.lenderName}</h4>
-                        <div className="text-[10px] font-bold text-black bg-[#00e599] px-2 py-1 rounded flex items-center gap-1">
-                           <span className="text-xs">✦</span> {match.matchScore}% Merit Match
+                    <div key={idx} className="bg-black rounded-xl p-5 border border-zinc-800 hover:border-[#00e599]/50 hover:shadow-[0_0_15px_rgba(0,229,153,0.1)] transition-all group relative overflow-hidden">
+                      <div className="absolute top-0 right-0 p-3">
+                         <div className="bg-[#00e599]/10 text-[#00e599] text-[10px] font-bold px-2 py-1 rounded border border-[#00e599]/20">
+                           {match.matchScore}% Match
                          </div>
                       </div>
+
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                           <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Lender</div>
+                           <h4 className="text-white font-bold text-lg">{offer.lenderName}</h4>
+                        </div>
+                      </div>
                       
-                      <div className="flex gap-6 text-sm mb-4">
-                        <div>
-                          <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold">APR</p>
-                          <p className="text-white font-mono">{offer.interestRate}%</p>
+                      <div className="grid grid-cols-3 gap-4 mb-4 bg-zinc-900/50 p-3 rounded-lg border border-zinc-800">
+                        <div className="text-center border-r border-zinc-800">
+                          <p className="text-[9px] text-zinc-500 uppercase tracking-wider font-bold">APR</p>
+                          <p className="text-white font-mono text-sm">{offer.interestRate}%</p>
                         </div>
-                        <div>
-                          <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold">Max</p>
-                          <p className="text-white font-mono">${offer.maxAmount}</p>
+                        <div className="text-center border-r border-zinc-800">
+                          <p className="text-[9px] text-zinc-500 uppercase tracking-wider font-bold">Max</p>
+                          <p className="text-white font-mono text-sm">${offer.maxAmount}</p>
                         </div>
-                        <div>
-                          <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold">Term</p>
-                          <p className="text-zinc-300">{offer.terms}</p>
+                        <div className="text-center">
+                          <p className="text-[9px] text-zinc-500 uppercase tracking-wider font-bold">Term</p>
+                          <p className="text-zinc-300 text-sm truncate">{offer.terms}</p>
                         </div>
                       </div>
                       
                       <div className="mb-4 pl-3 border-l-2 border-zinc-700">
-                        <p className="text-xs text-zinc-400">
-                          {match.reasoning}
+                        <p className="text-xs text-zinc-400 italic">
+                          "{match.reasoning}"
                         </p>
                       </div>
                       
-                      <Button size="sm" className="w-full">Accept Offer</Button>
+                      <Button size="sm" className="w-full group-hover:bg-[#00e599] group-hover:text-black transition-colors">Accept Offer</Button>
                     </div>
                   );
                 })

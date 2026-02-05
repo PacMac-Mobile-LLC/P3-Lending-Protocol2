@@ -39,7 +39,7 @@ if (!rootElement) {
 }
 
 interface ErrorBoundaryProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 interface ErrorBoundaryState {
@@ -53,6 +53,9 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
     hasError: false,
     error: null
   };
+  
+  // Fix: Explicitly declare props to satisfy TS compiler in strict environments
+  declare props: Readonly<ErrorBoundaryProps>;
 
   constructor(props: ErrorBoundaryProps) {
     super(props);
