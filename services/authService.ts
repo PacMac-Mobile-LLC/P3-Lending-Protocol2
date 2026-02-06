@@ -23,6 +23,8 @@ export const GoogleAuthService = {
     try {
       // @ts-ignore
       const clientId = process.env.GOOGLE_CLIENT_ID;
+      
+      console.log("AuthService Init - Client ID Status:", clientId ? "Present" : "Missing");
 
       // Note: We don't error block here in init, we block in renderButton to allow for graceful UI fallback
       if (clientId && clientId !== 'undefined' && clientId !== '') {
@@ -65,6 +67,7 @@ export const GoogleAuthService = {
     const clientId = process.env.GOOGLE_CLIENT_ID;
 
     if (!clientId || clientId === 'undefined' || clientId === '') {
+        console.warn("AuthService: Render skipped due to missing Client ID");
         el.innerHTML = `
           <div style="color: #ef4444; font-family: sans-serif; font-size: 12px; text-align: center; background: rgba(239, 68, 68, 0.1); padding: 16px; border-radius: 12px; border: 1px solid rgba(239, 68, 68, 0.2);">
               <strong style="display:block; margin-bottom:6px; font-size: 13px;">Configuration Missing</strong>

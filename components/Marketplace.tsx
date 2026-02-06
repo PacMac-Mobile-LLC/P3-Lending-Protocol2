@@ -183,21 +183,54 @@ export const Marketplace: React.FC<Props> = ({
 
       {/* Matches/Offers Column */}
       <div className="bg-zinc-900 rounded-2xl border border-zinc-800 flex flex-col h-[650px] shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-zinc-800 bg-zinc-900/50">
+        <div className="p-6 border-b border-zinc-800 bg-zinc-900/50 flex justify-between items-center">
           <h3 className="font-bold text-white flex items-center gap-3">
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
-            Algorithmic Matching (Beta)
+            <span className={`w-2.5 h-2.5 rounded-full ${selectedRequest ? 'bg-blue-500' : 'bg-[#00e599]'}`}></span>
+            {selectedRequest ? 'Algorithmic Matches' : 'Live Market Offers'}
           </h3>
+          {!selectedRequest && <span className="text-[10px] bg-zinc-800 px-2 py-1 rounded text-zinc-400">{availableOffers.length} Active</span>}
         </div>
+        
         <div className="overflow-y-auto p-6 flex-1 custom-scrollbar bg-black/20">
           {!selectedRequest ? (
-            <div className="flex flex-col items-center justify-center h-full text-zinc-600 space-y-4">
-              <div className="w-16 h-16 rounded-2xl bg-black border border-zinc-800 flex items-center justify-center">
-                 <svg className="w-6 h-6 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-              </div>
-              <p className="font-medium text-sm">Select a pending request to find merit-based offers.</p>
+            // VIEW A: Show All Available Offers (Browsing Mode)
+            <div className="space-y-4">
+               {availableOffers.length === 0 ? (
+                 <div className="flex flex-col items-center justify-center h-full text-zinc-600 space-y-4">
+                   <p>No public offers available right now.</p>
+                 </div>
+               ) : (
+                 availableOffers.map((offer) => (
+                   <div key={offer.id} className="bg-black rounded-xl p-5 border border-zinc-800 hover:border-zinc-600 transition-all group">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                           <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Lender</div>
+                           <h4 className="text-white font-bold text-base">{offer.lenderName}</h4>
+                        </div>
+                        <div className="text-right">
+                           <div className="text-[#00e599] font-mono font-bold">{offer.interestRate}% APR</div>
+                           <div className="text-[10px] text-zinc-500">Max: ${offer.maxAmount}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 mb-4">
+                         <span className="bg-zinc-900 text-zinc-400 text-[10px] px-2 py-1 rounded border border-zinc-800">
+                           Min Score: {offer.minReputationScore}
+                         </span>
+                         <span className="bg-zinc-900 text-zinc-400 text-[10px] px-2 py-1 rounded border border-zinc-800">
+                           {offer.terms}
+                         </span>
+                      </div>
+                      <div className="text-center pt-2 border-t border-zinc-800/50">
+                         <p className="text-[10px] text-zinc-500 italic">
+                           Create a request matching these terms to get funded instantly.
+                         </p>
+                      </div>
+                   </div>
+                 ))
+               )}
             </div>
           ) : (
+            // VIEW B: Show Matches for Selected Request
             <div className="space-y-4">
               {matches[selectedRequest]?.length > 0 ? (
                 matches[selectedRequest].map((match, idx) => {

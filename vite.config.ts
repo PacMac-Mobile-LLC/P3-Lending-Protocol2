@@ -2,54 +2,63 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
+// Helper to find a key case-insensitively in an object
+const findKey = (obj: Record<string, string>, target: string) => {
+  const key = Object.keys(obj).find(k => k.toLowerCase() === target.toLowerCase());
+  return key ? obj[key] : undefined;
+};
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
-  // Using process.cwd() is standard and reliable in most environments.
   const env = loadEnv(mode, (process as any).cwd(), '');
-  
-  // ROBUST KEY LOADING: Check various common names for the API Key
+  const processEnv = process.env;
+
+  // ROBUST KEY LOADING: Check various names AND case-insensitive variations
   const apiKey = 
-    env.API_KEY || 
-    process.env.API_KEY || 
-    env.VITE_API_KEY || 
-    process.env.VITE_API_KEY || 
-    env.GEMINI_API_KEY ||
-    process.env.GEMINI_API_KEY ||
+    findKey(env, 'API_KEY') || 
+    findKey(processEnv, 'API_KEY') || 
+    findKey(env, 'GEMINI_API_KEY') || 
+    findKey(processEnv, 'GEMINI_API_KEY') || 
+    findKey(env, 'VITE_API_KEY') || 
     '';
 
-  const coinGeckoKey = env.COINGECKO_API_KEY || process.env.COINGECKO_API_KEY || '';
+  const coinGeckoKey = 
+    findKey(env, 'COINGECKO_API_KEY') || 
+    findKey(processEnv, 'COINGECKO_API_KEY') || 
+    findKey(env, 'COINGECKO_API') || 
+    findKey(processEnv, 'COINGECKO_API') ||
+    '';
   
-  // ROBUST ID LOADING: Check various common names for the Client ID
+  // ROBUST ID LOADING
   const googleClientId = 
-    env.GOOGLE_CLIENT_ID || 
-    process.env.GOOGLE_CLIENT_ID || 
-    env.CLIENT_ID || 
-    process.env.CLIENT_ID || 
-    env.VITE_GOOGLE_CLIENT_ID || 
-    env.VITE_CLIENT_ID ||
+    findKey(env, 'GOOGLE_CLIENT_ID') || 
+    findKey(processEnv, 'GOOGLE_CLIENT_ID') || 
+    findKey(env, 'CLIENT_ID') || 
+    findKey(processEnv, 'CLIENT_ID') || 
+    findKey(env, 'VITE_GOOGLE_CLIENT_ID') || 
+    findKey(env, 'VITE_CLIENT_ID') ||
     '';
 
   // Debugging logs during build/start (visible in terminal)
-  console.log(`--- P3 BUILD CONFIG ---`);
+  console.log(`\n--- P3 PROTOCOL CONFIGURATION ---`);
   if (apiKey) {
-    console.log(`✅ Gemini API Key found (${apiKey.length} chars)`);
+    console.log(`✅ API Key Loaded: ${apiKey.substring(0, 4)}... (Length: ${apiKey.length})`);
   } else {
-    console.warn("⚠️  Gemini API Key MISSING");
+    console.warn("⚠️  API Key MISSING (Gemini AI features will be disabled)");
   }
 
   if (googleClientId) {
-    console.log(`✅ Google Client ID found (${googleClientId.length} chars)`);
+    console.log(`✅ Google Client ID Loaded: ${googleClientId.substring(0, 10)}...`);
   } else {
-    console.warn("⚠️  Google Client ID MISSING (Login will default to Demo Mode)");
+    console.warn("⚠️  Google Client ID MISSING (Login will require Demo Mode)");
   }
-  console.log(`-----------------------`);
+  console.log(`---------------------------------\n`);
 
   return {
     plugins: [react()],
     define: {
-      // CRITICAL FIX: Securely inject the keys during build.
-      // We default to empty string to prevent "undefined" string literal issues.
+      // Securely inject the keys during build
       'process.env.API_KEY': JSON.stringify(apiKey),
       'process.env.COINGECKO_API_KEY': JSON.stringify(coinGeckoKey),
       'process.env.GOOGLE_CLIENT_ID': JSON.stringify(googleClientId),
