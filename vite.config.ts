@@ -30,28 +30,12 @@ export default defineConfig(({ mode }) => {
     findKey(processEnv, 'COINGECKO_API') ||
     '';
   
-  // ROBUST ID LOADING
-  const googleClientId = 
-    findKey(env, 'GOOGLE_CLIENT_ID') || 
-    findKey(processEnv, 'GOOGLE_CLIENT_ID') || 
-    findKey(env, 'CLIENT_ID') || 
-    findKey(processEnv, 'CLIENT_ID') || 
-    findKey(env, 'VITE_GOOGLE_CLIENT_ID') || 
-    findKey(env, 'VITE_CLIENT_ID') ||
-    '';
-
   // Debugging logs during build/start (visible in terminal)
   console.log(`\n--- P3 PROTOCOL CONFIGURATION ---`);
   if (apiKey) {
     console.log(`✅ API Key Loaded: ${apiKey.substring(0, 4)}... (Length: ${apiKey.length})`);
   } else {
     console.warn("⚠️  API Key MISSING (Gemini AI features will be disabled)");
-  }
-
-  if (googleClientId) {
-    console.log(`✅ Google Client ID Loaded: ${googleClientId.substring(0, 10)}...`);
-  } else {
-    console.warn("⚠️  Google Client ID MISSING (Login will require Demo Mode)");
   }
   console.log(`---------------------------------\n`);
 
@@ -61,7 +45,6 @@ export default defineConfig(({ mode }) => {
       // Securely inject the keys during build
       'process.env.API_KEY': JSON.stringify(apiKey),
       'process.env.COINGECKO_API_KEY': JSON.stringify(coinGeckoKey),
-      'process.env.GOOGLE_CLIENT_ID': JSON.stringify(googleClientId),
     },
     build: {
       outDir: 'dist',

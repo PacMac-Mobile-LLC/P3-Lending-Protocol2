@@ -10,7 +10,7 @@ import { Logo } from './components/Logo';
 import { analyzeReputation, analyzeRiskProfile } from './services/geminiService';
 import { shortenAddress } from './services/walletService';
 import { PersistenceService } from './services/persistence';
-import { GoogleAuthService } from './services/authService'; 
+import { AuthService } from './services/netlifyAuth'; 
 import { SecurityService } from './services/security';
 import { KYCVerificationModal } from './components/KYCVerificationModal';
 import { WalletConnectModal } from './components/WalletConnectModal';
@@ -116,13 +116,13 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLogin = async (googleUser: any) => {
-    console.log("Logged in with Google:", googleUser);
+  const handleLogin = async (netlifyUser: any) => {
+    console.log("Logged in with Netlify:", netlifyUser);
     setIsVerifyingEmail(false); 
     setIsAuthenticated(true);
     setShowLanding(false);
     
-    const email = googleUser.email || '';
+    const email = netlifyUser.email || '';
 
     // Check for Admin (using async DB call)
     try {
@@ -139,7 +139,7 @@ const App: React.FC = () => {
     } catch (e) { console.error("Admin check failed", e); }
     
     const pendingRef = localStorage.getItem('p3_pending_ref');
-    const p3User = await PersistenceService.loadUser(googleUser, pendingRef);
+    const p3User = await PersistenceService.loadUser(netlifyUser, pendingRef);
     setUser(p3User);
     
     localStorage.removeItem('p3_pending_ref');
@@ -170,8 +170,25 @@ const App: React.FC = () => {
     const initApp = async () => {
       setAppReady(true);
       
-      // Initialize Google Auth
-      GoogleAuthService.init(handleLogin);
+      // Initialize Netlify Auth
+      AuthService.init();
+
+      // Check if already logged in
+      const currentUser = AuthService.currentUser();
+      if (currentUser) {
+        handleLogin(currentUser);
+      }
+
+      // Listen for login events (e.g. from Modal)
+      AuthService.on('login', (user) => {
+        AuthService.close();
+        handleLogin(user);
+      });
+
+      // Listen for logout
+      AuthService.on('logout', () => {
+        handleLogout();
+      });
     };
     initApp();
     
@@ -188,16 +205,6 @@ const App: React.FC = () => {
       setShowPitchDeck(true);
     }
   }, []); 
-
-  // Effect to render Google Button when on login screen
-  useEffect(() => {
-    if (!isAuthenticated && !user && !showAdminLogin && !showLanding && !showPitchDeck) {
-      // Need a small timeout to ensure DOM element exists if switching from landing
-      setTimeout(() => {
-        GoogleAuthService.renderButton("google-signin-btn");
-      }, 100);
-    }
-  }, [isAuthenticated, user, showAdminLogin, showLanding, showPitchDeck]);
 
   // Polling Effect (Runs when User changes)
   useEffect(() => {
@@ -217,7 +224,7 @@ const App: React.FC = () => {
     setMyOffers([]);
     setShowAdminLogin(false);
     setPendingAdminEmail('');
-    GoogleAuthService.logout();
+    AuthService.logout();
   };
 
   // --- Handlers for Lending/Borrowing omitted for brevity (unchanged) ---
@@ -365,10 +372,20 @@ const App: React.FC = () => {
              <h1 className="text-4xl font-bold text-white tracking-tighter">P<span className="text-[#00e599]">3</span> Securities Dashboard</h1>
              <p className="text-zinc-400 max-w-md mx-auto">The future of reputation-based finance. Sign in to access your dashboard.</p>
              
-             {/* Google Sign In Container */}
-             <div className="flex flex-col gap-4 items-center min-h-[100px] justify-center">
-                <div id="google-signin-btn"></div>
-                <p className="text-xs text-zinc-600">Employee Login enabled via @p3lending.space email</p>
+             {/* Netlify Identity Login Container */}
+             <div className="flex flex-col gap-4 items-center min-h-[100px] justify-center mt-8">
+                <Button 
+                  size="lg" 
+                  onClick={() => AuthService.open('login')}
+                  className="w-64 py-4 text-base bg-[#00e599] text-black hover:bg-[#00cc88] shadow-[0_0_20px_rgba(0,229,153,0.3)] border-none"
+                >
+                  Log In / Sign Up
+                </Button>
+                <div className="text-xs text-zinc-600 flex gap-1">
+                  <span>Secured by</span>
+                  <span className="font-bold text-zinc-500">Netlify Identity</span>
+                </div>
+                <p className="text-xs text-zinc-600 mt-2">Employee Login enabled via @p3lending.space email</p>
                 <button onClick={() => setShowPitchDeck(true)} className="text-xs text-zinc-600 hover:text-white mt-4 underline">View Investor Deck</button>
              </div>
            </>
