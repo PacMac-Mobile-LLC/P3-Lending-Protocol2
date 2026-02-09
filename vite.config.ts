@@ -8,6 +8,8 @@ const findKey = (obj: Record<string, string>, target: string) => {
   return key ? obj[key] : undefined;
 };
 
+import { nodePolyfills } from 'vite-plugin-node-polyfills';
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
@@ -15,21 +17,21 @@ export default defineConfig(({ mode }) => {
   const processEnv = process.env;
 
   // ROBUST KEY LOADING: Check various names AND case-insensitive variations
-  const apiKey = 
-    findKey(env, 'API_KEY') || 
-    findKey(processEnv, 'API_KEY') || 
-    findKey(env, 'GEMINI_API_KEY') || 
-    findKey(processEnv, 'GEMINI_API_KEY') || 
-    findKey(env, 'VITE_API_KEY') || 
+  const apiKey =
+    findKey(env, 'API_KEY') ||
+    findKey(processEnv, 'API_KEY') ||
+    findKey(env, 'GEMINI_API_KEY') ||
+    findKey(processEnv, 'GEMINI_API_KEY') ||
+    findKey(env, 'VITE_API_KEY') ||
     '';
 
-  const coinGeckoKey = 
-    findKey(env, 'COINGECKO_API_KEY') || 
-    findKey(processEnv, 'COINGECKO_API_KEY') || 
-    findKey(env, 'COINGECKO_API') || 
+  const coinGeckoKey =
+    findKey(env, 'COINGECKO_API_KEY') ||
+    findKey(processEnv, 'COINGECKO_API_KEY') ||
+    findKey(env, 'COINGECKO_API') ||
     findKey(processEnv, 'COINGECKO_API') ||
     '';
-  
+
   // Debugging logs during build/start (visible in terminal)
   console.log(`\n--- P3 PROTOCOL CONFIGURATION ---`);
   if (apiKey) {
@@ -40,7 +42,13 @@ export default defineConfig(({ mode }) => {
   console.log(`---------------------------------\n`);
 
   return {
-    plugins: [react()],
+    plugins: [
+      react(),
+      nodePolyfills({
+        // Whether to polyfill `node:` protocol imports.
+        protocolImports: true,
+      }),
+    ],
     define: {
       // Securely inject the keys during build
       'process.env.API_KEY': JSON.stringify(apiKey),
