@@ -1,4 +1,3 @@
-
 {
   "name": "p3-lending-dashboard",
   "private": true,
@@ -19,6 +18,8 @@
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.2",
     "lucide-react": "^0.344.0",
+    "netlify-identity-widget": "^1.9.2",
+    "persona": "^5.5.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "recharts": "^2.12.0",
