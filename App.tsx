@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { UserProfile, LoanRequest, LoanOffer, LoanType, Charity, KYCTier, KYCStatus, WalletState, RiskReport, EmployeeProfile, Asset, PortfolioItem } from './types';
 import { UserProfileCard } from './components/UserProfileCard';
@@ -26,6 +27,7 @@ import { Footer } from './components/Footer';
 import { KnowledgeBase } from './components/KnowledgeBase';
 import { CustomerChatWidget } from './components/CustomerChatWidget';
 import { TradingDashboard } from './components/TradingDashboard'; 
+import { PitchDeck } from './components/PitchDeck';
 
 type AppView = 'borrow' | 'lend' | 'trade' | 'mentorship' | 'profile' | 'knowledge_base';
 
@@ -75,6 +77,9 @@ const App: React.FC = () => {
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [activeLegalDoc, setActiveLegalDoc] = useState<LegalDocType | null>(null);
   const [showSnow, setShowSnow] = useState(false);
+  
+  // New: Pitch Deck State
+  const [showPitchDeck, setShowPitchDeck] = useState(false);
   
   const [riskReport, setRiskReport] = useState<RiskReport | null>(null);
   const [isRiskLoading, setIsRiskLoading] = useState(false);
@@ -172,21 +177,27 @@ const App: React.FC = () => {
     
     const params = new URLSearchParams(window.location.search);
     const refCode = params.get('ref');
+    const deckMode = params.get('deck');
+
     if (refCode) {
       localStorage.setItem('p3_pending_ref', refCode);
       window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    
+    if (deckMode === 'true') {
+      setShowPitchDeck(true);
     }
   }, []); 
 
   // Effect to render Google Button when on login screen
   useEffect(() => {
-    if (!isAuthenticated && !user && !showAdminLogin && !showLanding) {
+    if (!isAuthenticated && !user && !showAdminLogin && !showLanding && !showPitchDeck) {
       // Need a small timeout to ensure DOM element exists if switching from landing
       setTimeout(() => {
         GoogleAuthService.renderButton("google-signin-btn");
       }, 100);
     }
-  }, [isAuthenticated, user, showAdminLogin, showLanding]);
+  }, [isAuthenticated, user, showAdminLogin, showLanding, showPitchDeck]);
 
   // Polling Effect (Runs when User changes)
   useEffect(() => {
@@ -304,10 +315,24 @@ const App: React.FC = () => {
 
   if (!appReady) return <div className="h-screen bg-[#050505] flex items-center justify-center text-white font-mono animate-pulse">Loading P3 Protocol...</div>;
 
+  // Handle Pitch Deck Mode
+  if (showPitchDeck) return <PitchDeck onClose={() => setShowPitchDeck(false)} />;
+
   // Handle Authentication State
   if (!isAuthenticated && showLanding && !showAdminLogin) {
     if (activeView === 'knowledge_base') return <KnowledgeBase onBack={() => setActiveView('borrow')} onOpenLegal={(type) => setActiveLegalDoc(type)} />;
-    return <><LegalModal type={activeLegalDoc} onClose={() => setActiveLegalDoc(null)} /><LandingPage onLaunch={() => setShowLanding(false)} onDevAdminLogin={() => {}} onOpenDocs={() => setActiveView('knowledge_base')} onOpenLegal={(type) => setActiveLegalDoc(type)} /></>;
+    return (
+      <>
+        <LegalModal type={activeLegalDoc} onClose={() => setActiveLegalDoc(null)} />
+        <LandingPage 
+          onLaunch={() => setShowLanding(false)} 
+          onDevAdminLogin={() => {}} 
+          onOpenDocs={() => setActiveView('knowledge_base')} 
+          onOpenLegal={(type) => setActiveLegalDoc(type)} 
+        />
+        {/* Helper link to open deck from landing page logic is handled inside LandingPage now */}
+      </>
+    );
   }
 
   if (showAdminLogin) return <AdminLoginModal email={pendingAdminEmail} onLogin={handleAdminPasswordLogin} onResetPassword={handleAdminPasswordReset} onCancel={() => { setShowAdminLogin(false); setPendingAdminEmail(''); handleLogout(); }} />;
@@ -344,6 +369,7 @@ const App: React.FC = () => {
              <div className="flex flex-col gap-4 items-center min-h-[100px] justify-center">
                 <div id="google-signin-btn"></div>
                 <p className="text-xs text-zinc-600">Employee Login enabled via @p3lending.space email</p>
+                <button onClick={() => setShowPitchDeck(true)} className="text-xs text-zinc-600 hover:text-white mt-4 underline">View Investor Deck</button>
              </div>
            </>
          </div>

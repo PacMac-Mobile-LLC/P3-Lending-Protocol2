@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { LegalDocType } from './LegalModal';
 
@@ -6,6 +7,14 @@ interface Props {
 }
 
 export const Footer: React.FC<Props> = ({ onOpenLegal }) => {
+  const handleOpenDeck = (e: React.MouseEvent) => {
+    e.preventDefault();
+    // Dispatch a custom event or manipulate the URL to trigger App.tsx logic
+    const url = new URL(window.location.href);
+    url.searchParams.set('deck', 'true');
+    window.location.href = url.toString();
+  };
+
   return (
     <footer className="w-full border-t border-zinc-900 bg-black/80 backdrop-blur-md pt-12 pb-8 px-6 mt-auto z-10 relative">
       <div className="max-w-7xl mx-auto">
@@ -46,7 +55,7 @@ export const Footer: React.FC<Props> = ({ onOpenLegal }) => {
                 <li><button onClick={() => onOpenLegal('ECOA')} className="hover:text-[#00e599] transition-colors">Fair Lending (ECOA)</button></li>
                 <li><button onClick={() => onOpenLegal('SECURITY')} className="hover:text-[#00e599] transition-colors">Responsible Security</button></li>
                 <li><button onClick={() => onOpenLegal('SUPPORT')} className="hover:text-[#00e599] transition-colors">Support & Safety</button></li>
-                <li><a href="#" className="hover:text-[#00e599] transition-colors">NMLS Consumer Access</a></li>
+                <li><a href="#" onClick={handleOpenDeck} className="hover:text-[#00e599] transition-colors">Investor Pitch Deck</a></li>
              </ul>
           </div>
         </div>
