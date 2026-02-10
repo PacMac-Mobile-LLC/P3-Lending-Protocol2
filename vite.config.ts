@@ -1,6 +1,7 @@
 
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import { nodePolyfills } from 'vite-plugin-node-polyfills';
 
 // Helper to find a key case-insensitively in an object
 const findKey = (obj: Record<string, string>, target: string) => {
@@ -15,21 +16,21 @@ export default defineConfig(({ mode }) => {
   const processEnv = process.env;
 
   // ROBUST KEY LOADING: Check various names AND case-insensitive variations
-  const apiKey = 
-    findKey(env, 'API_KEY') || 
-    findKey(processEnv, 'API_KEY') || 
-    findKey(env, 'GEMINI_API_KEY') || 
-    findKey(processEnv, 'GEMINI_API_KEY') || 
-    findKey(env, 'VITE_API_KEY') || 
+  const apiKey =
+    findKey(env, 'API_KEY') ||
+    findKey(processEnv, 'API_KEY') ||
+    findKey(env, 'GEMINI_API_KEY') ||
+    findKey(processEnv, 'GEMINI_API_KEY') ||
+    findKey(env, 'VITE_API_KEY') ||
     '';
 
-  const coinGeckoKey = 
-    findKey(env, 'COINGECKO_API_KEY') || 
-    findKey(processEnv, 'COINGECKO_API_KEY') || 
-    findKey(env, 'COINGECKO_API') || 
+  const coinGeckoKey =
+    findKey(env, 'COINGECKO_API_KEY') ||
+    findKey(processEnv, 'COINGECKO_API_KEY') ||
+    findKey(env, 'COINGECKO_API') ||
     findKey(processEnv, 'COINGECKO_API') ||
     '';
-  
+
   // Debugging logs during build/start (visible in terminal)
   console.log(`\n--- P3 PROTOCOL CONFIGURATION ---`);
   if (apiKey) {
@@ -40,14 +41,16 @@ export default defineConfig(({ mode }) => {
   console.log(`---------------------------------\n`);
 
   return {
-    plugins: [react()],
+    plugins: [
+      react(),
+      nodePolyfills({
+        // Whether to polyfill `node:` protocol imports.
+        protocolImports: true,
+      }),
+    ],
     resolve: {
       alias: {
-        // Polyfill Node.js built-ins for browser
-        stream: 'stream-browserify',
-        util: 'util',
-        events: 'events',
-        process: 'process/browser',
+        // No manual aliases needed with the plugin
       },
     },
     define: {
