@@ -55,6 +55,7 @@ export const Footer: React.FC<Props> = ({ onOpenLegal }) => {
                 <li><button onClick={() => onOpenLegal('ECOA')} className="hover:text-[#00e599] transition-colors">Fair Lending (ECOA)</button></li>
                 <li><button onClick={() => onOpenLegal('SECURITY')} className="hover:text-[#00e599] transition-colors">Responsible Security</button></li>
                 <li><button onClick={() => onOpenLegal('SUPPORT')} className="hover:text-[#00e599] transition-colors">Support & Safety</button></li>
+                <li><button onClick={() => onOpenLegal('SATOSHI_WHITEPAPER')} className="hover:text-[#00e599] transition-colors">Bitcoin White Paper (Simplified)</button></li>
                 <li><a href="#" onClick={handleOpenDeck} className="hover:text-[#00e599] transition-colors">Investor Pitch Deck</a></li>
              </ul>
           </div>

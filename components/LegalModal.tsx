@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type LegalDocType = 'TERMS' | 'PRIVACY' | 'ESIGN' | 'DISCLOSURES' | 'ECOA' | 'SECURITY' | 'SUPPORT' | 'REFERRAL_TERMS' | 'MANIFESTO';
+export type LegalDocType = 'TERMS' | 'PRIVACY' | 'ESIGN' | 'DISCLOSURES' | 'ECOA' | 'SECURITY' | 'SUPPORT' | 'REFERRAL_TERMS' | 'MANIFESTO' | 'SATOSHI_WHITEPAPER';
 
 interface Props {
   type: LegalDocType | null;
@@ -41,8 +41,8 @@ export const LegalModal: React.FC<Props> = ({ type, onClose }) => {
 
               <div className="space-y-4">
                 <h4 className="text-2xl font-bold text-white flex items-center gap-3">
-                   <span className="flex items-center justify-center w-8 h-8 rounded-full bg-zinc-800 text-xs font-mono">02</span>
-                   The Solution: Social Underwriting
+                  <span className="flex items-center justify-center w-8 h-8 rounded-full bg-zinc-800 text-xs font-mono">02</span>
+                  The Solution: Social Underwriting
                 </h4>
                 <p className="pl-11 text-base text-zinc-400">
                   P3 reintroduces the village to finance. Before banks, communities lent to each other based on reputation. If your neighbor vouched for you, you got the loan.
@@ -54,8 +54,8 @@ export const LegalModal: React.FC<Props> = ({ type, onClose }) => {
 
               <div className="space-y-4">
                 <h4 className="text-2xl font-bold text-white flex items-center gap-3">
-                   <span className="flex items-center justify-center w-8 h-8 rounded-full bg-zinc-800 text-xs font-mono">03</span>
-                   The Protocol: Code is Law, But Humans are Justice
+                  <span className="flex items-center justify-center w-8 h-8 rounded-full bg-zinc-800 text-xs font-mono">03</span>
+                  The Protocol: Code is Law, But Humans are Justice
                 </h4>
                 <p className="pl-11 text-base text-zinc-400">
                   Smart contracts ensure loans are funded instantly and repayments are transparent. But unlike cold DeFi protocols that liquidate you the moment a line crosses a chart, P3 offers redemption arcs.
@@ -180,6 +180,92 @@ export const LegalModal: React.FC<Props> = ({ type, onClose }) => {
             </div>
           )
         };
+      case 'SATOSHI_WHITEPAPER':
+        return {
+          title: "Satoshi's White Paper Simplified",
+          lastUpdated: 'August 2018',
+          content: (
+            <div className="space-y-6 text-zinc-300 text-sm leading-relaxed">
+              <p className="italic text-zinc-400">A Beginners guide to the cashless system known as Bitcoin.</p>
+
+              <div className="space-y-2">
+                <h4 className="text-lg font-bold text-white">Introduction</h4>
+                <p>Satoshi believed our current financial situation was not suitable for the long run and needed intervention to perform an acceptable business model. There was a lack of trust between banks and customers due to fraud. He believed banks would be required to accept a percentage of fraud as unavoidable. At the time of writing no sustainable payment mechanism existed.</p>
+                <p className="text-[#00e599] font-medium">"What is needed is an electronic payment system based on cryptographic proof instead of trust."</p>
+                <p>Creating a system that would create more of a reward for using it responsibly than using it for fraud would help protect buyers.</p>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-lg font-bold text-white">Transactions</h4>
+                <p>The trust system we currently have is faulted by the lack of transparency in our central government and creates no means of creating a completely trustless society. Transparency was a needed asset in this new system. Every transaction had to be publicly announced and recorded in a public ledger. There had to be a consensus of approval for each transaction to be considered valid.</p>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-lg font-bold text-white">Timestamp Server</h4>
+                <p>This method would mark each transaction with the time and date it was created and put it in a timeline of transactions for it to be later referred to and considered valid.</p>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-lg font-bold text-white">Proof-of-Work</h4>
+                <p>Once the CPU effort has been expended to make it satisfy the proof-of-work, the block cannot be changed without redoing the work. As later blocks are chained after it, the work to change the block would include redoing all the blocks after it.</p>
+                <p>Satoshi proposed a system that would take exponential computing power to verify and put in order each transaction. This computation power would be so great that it would not be feasible for anyone to go back and try to rewrite the blocks of transactions. Not only would each transaction be verified and placed in chronological order but each block of transactions would be verified and be placed in order. In order to change any transaction you would have to go back and rewrite the entire ledger from then until now.</p>
+                <p>In order to be able to trust what is considered valid a voting system must be put into place. Rather than using a system that could be easily tricked such as one IP on vote (where anyone can allocate as many IP addresses they wanted and create the majority of the vote), it will use one CPU one vote.</p>
+                <p>To help with increasing hardware costs each transaction will include an incentive to the computers who are verifying the blocks. The incentive will be split between the computers working on the block.</p>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-lg font-bold text-white">Network</h4>
+                <p>The network consists of the computers working towards verifying the transactions. The computers or “nodes” will follow a chain of command as follows:</p>
+                <ol className="list-decimal pl-5 space-y-1 text-zinc-400">
+                  <li>A new transaction will be available</li>
+                  <li>Each node will collect the transaction and put it in a block of other transactions</li>
+                  <li>Each node will begin independently verifying each and every transaction in the current block</li>
+                  <li>When each node finds and verifies a transaction it will broadcast it to the rest of the nodes</li>
+                  <li>The nodes will collectively begin working on the longest block broadcasted as that block is trusted to be the most valid</li>
+                  <li>The nodes will accept the block and begin working on a new block independently, repeating the cycle.</li>
+                </ol>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-lg font-bold text-white">Incentive</h4>
+                <p>The steady addition of a constant of amount of new coins is analogous to gold miners expending resources to add gold to circulation.</p>
+                <p>A way to distribute the currency was needed as it cannot all come from the same source and a way to incentivize each node needed to be created. Satoshi likened the example of gold miners looking for gold.</p>
+                <p>The incentive is meant to encourage honest nodes to assemble a verifiable block of transactions. The dishonest nodes would have to choose between stealing back already mined payments or creating new coins. The later creating a bigger incentive.</p>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-lg font-bold text-white">Reclaiming Disk Space</h4>
+                <p>Each node will first begin its mission by downloading the entire list of verified transactions in order to trace back to the first ever transaction and cross reference it with all other transactions in relation to it. In short this means it will look back to when each coin was created and make sure that it has not been double spent and make sure it is trusted.</p>
+                <p>As the transaction list is growing larger and larger this posed a problem. There would be too many transactions to keep up with and this would require a considerate amount of disk space. To combat this only the signature of each block would need to be saved and the rest could be deleted.</p>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-lg font-bold text-white">Simplified Payment Verification / Combining and Splitting Value</h4>
+                <p>With only the signatures of the blocks saved by the nodes and are buried under the rest of the blocks (going back as stated earlier would take more computing power than all the nodes currently combined), a simplified method of payment can be created, as long as the honest nodes control the network. The nodes will also have the ability to alert the other nodes if a dishonest block were to be detected allowing the rest of the nodes to go back and verify the inconsistency and discard the block.</p>
+                <p>It would not be necessary and would take too many resources to account for ever cent spent on the list of transactions. Therefore the nodes would only need to look back to the parent (or original) transaction to properly verify it.</p>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-lg font-bold text-white">Privacy</h4>
+                <p>The traditional banking model achieves a level of privacy by limiting access to information to the parties involved and the trusted third party.</p>
+                <p>As each transaction is publicly available and anyone can see how much and where each transaction was sent. There can still be a level of anonymity. Just as the stock exchange records and makes it publicly available each trade the owners identification will never be announced.</p>
+                <p>However some linking of transactions will still be made available and it will be possible to allow the public to see multiple transactions made to the same source.</p>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-lg font-bold text-white">Calculations</h4>
+                <p>An attacker will not have the ability to change the history of the entire list of transactions but only be able to attempt to change what he has spent. The nodes will not accept invalid transactions and it will not be possible to create arbitrary currency out of thin air.</p>
+                <p>As stated earlier the longest block will be considered valid. With each block being added to the chain the honest node will receive +1 increasing its lead, while each dishonest node will receive -1 reducing its lead.</p>
+                <p>Suppose a gambler with unlimited credit starts at a deficit and plays potentially an infinite number of trials to try to reach breakeven. We can calculate the probability he ever reaches breakeven, or that an attacker ever catches up (…) With the odds against him, if he doesn’t make a lucky lunge forward early on, his chances become vanishingly small as he falls further behind.</p>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-lg font-bold text-white">Conclusion</h4>
+                <p>In the end a peer to peer and proof of work system was created. Nodes will be able to leave and join the network at will by downloading the other nodes blocks when it returns, in order to catch up to what has happened since it has been gone. Double spending will become impractical as it would require a dishonest node to completely rewrite the history of the transactions after it. As time goes on the system becomes more secure creating more blocks of transactions and burring old transactions block after block with computation power. Nodes will vote with their CPU power and accept and reject blocks without bias using the proof of work chain as reference.</p>
+              </div>
+            </div>
+          )
+        };
       default:
         return { title: 'Document Not Found', content: 'Content unavailable.' };
     }
@@ -211,7 +297,7 @@ export const LegalModal: React.FC<Props> = ({ type, onClose }) => {
 
         {/* Footer */}
         <div className="p-4 border-t border-zinc-800 bg-zinc-900/50 rounded-b-3xl z-10 flex justify-end">
-          <button 
+          <button
             onClick={onClose}
             className="px-6 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-bold rounded-lg transition-colors border border-zinc-700"
           >
