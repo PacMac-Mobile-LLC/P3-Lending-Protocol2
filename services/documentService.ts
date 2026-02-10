@@ -111,7 +111,7 @@ export const DocumentService = {
 
     doc.text(`$${startBal.toFixed(2)}`, 25, yPos + 16);
     doc.setTextColor(0, 180, 0); // Green
-    doc.text(`+$${credits.toFixed(2)}`, 75, yPos + 16);
+    doc.text(`-$${credits.toFixed(2)}`, 75, yPos + 16);
     doc.setTextColor(200, 0, 0); // Red
     doc.text(`-$${debits.toFixed(2)}`, 125, yPos + 16);
     doc.setTextColor(secondaryColor);
@@ -169,5 +169,202 @@ export const DocumentService = {
 
     // Download
     doc.save(`P3_Statement_${user.name.replace(/\s/g, '_')}_Feb2025.pdf`);
+  },
+
+  generatePitchDeck: () => {
+    // Landscape Mode
+    const doc = new jsPDF('l', 'mm', 'a4');
+    const width = doc.internal.pageSize.getWidth();
+    const height = doc.internal.pageSize.getHeight();
+    const bg = '#050505';
+    const accent = '#00e599';
+    const textLight = '#e4e4e7';
+    const textDim = '#a1a1aa';
+    const secondaryColor = '#18181b'; // Defined for usage in charts where needed
+
+    // Helper: Add Background
+    const addSlideBg = () => {
+      doc.setFillColor(bg);
+      doc.rect(0, 0, width, height, 'F');
+      // Top accent bar
+      doc.setFillColor(accent);
+      doc.rect(0, 0, width, 2, 'F');
+      // Footer page number
+      doc.setTextColor(textDim);
+      doc.setFontSize(8);
+      doc.text(`P3 SECURITIES | CONFIDENTIAL`, 10, height - 5);
+    };
+
+    // --- SLIDE 1: TITLE ---
+    addSlideBg();
+    
+    doc.setTextColor(textLight);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(48);
+    doc.text("P3 SECURITIES", width/2, height/2 - 10, { align: 'center' });
+    
+    doc.setFontSize(18);
+    doc.setTextColor(accent);
+    doc.text("Credit based on Character, not History.", width/2, height/2 + 5, { align: 'center' });
+    
+    doc.setFontSize(12);
+    doc.setTextColor(textDim);
+    doc.text("Seed Round Investor Deck | Q1 2025", width/2, height/2 + 20, { align: 'center' });
+
+    // --- SLIDE 2: THE PROBLEM ---
+    doc.addPage();
+    addSlideBg();
+    
+    doc.setFontSize(24);
+    doc.setTextColor(accent);
+    doc.text("THE PROBLEM", 20, 25);
+    
+    doc.setFontSize(32);
+    doc.setTextColor(textLight);
+    doc.text("FICO is Broken.", 20, 40);
+    
+    doc.setFontSize(14);
+    doc.setTextColor(textDim);
+    const problemText = [
+      "• 45 Million 'Credit Invisible' Americans cannot get loans.",
+      "• Traditional banks rely on backward-looking data (7 years history).",
+      "• Young people and Crypto-Natives have assets but no FICO score.",
+      "• Black Box Algorithms discriminate without context."
+    ];
+    doc.text(problemText, 20, 60, { lineHeightFactor: 2 });
+
+    // Graphic: Big Red "Denied"
+    doc.setDrawColor(200, 50, 50);
+    doc.setLineWidth(2);
+    doc.roundedRect(150, 50, 100, 60, 5, 5, 'S');
+    doc.setTextColor(200, 50, 50);
+    doc.setFontSize(40);
+    doc.text("DENIED", 200, 85, { align: 'center' });
+    doc.setFontSize(12);
+    doc.text("Reason: Insufficient History", 200, 95, { align: 'center' });
+
+    // --- SLIDE 3: THE SOLUTION ---
+    doc.addPage();
+    addSlideBg();
+
+    doc.setFontSize(24);
+    doc.setTextColor(accent);
+    doc.text("THE SOLUTION", 20, 25);
+
+    doc.setFontSize(32);
+    doc.setTextColor(textLight);
+    doc.text("Social Underwriting.", 20, 40);
+
+    doc.setFontSize(14);
+    doc.setTextColor(textDim);
+    const solutionText = [
+      "P3 reintroduces the 'village' to finance using AI.",
+      "",
+      "1. Behavioral Scoring: We track repayment streaks and consistency.",
+      "2. Contextual AI: Gemini analyzes the 'why' behind a user's story.",
+      "3. Fresh Start Protocol: Charity-backed insurance for first-time borrowers.",
+      "4. Trustless Escrow: Smart contracts handle the money, eliminating middlemen."
+    ];
+    doc.text(solutionText, 20, 60);
+
+    // --- SLIDE 4: MARKET SIZE ---
+    doc.addPage();
+    addSlideBg();
+
+    doc.setFontSize(24);
+    doc.setTextColor(accent);
+    doc.text("MARKET OPPORTUNITY", 20, 25);
+
+    // Simple Bar Chart Construction
+    const startX = 40;
+    const startY = 130;
+    
+    // Bar 1: DeFi
+    doc.setFillColor(50, 50, 50);
+    doc.rect(startX, startY - 20, 40, 20, 'F');
+    doc.setTextColor(textLight);
+    doc.setFontSize(12);
+    doc.text("DeFi TVL", startX + 20, startY + 10, { align: 'center' });
+    doc.text("$15B", startX + 20, startY - 25, { align: 'center' });
+
+    // Bar 2: P3 TAM
+    doc.setFillColor(accent);
+    doc.rect(startX + 60, startY - 80, 40, 80, 'F');
+    doc.setTextColor(textLight); // Using textLight for visibility on dark background
+    doc.text("P3 TAM", startX + 80, startY + 10, { align: 'center' });
+    doc.text("$850B", startX + 80, startY - 85, { align: 'center' });
+    
+    doc.setTextColor(textDim);
+    doc.text("(Unsecured Consumer Credit)", startX + 80, startY + 20, { align: 'center' });
+
+    // Bar 3: TradFi
+    doc.setFillColor(80, 80, 80);
+    doc.rect(startX + 120, startY - 100, 40, 100, 'F'); // Cut off for scale visualization
+    doc.setTextColor(textLight);
+    doc.text("Trad Banks", startX + 140, startY + 10, { align: 'center' });
+    doc.text("$4T+", startX + 140, startY - 105, { align: 'center' });
+
+    // --- SLIDE 5: BUSINESS MODEL ---
+    doc.addPage();
+    addSlideBg();
+
+    doc.setFontSize(24);
+    doc.setTextColor(accent);
+    doc.text("BUSINESS MODEL", 20, 25);
+
+    // Box 1
+    doc.setDrawColor(accent);
+    doc.roundedRect(20, 50, 80, 50, 3, 3, 'S');
+    doc.setFontSize(16);
+    doc.setTextColor(textLight);
+    doc.text("2.0% Origination Fee", 60, 70, { align: 'center' });
+    doc.setFontSize(10);
+    doc.setTextColor(textDim);
+    doc.text("Charged on successful repayment.", 60, 80, { align: 'center' });
+
+    // Box 2
+    doc.setDrawColor(255, 255, 255);
+    doc.roundedRect(110, 50, 80, 50, 3, 3, 'S');
+    doc.setFontSize(16);
+    doc.setTextColor(textLight);
+    doc.text("B2B API Licensing", 150, 70, { align: 'center' });
+    doc.setFontSize(10);
+    doc.setTextColor(textDim);
+    doc.text("Selling Risk Score API to other Dapps.", 150, 80, { align: 'center' });
+
+    // Box 3
+    doc.setDrawColor(255, 255, 255);
+    doc.roundedRect(200, 50, 80, 50, 3, 3, 'S');
+    doc.setFontSize(16);
+    doc.setTextColor(textLight);
+    doc.text("Spread on Yield", 240, 70, { align: 'center' });
+    doc.setFontSize(10);
+    doc.setTextColor(textDim);
+    doc.text("0.5% Mgmt Fee on Mentor Pools.", 240, 80, { align: 'center' });
+
+    // --- SLIDE 6: THE ASK ---
+    doc.addPage();
+    addSlideBg();
+
+    doc.setFontSize(24);
+    doc.setTextColor(accent);
+    doc.text("THE ASK", 20, 25);
+
+    doc.setFontSize(60);
+    doc.setTextColor(textLight);
+    doc.text("$1.5M Seed", width/2, height/2 - 10, { align: 'center' });
+
+    doc.setFontSize(14);
+    doc.setTextColor(textDim);
+    doc.text("Use of Funds:", width/2, height/2 + 10, { align: 'center' });
+    doc.text("40% Engineering (Mobile App)", width/2, height/2 + 20, { align: 'center' });
+    doc.text("30% Legal & Compliance (Bank Charter)", width/2, height/2 + 28, { align: 'center' });
+    doc.text("30% Liquidity Bootstrap", width/2, height/2 + 36, { align: 'center' });
+
+    doc.setFontSize(12);
+    doc.setTextColor(accent);
+    doc.text("founders@p3lending.space", width/2, height - 20, { align: 'center' });
+
+    doc.save('P3_Investor_Pitch_Deck.pdf');
   }
 };

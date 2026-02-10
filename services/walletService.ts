@@ -1,6 +1,8 @@
+
 import { BrowserProvider, formatEther } from 'ethers';
-import { SiweMessage } from 'siwe'; // You need to: npm install siwe in frontend
+import { SiweMessage } from 'siwe'; 
 import { WalletState, WalletProvider } from '../types';
+import CoinbaseWalletSDK from '@coinbase/wallet-sdk';
 
 // Declare global ethereum property on window
 declare global {
@@ -48,8 +50,8 @@ export const authenticateWithBackend = async (signer: any, address: string, chai
     return true;
 
   } catch (error) {
-    console.error("SIWE Error:", error);
-    return false;
+    console.error("SIWE Error (Non-blocking):", error);
+    return false; // Allow connection even if SIWE fails for demo purposes
   }
 };
 
@@ -81,13 +83,29 @@ export const connectMetamask = async (): Promise<WalletState> => {
 };
 
 export const connectCoinbase = async (): Promise<WalletState> => {
-  if (!window.ethereum) throw new Error("No wallet detected");
-
   try {
-    const provider = new BrowserProvider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
+    const APP_NAME = 'P3 Lending';
+    const APP_LOGO_URL = window.location.origin + '/logo.svg';
+    const DEFAULT_ETH_JSONRPC_URL = 'https://mainnet.infura.io/v3/6b945ed6e0494a1c9ce16b118cd60aac'; 
+    const DEFAULT_CHAIN_ID = 1;
+
+    // Initialize Coinbase Wallet SDK
+    const coinbaseWallet = new CoinbaseWalletSDK({
+      appName: APP_NAME,
+      appLogoUrl: APP_LOGO_URL,
+      darkMode: true
+    });
+
+    // Initialize a Web3 Provider object
+    const ethereum = coinbaseWallet.makeWeb3Provider(DEFAULT_ETH_JSONRPC_URL, DEFAULT_CHAIN_ID);
+
+    // Initialize Ethers Provider
+    const provider = new BrowserProvider(ethereum);
+
+    // Request accounts (This triggers the QR Code popup if extension is missing)
+    const accounts = await provider.send("eth_requestAccounts", []);
+    const address = accounts[0];
     const signer = await provider.getSigner();
-    const address = await signer.getAddress();
     const network = await provider.getNetwork();
     const balance = await provider.getBalance(address);
 
@@ -108,7 +126,10 @@ export const connectCoinbase = async (): Promise<WalletState> => {
 };
 
 export const connectWalletConnect = async (): Promise<WalletState> => {
-  throw new Error("WalletConnect requires a build step with polyfills in this environment. Please use MetaMask.");
+  // WalletConnect v2 requires a strict Project ID setup and build process that often fails in
+  // pure client-side/CDN environments without a dedicated bundler config. 
+  // For stability, we guide users to MetaMask/Coinbase in this demo environment.
+  throw new Error("WalletConnect requires additional configuration. Please use Coinbase Wallet (supports Scan-to-Connect) or MetaMask.");
 };
 
 export const shortenAddress = (address: string) => {

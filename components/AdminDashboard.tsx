@@ -5,6 +5,7 @@ import { Button } from './Button';
 import { UserProfile, EmployeeProfile, AdminRole, KYCTier, KYCStatus, Dispute, InternalTicket, WaitlistEntry } from '../types';
 import { PersistenceService } from '../services/persistence';
 import { SecurityService } from '../services/security';
+import { DocumentService } from '../services/documentService';
 import { ScoreGauge } from './ScoreGauge';
 import { AdminChatWidget } from './AdminChatWidget';
 
@@ -381,6 +382,14 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
           {/* OVERVIEW TAB */}
           {activeTab === 'OVERVIEW' && (
             <div className="space-y-6 animate-fade-in">
+              {/* TOP ACTIONS */}
+              <div className="flex justify-end">
+                 <Button onClick={() => DocumentService.generatePitchDeck()} size="sm" variant="outline">
+                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                   Download Investor Pitch Deck (PDF)
+                 </Button>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
                   <div className="text-zinc-500 text-xs uppercase font-bold tracking-wider mb-2">Total Users</div>
