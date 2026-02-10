@@ -41,13 +41,27 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    resolve: {
+      alias: {
+        // Polyfill Node.js built-ins for browser
+        stream: 'stream-browserify',
+        util: 'util',
+        events: 'events',
+        process: 'process/browser',
+      },
+    },
     define: {
       // Securely inject the keys during build
       'process.env.API_KEY': JSON.stringify(apiKey),
       'process.env.COINGECKO_API_KEY': JSON.stringify(coinGeckoKey),
+      // Ensure global is available
+      'global': 'window',
     },
     build: {
       outDir: 'dist',
+      commonjsOptions: {
+        transformMixedEsModules: true,
+      },
     }
   };
 });
