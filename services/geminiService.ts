@@ -41,7 +41,7 @@ export const performComplianceCheck = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-1.5-flash',
       contents: `Act as a KYC/AML Compliance Officer for a Nebraska-based lending platform subject to the Bank Secrecy Act (BSA) and USA PATRIOT Act.
       
       Review the following applicant data for potential risks:
@@ -93,7 +93,7 @@ export const analyzeReputation = async (profile: UserProfile): Promise<{ score: 
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-1.5-flash',
       contents: `Analyze the financial reputation of this user for the P3 Lending Protocol with an emphasis on **Equal Opportunity**.
       
       User Metrics (On-Chain Trust):
@@ -152,7 +152,7 @@ export const suggestLoanTerms = async (targetScore: number): Promise<{ interestR
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-1.5-flash',
       contents: `Act as a DeFi Lending Advisor. A lender wants to create a loan offer for borrowers with a Reputation Score of ${targetScore} (Scale 0-100).
       
       Suggest optimal terms that balance risk and competitiveness.
@@ -199,7 +199,7 @@ export const matchLoanOffers = async (request: LoanRequest, offers: LoanOffer[])
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-1.5-flash',
       contents: `Act as a P3 Lending Matchmaker (Deterministic Engine). 
       
       OBJECTIVE:
@@ -267,7 +267,7 @@ export const matchBorrowers = async (offer: LoanOffer, requests: LoanRequest[]):
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-1.5-flash',
       contents: `Act as a P3 Lending Matchmaker (Lender Side). Find qualified borrowers for this specific Loan Offer based purely on data (No Luck).
       
       Lender Offer Details:
@@ -341,7 +341,7 @@ export const analyzeRiskProfile = async (profile: UserProfile): Promise<RiskRepo
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-1.5-flash',
       contents: `Conduct a comprehensive Risk Assessment for this user on the P3 Lending Protocol.
       
       USER ON-CHAIN DATA:
