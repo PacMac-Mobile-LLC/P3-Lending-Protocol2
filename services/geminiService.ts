@@ -6,18 +6,23 @@ import { UserProfile, LoanRequest, LoanOffer, MatchResult, RiskReport } from "..
 const getAI = () => {
   // In Vite, process.env is replaced at build time by the define plugin in vite.config.ts.
   // We use a direct check on the string replacement or a safe fallback.
-  
+
   let apiKey = '';
   try {
+    // Priority: Vite env var -> Process env var -> Manual define
     // @ts-ignore
-    apiKey = process.env.API_KEY; 
+    apiKey = import.meta.env.VITE_API_KEY || process.env.API_KEY || process.env.VITE_API_KEY;
   } catch (e) {
-    console.warn("Could not read API Key from process.env");
+    console.warn("Could not read API Key from environment");
   }
-  
+
   // Explicit check for the string "undefined" which can happen during build replacement
   if (!apiKey || apiKey === 'undefined' || apiKey === '') {
     console.warn("GeminiService: API Key is missing. Check your .env file and restart the server.");
+    console.debug("Debug Info:", {
+      viteEnv: import.meta.env.VITE_API_KEY ? "Present" : "Missing",
+      processEnv: process.env.API_KEY ? "Present" : "Missing"
+    });
     // Return null to indicate demo mode/unavailable
     return null;
   }
@@ -36,7 +41,7 @@ export const performComplianceCheck = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.0-flash-exp',
       contents: `Act as a KYC/AML Compliance Officer for a Nebraska-based lending platform subject to the Bank Secrecy Act (BSA) and USA PATRIOT Act.
       
       Review the following applicant data for potential risks:
@@ -83,12 +88,12 @@ export const performComplianceCheck = async (
 export const analyzeReputation = async (profile: UserProfile): Promise<{ score: number; analysis: string; newBadges: string[] }> => {
   const ai = getAI();
   if (!ai) {
-     return { score: 50, analysis: "Demo Mode: AI analysis unavailable (Missing API Key).", newBadges: [] };
+    return { score: 50, analysis: "Demo Mode: AI analysis unavailable (Missing API Key).", newBadges: [] };
   }
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.0-flash-exp',
       contents: `Analyze the financial reputation of this user for the P3 Lending Protocol with an emphasis on **Equal Opportunity**.
       
       User Metrics (On-Chain Trust):
@@ -147,7 +152,7 @@ export const suggestLoanTerms = async (targetScore: number): Promise<{ interestR
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.0-flash-exp',
       contents: `Act as a DeFi Lending Advisor. A lender wants to create a loan offer for borrowers with a Reputation Score of ${targetScore} (Scale 0-100).
       
       Suggest optimal terms that balance risk and competitiveness.
@@ -194,7 +199,7 @@ export const matchLoanOffers = async (request: LoanRequest, offers: LoanOffer[])
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.0-flash-exp',
       contents: `Act as a P3 Lending Matchmaker (Deterministic Engine). 
       
       OBJECTIVE:
@@ -243,7 +248,7 @@ export const matchLoanOffers = async (request: LoanRequest, offers: LoanOffer[])
 
     const text = response.text;
     if (!text) return [];
-    
+
     const matches = JSON.parse(text) as Omit<MatchResult, 'requestId'>[];
     return matches.map(m => ({ ...m, requestId: request.id }));
 
@@ -262,7 +267,7 @@ export const matchBorrowers = async (offer: LoanOffer, requests: LoanRequest[]):
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.0-flash-exp',
       contents: `Act as a P3 Lending Matchmaker (Lender Side). Find qualified borrowers for this specific Loan Offer based purely on data (No Luck).
       
       Lender Offer Details:
@@ -304,7 +309,7 @@ export const matchBorrowers = async (offer: LoanOffer, requests: LoanRequest[]):
 
     const text = response.text;
     if (!text) return [];
-    
+
     // Parse response and map back to MatchResult structure
     const matches = JSON.parse(text);
     return matches.map((m: any) => ({
@@ -336,7 +341,7 @@ export const analyzeRiskProfile = async (profile: UserProfile): Promise<RiskRepo
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.0-flash-exp',
       contents: `Conduct a comprehensive Risk Assessment for this user on the P3 Lending Protocol.
       
       USER ON-CHAIN DATA:
@@ -368,30 +373,31 @@ export const analyzeRiskProfile = async (profile: UserProfile): Promise<RiskRepo
       }
       `,
       config: {
-        tools: [{ googleSearch: {} }], 
+        tools: [{ googleSearch: {} }],
       }
     });
 
     const text = response.text;
-    
+
     if (!text) throw new Error("No response from AI Risk Engine");
-    
+
     // Extract JSON from the text response
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     const cleanJson = jsonMatch ? jsonMatch[0] : text;
-    
+
     const report = JSON.parse(cleanJson) as RiskReport;
     report.timestamp = new Date().toISOString();
     return report;
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Risk Analysis Error:", error);
+    const errorMessage = error.message || "Unknown error";
     return {
       compositeScore: 50,
       macroScore: 50,
       walletScore: 50,
-      factors: [{ category: 'MACRO', severity: 'MEDIUM', description: 'Risk assessment unavailable. Please check your API Key configuration.' }],
-      summary: "Risk assessment running in offline mode due to connection error.",
+      factors: [{ category: 'MACRO', severity: 'MEDIUM', description: `Risk assessment failed: ${errorMessage}` }],
+      summary: `Risk assessment error: ${errorMessage}. Check console for details.`,
       timestamp: new Date().toISOString()
     };
   }
