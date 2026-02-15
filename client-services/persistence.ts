@@ -3,8 +3,9 @@ import { supabase } from '../supabaseClient';
 
 // INITIAL TEMPLATE REMAINING FOR FALLBACK
 const INITIAL_USER_TEMPLATE: UserProfile = {
-  id: 'guest',
-  name: 'Guest User',
+  id: '',
+  email: '',
+  name: 'New User',
   income: 0,
   balance: 0,
   avatarUrl: undefined,
@@ -19,7 +20,7 @@ const INITIAL_USER_TEMPLATE: UserProfile = {
   kycStatus: KYCStatus.UNVERIFIED,
   kycLimit: 0,
   mentorshipsCount: 0,
-  walletAgeDays: 0, 
+  walletAgeDays: 0,
   txCount: 0,
   referrals: []
 };
@@ -28,7 +29,7 @@ const BASE_WAITLIST_COUNT = 4291;
 
 // NOTE: All methods are now ASYNC because they hit the database.
 export const PersistenceService = {
-  
+
   // --- Waitlist Management ---
 
   addToWaitlist: async (name: string, email: string) => {
@@ -118,7 +119,7 @@ export const PersistenceService = {
   },
 
   // --- User Profile ---
-  
+
   loadUser: async (netlifyUser: any, pendingReferralCode?: string | null): Promise<UserProfile> => {
     if (!netlifyUser) return INITIAL_USER_TEMPLATE;
 
@@ -138,21 +139,22 @@ export const PersistenceService = {
         const newUser: UserProfile = {
           ...INITIAL_USER_TEMPLATE,
           id: netlifyUser.id,
+          email: netlifyUser.email,
           name: netlifyUser.user_metadata?.full_name || netlifyUser.email.split('@')[0],
           avatarUrl: netlifyUser.user_metadata?.avatar_url || undefined,
         };
 
         // Handle Referral
         if (pendingReferralCode && pendingReferralCode !== newUser.id) {
-           await PersistenceService.registerReferral(pendingReferralCode, newUser.id);
-           newUser.referredBy = pendingReferralCode;
+          await PersistenceService.registerReferral(pendingReferralCode, newUser.id);
+          newUser.referredBy = pendingReferralCode;
         }
 
         // Insert into DB
         await supabase.from('users').insert({
           id: newUser.id,
           email: netlifyUser.email,
-          data: newUser 
+          data: newUser
         });
 
         // If they were on waitlist, update status to ONBOARDED
@@ -161,7 +163,7 @@ export const PersistenceService = {
           if (waitlistData) {
             await PersistenceService.updateWaitlistStatus(waitlistData.id, 'ONBOARDED');
           }
-        } catch (ignore) {}
+        } catch (ignore) { }
 
         return newUser;
       }
@@ -195,7 +197,7 @@ export const PersistenceService = {
         status: 'PENDING',
         earnings: 0
       };
-      
+
       if (!profile.referrals.some(r => r.userId === newUserId)) {
         profile.referrals.push(newReferral);
         await PersistenceService.saveUser(profile);
@@ -208,7 +210,7 @@ export const PersistenceService = {
   getEmployees: async (): Promise<EmployeeProfile[]> => {
     const { data } = await supabase.from('employees').select('*');
     if (!data) return [];
-    
+
     return data.map((e: any) => ({
       ...e.data,
       id: e.id,
@@ -337,11 +339,11 @@ export const PersistenceService = {
   },
 
   // --- Helpers ---
-  
+
   processDeposit: async (user: UserProfile, amount: number): Promise<UserProfile> => {
     const updatedUser = { ...user, balance: user.balance + amount };
     await PersistenceService.saveUser(updatedUser);
-    
+
     if (updatedUser.balance >= 100 && updatedUser.referredBy) {
       await PersistenceService.completeReferral(updatedUser.referredBy, updatedUser.id);
     }

@@ -10,6 +10,8 @@ const envSchema = z.object({
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
     SUPABASE_URL: z.string().url(),
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+    STRIPE_SECRET_KEY: z.string().min(1).optional(),
+    STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
     ETH_RPC_URL: z.string().url().optional(),
     P3_PROTOCOL_ADDRESS: z.string().min(1).optional(),
     ALLOWED_ORIGINS: z.string().default('*'),
@@ -27,6 +29,10 @@ export const config = {
     ethereum: {
         rpcUrl: env.ETH_RPC_URL || '',
         contractAddress: env.P3_PROTOCOL_ADDRESS || '',
+    },
+    stripe: {
+        secretKey: env.STRIPE_SECRET_KEY || '',
+        webhookSecret: env.STRIPE_WEBHOOK_SECRET || '',
     },
     allowedOrigins: env.ALLOWED_ORIGINS.split(',').map(o => o.trim()),
     isProd: env.NODE_ENV === 'production',

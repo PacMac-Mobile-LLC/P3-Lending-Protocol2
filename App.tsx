@@ -314,7 +314,29 @@ const App: React.FC = () => {
   const handleAdminPasswordReset = async (newPassword: string) => { try { const employees = await PersistenceService.getEmployees(); const matchedEmp = employees.find(e => e.email.toLowerCase() === pendingAdminEmail.toLowerCase()); if (!matchedEmp) throw new Error("User not found."); const updatedEmp: EmployeeProfile = { ...matchedEmp, passwordHash: newPassword, passwordLastSet: Date.now() }; await PersistenceService.updateEmployee(updatedEmp); setAdminUser(updatedEmp); setIsAuthenticated(true); setShowLanding(false); setShowAdminLogin(false); alert("Password successfully reset."); } catch (e) { console.error(e); alert("Failed."); } };
 
   const handleProfileUpdate = async (updatedUser: UserProfile) => { if (!user) return; setUser(updatedUser); await PersistenceService.saveUser(updatedUser); };
-  const handleDeposit = async (amount: number) => { if (!user) return; const updatedUser = await PersistenceService.processDeposit(user, amount); setUser(updatedUser); alert(`Successfully deposited $${amount}. New Balance: $${updatedUser.balance}`); };
+  const handleDeposit = async (amount: number) => {
+    if (!user) return;
+    try {
+      const response = await fetch('/api/payments/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          userId: user.id,
+          userEmail: user.email,
+        }),
+      });
+      const data = await response.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error(data.error || 'Failed to create checkout session');
+      }
+    } catch (error: any) {
+      console.error('Stripe Redirect Error:', error);
+      alert('Failed to initiate deposit. Please try again.');
+    }
+  };
   const handleKYCUpgrade = (newTier: KYCTier, limit: number, docData?: any) => { setUser(prev => { if (!prev) return null; const updated = { ...prev, kycTier: newTier === KYCTier.TIER_2 ? prev.kycTier : newTier, kycStatus: newTier === KYCTier.TIER_2 ? KYCStatus.PENDING : KYCStatus.VERIFIED, kycLimit: newTier === KYCTier.TIER_2 ? prev.kycLimit : limit, documents: docData ? docData : prev.documents }; PersistenceService.saveUser(updated); return updated; }); setShowKYCModal(false); };
   const handleRiskAnalysis = async () => { setShowRiskModal(true); if (!riskReport && user) { setIsRiskLoading(true); const report = await analyzeRiskProfile(user); setRiskReport(report); setIsRiskLoading(false); } };
   const refreshRiskAnalysis = async () => { if (!user) return; setIsRiskLoading(true); const report = await analyzeRiskProfile(user); setRiskReport(report); setIsRiskLoading(false); };

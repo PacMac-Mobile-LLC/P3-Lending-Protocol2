@@ -22,7 +22,14 @@ app.use(cors({
 }));
 
 // Payload limits
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({
+    limit: '1mb',
+    verify: (req: any, res, buf) => {
+        if (req.originalUrl.startsWith('/api/payments/webhook')) {
+            req.rawBody = buf;
+        }
+    }
+}));
 
 // Logging Request Meta
 app.use((req, res, next) => {
@@ -32,11 +39,14 @@ app.use((req, res, next) => {
 
 import { publicApiLimiter, sensitiveApiLimiter } from './middleware/rateLimiter';
 
+import paymentRoutes from './routes/paymentRoutes';
+
 // Routes
 app.use('/api/users', publicApiLimiter, userRoutes);
 app.use('/api/loans', publicApiLimiter, loanRoutes); // loanRoutes already has fine-grained limiters
 app.use('/api/verification', sensitiveApiLimiter, verificationRoutes);
 app.use('/api/admin', sensitiveApiLimiter, adminRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Health Check
 app.get('/health', (req: Request, res: Response) => {
