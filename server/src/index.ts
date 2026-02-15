@@ -41,6 +41,21 @@ app.get('/health', (req: Request, res: Response) => {
     res.json({ status: 'active', timestamp: new Date().toISOString() });
 });
 
+// Serve Static Frontend Files (if building in container/production)
+import path from 'path';
+const publicPath = path.join(__dirname, '../../public');
+app.use(express.static(publicPath));
+
+// SPA Fallback: Redirect all other routes to index.html
+app.get('*', (req: Request, res: Response) => {
+    res.sendFile(path.join(publicPath, 'index.html'), (err) => {
+        if (err) {
+            // If index.html doesn't exist, just move to error handler
+            next();
+        }
+    });
+});
+
 // Error handling
 app.use(errorHandler);
 
