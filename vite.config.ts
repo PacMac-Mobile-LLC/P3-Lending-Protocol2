@@ -35,6 +35,7 @@ export default defineConfig(({ mode }) => {
     '';
 
   const backendUrl = env.VITE_BACKEND_URL || '';
+  const anchorRegistry = env.REPUTATION_ANCHOR_REGISTRY || env.P3_PROTOCOL_ADDRESS || '';
 
   // Obfuscate keys for the bundle
   const obfuscatedApiKey = reverseString(apiKey);
@@ -61,6 +62,7 @@ export default defineConfig(({ mode }) => {
       '__GEMINI_KEY__': JSON.stringify(obfuscatedApiKey),
       '__COINGECKO_KEY__': JSON.stringify(obfuscatedCoinGeckoKey),
       '__BACKEND_URL__': JSON.stringify(backendUrl),
+      '__P3_PROTOCOL_ADDRESS__': JSON.stringify(anchorRegistry),
       'global': 'window',
     },
     build: {
