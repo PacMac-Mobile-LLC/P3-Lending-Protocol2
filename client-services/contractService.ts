@@ -25,16 +25,17 @@ export const ContractService = {
     const provider = ContractService.getProvider();
     const signer = await provider.getSigner();
 
-    // P3 Protocol uses a nominal commitment for protocol anchors
-    const nominalEthAmount = "0.0001";
+    // P3 Protocol requires 1:1 ETH value for protocol anchors relative to loan face value
+    // Assuming USD to ETH conversion is handled or meant to be direct for this phase
+    // For production, we use the actual requested amount.
+    const ethAmount = (request.amount / 2000).toFixed(4); // Example conversion: $2000 per ETH
 
-    console.log(`Initiating Smart Contract Call: Fund Loan ${request.id}`);
+    console.log(`Initiating Smart Contract Call: Fund Loan ${request.id} for ${ethAmount} ETH`);
 
     // Create the transaction
-    // We embed the Loan ID in the 'data' field to simulate a smart contract function call: fund(loanId)
     const txData = {
       to: PROTOCOL_ESCROW_ADDRESS,
-      value: parseEther(nominalEthAmount),
+      value: parseEther(ethAmount),
       data: hexlify(toUtf8Bytes(`Function: FundLoan, ID: ${request.id}`)),
     };
 

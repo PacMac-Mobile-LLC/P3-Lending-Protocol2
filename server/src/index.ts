@@ -30,11 +30,13 @@ app.use((req, res, next) => {
     next();
 });
 
+import { publicApiLimiter, sensitiveApiLimiter } from './middleware/rateLimiter';
+
 // Routes
-app.use('/api/users', userRoutes);
-app.use('/api/loans', loanRoutes);
-app.use('/api/verification', verificationRoutes);
-app.use('/api/admin', adminRoutes);
+app.use('/api/users', publicApiLimiter, userRoutes);
+app.use('/api/loans', publicApiLimiter, loanRoutes); // loanRoutes already has fine-grained limiters
+app.use('/api/verification', sensitiveApiLimiter, verificationRoutes);
+app.use('/api/admin', sensitiveApiLimiter, adminRoutes);
 
 // Health Check
 app.get('/health', (req: Request, res: Response) => {
