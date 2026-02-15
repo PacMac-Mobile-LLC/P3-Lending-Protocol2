@@ -307,7 +307,27 @@ const App: React.FC = () => {
     }
   };
 
-  const handleRepayLoan = async (req: LoanRequest) => { if (!user) return; const platformFee = req.amount * 0.02; const charityDonation = platformFee * 0.5; const updatedReq = { ...req, status: 'REPAID' as const }; await PersistenceService.saveRequest(updatedReq); await refreshGlobalData(); if (req.charityId) { setCharities(prev => prev.map(c => c.id === req.charityId ? { ...c, totalRaised: c.totalRaised + charityDonation } : c)); } const updatedUser = { ...user, successfulRepayments: user.successfulRepayments + 1, currentStreak: user.currentStreak + 1 }; setUser(updatedUser); await PersistenceService.saveUser(updatedUser); };
+  const handleRepayLoan = async (req: LoanRequest) => {
+    if (!user) return;
+    const totalRepayment = req.amount; // For simplicity, repaying the full amount
+    if (user.balance < totalRepayment) {
+      alert(`Insufficient funds for repayment. You need $${totalRepayment.toFixed(2)}. Redirecting to Add Funds...`);
+      setActiveView('profile');
+      return;
+    }
+
+    const platformFee = req.amount * 0.02;
+    const charityDonation = platformFee * 0.5;
+    const updatedReq = { ...req, status: 'REPAID' as const };
+    await PersistenceService.saveRequest(updatedReq);
+    await refreshGlobalData();
+    if (req.charityId) {
+      setCharities(prev => prev.map(c => c.id === req.charityId ? { ...c, totalRaised: c.totalRaised + charityDonation } : c));
+    }
+    const updatedUser = { ...user, balance: user.balance - totalRepayment, successfulRepayments: user.successfulRepayments + 1, currentStreak: user.currentStreak + 1 };
+    setUser(updatedUser);
+    await PersistenceService.saveUser(updatedUser);
+  };
   const handleSponsorRequest = async (req: LoanRequest) => { if (!user) return; if (!wallet.isConnected) { setShowWalletModal(true); return; } const updatedReq = { ...req, status: 'ACTIVE' as const, mentorId: user.id }; await PersistenceService.saveRequest(updatedReq); await refreshGlobalData(); const updatedUser = { ...user, mentorshipsCount: (user.mentorshipsCount || 0) + 1, totalSponsored: (user.totalSponsored || 0) + req.amount }; setUser(updatedUser); await PersistenceService.saveUser(updatedUser); };
 
   const handleAdminPasswordLogin = async (password: string) => { try { const employees = await PersistenceService.getEmployees(); const matchedEmp = employees.find(e => e.email.toLowerCase() === pendingAdminEmail.toLowerCase()); if (!matchedEmp) throw new Error("User not found."); if (password === matchedEmp.passwordHash) { if (SecurityService.isPasswordExpired(matchedEmp.passwordLastSet)) { alert("Password expired. Please update."); } setAdminUser(matchedEmp); setIsAuthenticated(true); setShowLanding(false); setShowAdminLogin(false); } else { alert("Invalid Password"); } } catch (e) { console.error(e); alert("Login failed."); } };
@@ -352,7 +372,8 @@ const App: React.FC = () => {
 
     if (isBuy) {
       if (user.balance < amount) {
-        alert("Insufficient funds");
+        alert(`Insufficient funds. You have $${user.balance.toFixed(2)}, but need $${amount.toFixed(2)}. Redirecting to Add Funds...`);
+        setActiveView('profile');
         return;
       }
       newBalance -= amount;
