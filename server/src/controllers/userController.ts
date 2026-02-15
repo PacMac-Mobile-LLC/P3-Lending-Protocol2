@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
+import { validate as uuidValidate, version as uuidVersion } from 'uuid';
 import { TrustService } from '../services/trustService';
+import { ApiResponse } from '../types/api';
 
-// Simple UUID v4 regex validation
-const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const isValidUUIDv4 = (id: string) => uuidValidate(id) && uuidVersion(id) === 4;
 
 export const UserController = {
     /**
@@ -14,11 +15,12 @@ export const UserController = {
             const { user_id } = req.params;
 
             // 1. Validate UUID
-            if (!UUID_V4_REGEX.test(user_id)) {
-                return res.status(400).json({
+            if (!isValidUUIDv4(user_id)) {
+                const errorResponse: ApiResponse = {
                     success: false,
                     error: 'Invalid User ID format. UUID v4 expected.'
-                });
+                };
+                return res.status(400).json(errorResponse);
             }
 
             // 2. Fetch from Service
@@ -26,23 +28,26 @@ export const UserController = {
 
             // 3. Handle Not Found
             if (!snapshot) {
-                return res.status(404).json({
+                const errorResponse: ApiResponse = {
                     success: false,
                     error: 'No trust score snapshot found for this user.'
-                });
+                };
+                return res.status(404).json(errorResponse);
             }
 
             // 4. Return Data
-            return res.status(200).json({
+            const successResponse: ApiResponse = {
                 success: true,
                 data: {
                     trust_score: snapshot.score,
                     risk_tier: snapshot.risk_tier,
                     snapshot_time: snapshot.snapshot_time,
                     model_version: snapshot.model_version,
-                    feature_vector_hash: snapshot.feature_vector_hash
+                    feature_vector_hash: snapshot.feature_vector_hash,
+                    wallet_address: snapshot.wallet_address
                 }
-            });
+            };
+            return res.status(200).json(successResponse);
         } catch (error) {
             next(error);
         }
