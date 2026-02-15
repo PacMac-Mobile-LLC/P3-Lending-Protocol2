@@ -1,6 +1,6 @@
 
 import { BrowserProvider, formatEther } from 'ethers';
-import { SiweMessage } from 'siwe'; 
+import { SiweMessage } from 'siwe';
 import { WalletState, WalletProvider } from '../types';
 import CoinbaseWalletSDK from '@coinbase/wallet-sdk';
 
@@ -11,7 +11,8 @@ declare global {
   }
 }
 
-const BACKEND_URL = 'http://localhost:3001'; // Update for production
+declare const __BACKEND_URL__: string;
+const BACKEND_URL = typeof __BACKEND_URL__ !== 'undefined' && __BACKEND_URL__ ? __BACKEND_URL__ : 'http://localhost:3001';
 
 export const authenticateWithBackend = async (signer: any, address: string, chainId: number) => {
   try {
@@ -86,7 +87,7 @@ export const connectCoinbase = async (): Promise<WalletState> => {
   try {
     const APP_NAME = 'P3 Lending';
     const APP_LOGO_URL = window.location.origin + '/logo.svg';
-    const DEFAULT_ETH_JSONRPC_URL = 'https://mainnet.infura.io/v3/6b945ed6e0494a1c9ce16b118cd60aac'; 
+    const DEFAULT_ETH_JSONRPC_URL = 'https://mainnet.infura.io/v3/6b945ed6e0494a1c9ce16b118cd60aac';
     const DEFAULT_CHAIN_ID = 1;
 
     // Initialize Coinbase Wallet SDK

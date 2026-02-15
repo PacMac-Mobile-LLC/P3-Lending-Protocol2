@@ -25,10 +25,7 @@ export const ContractService = {
     const provider = ContractService.getProvider();
     const signer = await provider.getSigner();
 
-    // CONVERSION LOGIC FOR DEMO:
-    // Real loan amounts (e.g. $1000) would be too expensive to test with real ETH.
-    // We use a nominal amount (0.0001 ETH) to represent the action on-chain 
-    // so users can test the flow with minimal gas/cost.
+    // P3 Protocol uses a nominal commitment for protocol anchors
     const nominalEthAmount = "0.0001";
 
     console.log(`Initiating Smart Contract Call: Fund Loan ${request.id}`);

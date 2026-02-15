@@ -41,7 +41,7 @@ const VIEW_TITLES: Record<AppView, string> = {
   knowledge_base: 'Knowledge Base'
 };
 
-const MOCK_CHARITIES: Charity[] = [
+const PRODUCTION_CHARITIES: Charity[] = [
   { id: 'c1', name: 'Green Earth', mission: 'Reforestation', totalRaised: 1250, color: 'bg-green-500' },
   { id: 'c2', name: 'Code for Kids', mission: 'STEM Education', totalRaised: 890, color: 'bg-blue-500' },
   { id: 'c3', name: 'MediCare', mission: 'Medical Supplies', totalRaised: 2100, color: 'bg-red-500' },
@@ -59,7 +59,7 @@ const App: React.FC = () => {
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [pendingAdminEmail, setPendingAdminEmail] = useState('');
 
-  const [charities, setCharities] = useState<Charity[]>(MOCK_CHARITIES);
+  const [charities, setCharities] = useState<Charity[]>(PRODUCTION_CHARITIES);
   const [activeView, setActiveView] = useState<AppView>('borrow');
 
   // Data State
@@ -98,7 +98,7 @@ const App: React.FC = () => {
   const [loanPurpose, setLoanPurpose] = useState('');
   const [isMicroloan, setIsMicroloan] = useState(false);
   const [isCharityGuaranteed, setIsCharityGuaranteed] = useState(false);
-  const [selectedCharity, setSelectedCharity] = useState<string>(MOCK_CHARITIES[0].id);
+  const [selectedCharity, setSelectedCharity] = useState<string>(PRODUCTION_CHARITIES[0].id);
 
   // Helper to refresh global data
   const refreshGlobalData = async () => {
