@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { config } from './config/config';
@@ -47,7 +47,7 @@ const publicPath = path.join(__dirname, '../../public');
 app.use(express.static(publicPath));
 
 // SPA Fallback: Redirect all other routes to index.html
-app.get('*', (req: Request, res: Response) => {
+app.get('*', (req: Request, res: Response, next: NextFunction) => {
     res.sendFile(path.join(publicPath, 'index.html'), (err) => {
         if (err) {
             // If index.html doesn't exist, just move to error handler
