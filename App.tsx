@@ -30,6 +30,9 @@ import { CustomerChatWidget } from './components/CustomerChatWidget';
 import { TradingDashboard } from './components/TradingDashboard';
 import { PitchDeck } from './components/PitchDeck';
 
+declare const __BACKEND_URL__: string;
+const BACKEND_URL = typeof __BACKEND_URL__ !== 'undefined' ? __BACKEND_URL__ : 'http://localhost:3001';
+
 type AppView = 'borrow' | 'lend' | 'trade' | 'mentorship' | 'profile' | 'knowledge_base';
 
 const VIEW_TITLES: Record<AppView, string> = {
@@ -289,6 +292,7 @@ const App: React.FC = () => {
     }
   };
 
+  // --- TYPES & INTERFACES ---
   // --- RELEASE FUNDS (Sign & Release) ---
   const handleReleaseEscrow = async (req: LoanRequest) => {
     if (!user) return;
@@ -337,7 +341,7 @@ const App: React.FC = () => {
   const handleDeposit = async (amount: number) => {
     if (!user) return;
     try {
-      const response = await fetch('/api/payments/create-checkout-session', {
+      const response = await fetch(`${BACKEND_URL}/api/payments/create-checkout-session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
