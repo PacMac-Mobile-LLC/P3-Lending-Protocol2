@@ -5,15 +5,15 @@ import { UserProfile, LoanRequest, LoanOffer, MatchResult, RiskReport } from "..
 // Reversible obfuscation helper
 const reverseString = (str: string) => str.split('').reverse().join('');
 
-declare const __P3_API_KEY__: string;
+declare const __GEMINI_KEY__: string;
 
 // Helper to safely get the API Key without crashing the app on load
 const getAI = () => {
   let apiKey = '';
   try {
-    // __P3_API_KEY__ is injected reversed by vite.config.ts
+    // __GEMINI_KEY__ is injected reversed by vite.config.ts
     // We do NOT use import.meta.env here to avoid Vite's auto-injection of VITE_ variables
-    apiKey = reverseString(typeof __P3_API_KEY__ !== 'undefined' ? __P3_API_KEY__ : '');
+    apiKey = reverseString(typeof __GEMINI_KEY__ !== 'undefined' ? __GEMINI_KEY__ : '');
   } catch (e) {
     console.warn("Could not read API Key from fixed definition");
   }

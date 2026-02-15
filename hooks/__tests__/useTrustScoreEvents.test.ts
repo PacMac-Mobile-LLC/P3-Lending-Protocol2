@@ -56,8 +56,8 @@ describe('useTrustScoreEvents', () => {
 
         await waitFor(() => expect(result.current.loading).toBe(false));
 
-        expect(global.fetch).toHaveBeenCalledWith(`/api/users/${userId}/trust`);
-        expect(global.fetch).toHaveBeenCalledWith(`/api/verification/user/${userId}`);
+        expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining(`/api/users/${userId}/trust`));
+        expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining(`/api/verification/user/${userId}`));
 
         expect(mockContractInstance.on).toHaveBeenCalledWith('mock-filter', expect.any(Function));
     });
@@ -80,7 +80,7 @@ describe('useTrustScoreEvents', () => {
         });
 
         expect(global.fetch).toHaveBeenCalledTimes(2); // Should refresh trust and verification
-        expect(global.fetch).toHaveBeenCalledWith(`/api/users/${userId}/trust`);
+        expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining(`/api/users/${userId}/trust`));
     });
 
     it('should cleanup listeners on unmount', async () => {

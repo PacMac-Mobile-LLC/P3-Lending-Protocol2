@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { fetchWithBase } from '../client-services/backendService';
 
 export interface TrustData {
     trust_score: number;
@@ -25,7 +26,7 @@ export const useLoanRequest = (userId: string) => {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch(`/api/users/${userId}/trust`);
+            const response = await fetchWithBase(`/api/users/${userId}/trust`);
             const result: ApiResponse<TrustData> = await response.json();
             if (result.success && result.data) {
                 setTrustData(result.data);
@@ -44,7 +45,7 @@ export const useLoanRequest = (userId: string) => {
         setError(null);
         setSuccess(false);
         try {
-            const response = await fetch('/api/loans/request', {
+            const response = await fetchWithBase('/api/loans/request', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user_id: userId, amount, duration }),

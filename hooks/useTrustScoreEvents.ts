@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Contract, JsonRpcProvider } from 'ethers';
 import { CONFIG } from '../config';
+import { fetchWithBase } from '../client-services/backendService';
 
 export type VerifiedStatus = 'verified' | 'unverified' | 'pending';
 
@@ -47,7 +48,7 @@ export const useTrustScoreEvents = (userId: string, initialWalletAddress?: strin
         if (!userId) return;
         try {
             // 1. Fetch latest trust data (Backend)
-            const trustRes = await fetch(`/api/users/${userId}/trust`);
+            const trustRes = await fetchWithBase(`/api/users/${userId}/trust`);
             const trustResult: ApiResponse<TrustData> = await trustRes.json();
             if (trustResult.success && trustResult.data) {
                 setTrustData(trustResult.data);
@@ -57,7 +58,7 @@ export const useTrustScoreEvents = (userId: string, initialWalletAddress?: strin
             }
 
             // 2. Fetch cryptographic verification status (Bridge)
-            const verifyRes = await fetch(`/api/verification/user/${userId}`);
+            const verifyRes = await fetchWithBase(`/api/verification/user/${userId}`);
             const verifyResult: ApiResponse<VerificationData> = await verifyRes.json();
             if (verifyResult.success && verifyResult.data) {
                 setVerifiedStatus(verifyResult.data.verified ? 'verified' : 'unverified');

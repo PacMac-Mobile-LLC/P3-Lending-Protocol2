@@ -34,6 +34,8 @@ export default defineConfig(({ mode }) => {
     findKey(processEnv, 'COINGECKO_API') ||
     '';
 
+  const backendUrl = env.VITE_BACKEND_URL || '';
+
   // Obfuscate keys for the bundle
   const obfuscatedApiKey = reverseString(apiKey);
   const obfuscatedCoinGeckoKey = reverseString(coinGeckoKey);
@@ -41,6 +43,7 @@ export default defineConfig(({ mode }) => {
   // Debugging logs (Safe: keys are not printed literally)
   console.log(`\n--- P3 PROTOCOL CONFIGURATION ---`);
   console.log(`✅ API Configuration Loaded (Obfuscated for Security)`);
+  console.log(`✅ Backend URL: ${backendUrl || 'Relative (Default)'}`);
   console.log(`---------------------------------\n`);
 
   return {
@@ -54,9 +57,10 @@ export default defineConfig(({ mode }) => {
       alias: {},
     },
     define: {
-      // Inject obfuscated keys via custom globals
-      '__P3_API_KEY__': JSON.stringify(obfuscatedApiKey),
-      '__P3_COINGECKO_KEY__': JSON.stringify(obfuscatedCoinGeckoKey),
+      // Inject obfuscated keys via custom globals (User requested naming)
+      '__GEMINI_KEY__': JSON.stringify(obfuscatedApiKey),
+      '__COINGECKO_KEY__': JSON.stringify(obfuscatedCoinGeckoKey),
+      '__BACKEND_URL__': JSON.stringify(backendUrl),
       'global': 'window',
     },
     build: {

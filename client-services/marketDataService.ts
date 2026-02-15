@@ -5,12 +5,12 @@ const API_BASE = 'https://api.coingecko.com/api/v3';
 // Reversible obfuscation helper
 const reverseString = (str: string) => str.split('').reverse().join('');
 
-declare const __P3_COINGECKO_KEY__: string;
+declare const __COINGECKO_KEY__: string;
 
 // Safely retrieve API Key
 let API_KEY = '';
 try {
-  const rawKey = typeof __P3_COINGECKO_KEY__ !== 'undefined' ? __P3_COINGECKO_KEY__ : '';
+  const rawKey = typeof __COINGECKO_KEY__ !== 'undefined' ? __COINGECKO_KEY__ : '';
   API_KEY = reverseString(rawKey);
 } catch (e) {
   console.warn("Using public CoinGecko endpoints (No API Key detected)");
