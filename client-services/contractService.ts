@@ -2,9 +2,11 @@
 import { BrowserProvider, parseEther, toUtf8Bytes, hexlify } from 'ethers';
 import { LoanRequest } from '../types';
 
-// A fixed address representing the P3 Protocol Smart Contract
-// In a production environment, this would be your deployed contract address.
-const PROTOCOL_ESCROW_ADDRESS = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F"; 
+declare const __P3_PROTOCOL_ADDRESS__: string;
+
+// A dynamic address representing the P3 Protocol Smart Contract
+// Injected via vite.config.ts from REPUTATION_ANCHOR_REGISTRY env var
+const PROTOCOL_ESCROW_ADDRESS = typeof __P3_PROTOCOL_ADDRESS__ !== 'undefined' ? __P3_PROTOCOL_ADDRESS__ : '';
 
 export const ContractService = {
   /**
@@ -22,12 +24,9 @@ export const ContractService = {
   fundLoan: async (request: LoanRequest) => {
     const provider = ContractService.getProvider();
     const signer = await provider.getSigner();
-    
-    // CONVERSION LOGIC FOR DEMO:
-    // Real loan amounts (e.g. $1000) would be too expensive to test with real ETH.
-    // We use a nominal amount (0.0001 ETH) to represent the action on-chain 
-    // so users can test the flow with minimal gas/cost.
-    const nominalEthAmount = "0.0001"; 
+
+    // P3 Protocol uses a nominal commitment for protocol anchors
+    const nominalEthAmount = "0.0001";
 
     console.log(`Initiating Smart Contract Call: Fund Loan ${request.id}`);
 
@@ -46,7 +45,7 @@ export const ContractService = {
 
     // Wait for 1 confirmation (Block inclusion)
     const receipt = await txResponse.wait(1);
-    
+
     return {
       hash: receipt?.hash || txResponse.hash,
       blockNumber: receipt?.blockNumber,

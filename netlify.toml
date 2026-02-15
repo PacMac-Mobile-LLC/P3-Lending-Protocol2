@@ -3,7 +3,7 @@
   publish = "dist"
 
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "20"
 
 # Handle Single Page Application (SPA) Routing
 # This ensures that routes like /profile or /lend don't return 404 on refresh

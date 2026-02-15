@@ -3,9 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { Logo } from './Logo';
 import { Button } from './Button';
 import { UserProfile, EmployeeProfile, AdminRole, KYCTier, KYCStatus, Dispute, InternalTicket, WaitlistEntry } from '../types';
-import { PersistenceService } from '../services/persistence';
-import { SecurityService } from '../services/security';
-import { DocumentService } from '../services/documentService';
+import { PersistenceService } from '../client-services/persistence';
+import { SecurityService } from '../client-services/security';
+import { DocumentService } from '../client-services/documentService';
 import { ScoreGauge } from './ScoreGauge';
 import { AdminChatWidget } from './AdminChatWidget';
 
@@ -29,10 +29,10 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
   const [internalTickets, setInternalTickets] = useState<InternalTicket[]>([]);
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  
+
   // New State for Chat Blinking
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
-  
+
   // Waitlist Batch Logic
   const [batchSize, setBatchSize] = useState(10);
   const [isRollingOut, setIsRollingOut] = useState(false);
@@ -54,13 +54,13 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
       try {
         const u = await PersistenceService.getAllUsers();
         setUsers(u || []);
-        
+
         const e = await PersistenceService.getEmployees();
         setEmployees(e || []);
-        
+
         const t = await PersistenceService.getInternalTickets();
         setInternalTickets(t || []);
-        
+
         const d = await PersistenceService.getAllDisputes();
         setDisputes(d || []);
 
@@ -109,7 +109,7 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
       const updatedEmp = { ...emp, certificateData: cert };
       // Note: This would be async in real app
       PersistenceService.updateEmployee(updatedEmp).then(updatedList => setEmployees(updatedList));
-      
+
       // Trigger Download
       SecurityService.downloadCertificate(cert);
       alert(`Certificate downloaded for ${emp.name}. They must install this file on their device to log in.`);
@@ -128,7 +128,7 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
       if (targetUser) {
         const updated = { ...targetUser, isFrozen: !targetUser.isFrozen };
         await PersistenceService.saveUser(updated);
-        
+
         setUsers(prev => prev.map(u => u.id === userId ? updated : u));
         if (selectedUser?.id === userId) setSelectedUser(updated);
       }
@@ -140,12 +140,12 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
     if (note) {
       const targetUser = users.find(u => u.id === userId);
       if (targetUser) {
-         const existing = targetUser.adminNotes ? targetUser.adminNotes + '\n' : '';
-         const updated = { ...targetUser, adminNotes: `${existing}[${new Date().toLocaleDateString()} ${currentAdmin.name}]: ${note}` };
-         await PersistenceService.saveUser(updated);
-         
-         setUsers(prev => prev.map(u => u.id === userId ? updated : u));
-         if (selectedUser?.id === userId) setSelectedUser(updated);
+        const existing = targetUser.adminNotes ? targetUser.adminNotes + '\n' : '';
+        const updated = { ...targetUser, adminNotes: `${existing}[${new Date().toLocaleDateString()} ${currentAdmin.name}]: ${note}` };
+        await PersistenceService.saveUser(updated);
+
+        setUsers(prev => prev.map(u => u.id === userId ? updated : u));
+        if (selectedUser?.id === userId) setSelectedUser(updated);
       }
     }
   };
@@ -157,11 +157,11 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
       const updated = {
         ...targetUser,
         kycStatus: action === 'APPROVE' ? KYCStatus.VERIFIED : KYCStatus.REJECTED,
-        kycTier: action === 'APPROVE' ? KYCTier.TIER_2 : targetUser.kycTier, 
+        kycTier: action === 'APPROVE' ? KYCTier.TIER_2 : targetUser.kycTier,
         kycLimit: action === 'APPROVE' ? 50000 : targetUser.kycLimit
       };
       await PersistenceService.saveUser(updated);
-      
+
       setUsers(prev => prev.map(u => u.id === userId ? updated : u));
       if (selectedUser?.id === userId) setSelectedUser(updated);
       alert(`KYC ${action === 'APPROVE' ? 'Approved' : 'Rejected'} for User.`);
@@ -226,8 +226,8 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
   };
 
   const safeUsers = users || []; // Safety fallback
-  const filteredUsers = safeUsers.filter(u => 
-    u.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const filteredUsers = safeUsers.filter(u =>
+    u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.id?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -238,10 +238,10 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
   return (
     <div className="flex h-screen bg-[#050505] text-zinc-200 font-sans overflow-hidden">
       {/* Internal Chat Widget - Always mounted but hidden if closed */}
-      <AdminChatWidget 
-        currentUser={currentAdmin} 
-        isOpen={isChatOpen} 
-        onClose={() => setIsChatOpen(false)} 
+      <AdminChatWidget
+        currentUser={currentAdmin}
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
         onUnreadChange={setHasUnreadMessages}
       />
 
@@ -256,31 +256,31 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
             </div>
           </div>
         </div>
-        
+
         <nav className="flex-1 px-4 space-y-2 mt-4">
-          <button 
+          <button
             onClick={() => setActiveTab('OVERVIEW')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeTab === 'OVERVIEW' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-white'}`}
           >
             <span>📊</span> Overview
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('WAITLIST')}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${activeTab === 'WAITLIST' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-white'}`}
           >
-             <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3">
               <span>⏳</span> Waitlist Queue
             </div>
             {waitlist.filter(w => w.status === 'PENDING').length > 0 && <span className="bg-[#00e599] text-black text-xs font-bold px-1.5 rounded-full">{waitlist.filter(w => w.status === 'PENDING').length}</span>}
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('USERS')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeTab === 'USERS' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-white'}`}
           >
             <span>👥</span> User Management
           </button>
-          
-          <button 
+
+          <button
             onClick={() => setActiveTab('KYC')}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${activeTab === 'KYC' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-white'}`}
           >
@@ -290,28 +290,28 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
             {pendingKYCUsers.length > 0 && <span className="bg-amber-500 text-black text-xs font-bold px-1.5 rounded-full">{pendingKYCUsers.length}</span>}
           </button>
 
-          <button 
+          <button
             onClick={() => setActiveTab('DISPUTES')}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${activeTab === 'DISPUTES' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-white'}`}
           >
-             <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3">
               <span>⚖️</span> Alerts & Disputes
             </div>
             {openDisputes.length > 0 && <span className="bg-red-500 text-white text-xs font-bold px-1.5 rounded-full">{openDisputes.length}</span>}
           </button>
 
-          <button 
+          <button
             onClick={() => setActiveTab('KNOWLEDGE')}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${activeTab === 'KNOWLEDGE' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-white'}`}
           >
-             <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3">
               <span>📚</span> Knowledge & Tickets
             </div>
             {openTickets.length > 0 && <span className="bg-blue-500 text-white text-xs font-bold px-1.5 rounded-full">{openTickets.length}</span>}
           </button>
 
           {currentAdmin.role === 'ADMIN' && (
-            <button 
+            <button
               onClick={() => setActiveTab('TEAM')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeTab === 'TEAM' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-white'}`}
             >
@@ -321,18 +321,18 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
         </nav>
 
         <div className="p-4 border-t border-zinc-900">
-           <div className="flex items-center gap-3 mb-4 px-2">
-             <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-bold text-white">
-               {currentAdmin.name.charAt(0)}
-             </div>
-             <div className="overflow-hidden">
-               <div className="text-sm font-bold text-white truncate">{currentAdmin.name}</div>
-               <div className="text-xs text-zinc-500 truncate">{currentAdmin.email}</div>
-             </div>
-           </div>
-           <Button variant="ghost" size="sm" className="w-full justify-start text-red-400 hover:text-red-300" onClick={onLogout}>
-             Log Out
-           </Button>
+          <div className="flex items-center gap-3 mb-4 px-2">
+            <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-bold text-white">
+              {currentAdmin.name.charAt(0)}
+            </div>
+            <div className="overflow-hidden">
+              <div className="text-sm font-bold text-white truncate">{currentAdmin.name}</div>
+              <div className="text-xs text-zinc-500 truncate">{currentAdmin.email}</div>
+            </div>
+          </div>
+          <Button variant="ghost" size="sm" className="w-full justify-start text-red-400 hover:text-red-300" onClick={onLogout}>
+            Log Out
+          </Button>
         </div>
       </aside>
 
@@ -352,42 +352,42 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
             {activeTab === 'TEAM' && 'Employee Onboarding'}
           </h1>
           <div className="flex items-center gap-4">
-             <button 
-               onClick={() => setIsChatOpen(!isChatOpen)}
-               className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all 
-                 ${isChatOpen 
-                   ? 'bg-[#00e599]/10 border-[#00e599]/50 text-[#00e599]' 
-                   : hasUnreadMessages 
-                     ? 'bg-orange-500/20 border-orange-500 text-orange-500 animate-pulse' 
-                     : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'
-                 }`}
-             >
-                <div className="relative">
-                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-                   {/* Blink Badge */}
-                   <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-[#050505] transition-colors ${hasUnreadMessages ? 'bg-orange-500 animate-bounce' : 'bg-[#00e599]'}`}></span>
-                </div>
-                <span className="text-xs font-bold">
-                  {hasUnreadMessages ? 'New Message' : 'Team Chat'}
-                </span>
-             </button>
-             <div className="text-xs text-zinc-500 font-mono">
-               System Status: <span className="text-[#00e599]">OPERATIONAL</span> • <span className="text-red-500">ADMIN MODE</span>
-             </div>
+            <button
+              onClick={() => setIsChatOpen(!isChatOpen)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all 
+                 ${isChatOpen
+                  ? 'bg-[#00e599]/10 border-[#00e599]/50 text-[#00e599]'
+                  : hasUnreadMessages
+                    ? 'bg-orange-500/20 border-orange-500 text-orange-500 animate-pulse'
+                    : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'
+                }`}
+            >
+              <div className="relative">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                {/* Blink Badge */}
+                <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-[#050505] transition-colors ${hasUnreadMessages ? 'bg-orange-500 animate-bounce' : 'bg-[#00e599]'}`}></span>
+              </div>
+              <span className="text-xs font-bold">
+                {hasUnreadMessages ? 'New Message' : 'Team Chat'}
+              </span>
+            </button>
+            <div className="text-xs text-zinc-500 font-mono">
+              System Status: <span className="text-[#00e599]">OPERATIONAL</span> • <span className="text-red-500">ADMIN MODE</span>
+            </div>
           </div>
         </header>
 
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-          
+
           {/* OVERVIEW TAB */}
           {activeTab === 'OVERVIEW' && (
             <div className="space-y-6 animate-fade-in">
               {/* TOP ACTIONS */}
               <div className="flex justify-end">
-                 <Button onClick={() => DocumentService.generatePitchDeck()} size="sm" variant="outline">
-                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                   Download Investor Pitch Deck (PDF)
-                 </Button>
+                <Button onClick={() => DocumentService.generatePitchDeck()} size="sm" variant="outline">
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                  Download Investor Pitch Deck (PDF)
+                </Button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -404,8 +404,8 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
                   <div className="text-3xl font-bold text-blue-400">{waitlist.filter(w => w.status === 'PENDING').length}</div>
                 </div>
                 <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
-                   <div className="text-zinc-500 text-xs uppercase font-bold tracking-wider mb-2">Platform Risk Score</div>
-                   <div className="text-3xl font-bold text-amber-500">LOW</div>
+                  <div className="text-zinc-500 text-xs uppercase font-bold tracking-wider mb-2">Platform Risk Score</div>
+                  <div className="text-3xl font-bold text-amber-500">LOW</div>
                 </div>
               </div>
             </div>
@@ -413,227 +413,226 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
 
           {activeTab === 'WAITLIST' && (
             <div className="animate-fade-in">
-               <div className="flex justify-between items-center mb-6">
-                  <div>
-                    <h3 className="text-xl font-bold text-white">Waitlist Queue</h3>
-                    <p className="text-xs text-zinc-500">Oldest sign-ups are at the top.</p>
-                  </div>
-                  <div className="flex items-center gap-3 bg-zinc-900 p-2 rounded-lg border border-zinc-800">
-                    <span className="text-xs text-zinc-500 font-bold uppercase ml-2">Batch Rollout:</span>
-                    <input 
-                      type="number" 
-                      min="1" 
-                      max="1000" 
-                      value={batchSize} 
-                      onChange={(e) => setBatchSize(parseInt(e.target.value))}
-                      className="w-16 bg-black border border-zinc-700 rounded px-2 py-1 text-white text-sm text-center focus:border-[#00e599] outline-none"
-                    />
-                    <Button size="sm" onClick={handleBatchRollout} isLoading={isRollingOut}>
-                      Invite Next {batchSize}
-                    </Button>
-                  </div>
-               </div>
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-xl font-bold text-white">Waitlist Queue</h3>
+                  <p className="text-xs text-zinc-500">Oldest sign-ups are at the top.</p>
+                </div>
+                <div className="flex items-center gap-3 bg-zinc-900 p-2 rounded-lg border border-zinc-800">
+                  <span className="text-xs text-zinc-500 font-bold uppercase ml-2">Batch Rollout:</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="1000"
+                    value={batchSize}
+                    onChange={(e) => setBatchSize(parseInt(e.target.value))}
+                    className="w-16 bg-black border border-zinc-700 rounded px-2 py-1 text-white text-sm text-center focus:border-[#00e599] outline-none"
+                  />
+                  <Button size="sm" onClick={handleBatchRollout} isLoading={isRollingOut}>
+                    Invite Next {batchSize}
+                  </Button>
+                </div>
+              </div>
 
-               <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
                 <table className="w-full text-left text-sm text-zinc-400">
-                   <thead className="bg-black text-white text-xs uppercase tracking-wider">
-                     <tr><th className="p-4">Queue #</th><th className="p-4">Date</th><th className="p-4">Name</th><th className="p-4">Email</th><th className="p-4">Status</th><th className="p-4 text-right">Actions</th></tr>
-                   </thead>
-                   <tbody>
-                     {waitlist.length === 0 ? (
-                       <tr><td colSpan={6} className="p-8 text-center text-zinc-500">No users in waitlist.</td></tr>
-                     ) : (
-                       waitlist.map((w, index) => (
-                         <tr key={w.id} className="border-t border-zinc-800 hover:bg-black/40">
-                           <td className="p-4 font-mono text-xs text-zinc-600">#{index + 1}</td>
-                           <td className="p-4 font-mono text-xs">{new Date(w.created_at).toLocaleDateString()}</td>
-                           <td className="p-4 text-white font-bold">{w.name}</td>
-                           <td className="p-4">{w.email}</td>
-                           <td className="p-4">
-                             <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
-                               w.status === 'ONBOARDED' ? 'bg-green-500/20 text-green-500' :
-                               w.status === 'INVITED' ? 'bg-blue-500/20 text-blue-500' :
-                               'bg-zinc-800 text-zinc-400'
-                             }`}>
-                               {w.status}
-                             </span>
-                           </td>
-                           <td className="p-4 text-right">
-                             {w.status === 'PENDING' && (
-                               <Button size="sm" onClick={() => handleInviteWaitlist(w.id)}>Invite</Button>
-                             )}
-                           </td>
-                         </tr>
-                       ))
-                     )}
-                   </tbody>
+                  <thead className="bg-black text-white text-xs uppercase tracking-wider">
+                    <tr><th className="p-4">Queue #</th><th className="p-4">Date</th><th className="p-4">Name</th><th className="p-4">Email</th><th className="p-4">Status</th><th className="p-4 text-right">Actions</th></tr>
+                  </thead>
+                  <tbody>
+                    {waitlist.length === 0 ? (
+                      <tr><td colSpan={6} className="p-8 text-center text-zinc-500">No users in waitlist.</td></tr>
+                    ) : (
+                      waitlist.map((w, index) => (
+                        <tr key={w.id} className="border-t border-zinc-800 hover:bg-black/40">
+                          <td className="p-4 font-mono text-xs text-zinc-600">#{index + 1}</td>
+                          <td className="p-4 font-mono text-xs">{new Date(w.created_at).toLocaleDateString()}</td>
+                          <td className="p-4 text-white font-bold">{w.name}</td>
+                          <td className="p-4">{w.email}</td>
+                          <td className="p-4">
+                            <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${w.status === 'ONBOARDED' ? 'bg-green-500/20 text-green-500' :
+                                w.status === 'INVITED' ? 'bg-blue-500/20 text-blue-500' :
+                                  'bg-zinc-800 text-zinc-400'
+                              }`}>
+                              {w.status}
+                            </span>
+                          </td>
+                          <td className="p-4 text-right">
+                            {w.status === 'PENDING' && (
+                              <Button size="sm" onClick={() => handleInviteWaitlist(w.id)}>Invite</Button>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
                 </table>
               </div>
             </div>
           )}
 
           {(activeTab === 'USERS' || activeTab === 'KYC') && (
-             <div className="flex h-full gap-6 animate-fade-in">
-                {/* User List */}
-                <div className="w-1/3 flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-                   <div className="p-4 border-b border-zinc-800">
-                     <input 
-                       type="text" 
-                       placeholder="Search users..." 
-                       className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2 text-sm text-white focus:border-[#00e599] outline-none"
-                       value={searchTerm}
-                       onChange={e => setSearchTerm(e.target.value)}
-                     />
-                   </div>
-                   <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-zinc-800/50">
-                     {(activeTab === 'KYC' ? pendingKYCUsers : filteredUsers).map(u => (
-                       <div 
-                         key={u.id}
-                         onClick={() => setSelectedUser(u)}
-                         className={`p-4 cursor-pointer hover:bg-black/50 transition-colors ${selectedUser?.id === u.id ? 'bg-black border-l-2 border-l-[#00e599]' : ''}`}
-                       >
-                         <div className="flex justify-between items-center">
-                           <div className="overflow-hidden pr-2">
-                             <div className="font-bold text-white truncate">{u.name}</div>
-                             <div className="text-[10px] text-zinc-500 font-mono truncate">{u.id}</div>
-                           </div>
-                           <div className="text-xs">
-                             {u.kycStatus}
-                           </div>
-                         </div>
-                       </div>
-                     ))}
-                   </div>
+            <div className="flex h-full gap-6 animate-fade-in">
+              {/* User List */}
+              <div className="w-1/3 flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+                <div className="p-4 border-b border-zinc-800">
+                  <input
+                    type="text"
+                    placeholder="Search users..."
+                    className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2 text-sm text-white focus:border-[#00e599] outline-none"
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                  />
                 </div>
-                {/* User Details */}
-                <div className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl p-6 overflow-y-auto custom-scrollbar">
-                   {selectedUser ? (
-                     <div className="space-y-8 animate-fade-in">
-                       <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-6">
-                             <div className="w-24 h-24 bg-black rounded-full flex items-center justify-center border-4 border-zinc-800 relative">
-                                <div className="w-20 h-20">
-                                   <ScoreGauge score={selectedUser.reputationScore} />
-                                </div>
-                                {selectedUser.avatarUrl && <img src={selectedUser.avatarUrl} className="absolute inset-0 w-full h-full object-cover rounded-full opacity-50" />}
-                             </div>
-                             <div>
-                               <h2 className="text-3xl font-bold text-white tracking-tight">{selectedUser.name}</h2>
-                               <p className="text-zinc-500 font-mono text-xs mb-2">{selectedUser.id}</p>
-                               <div className="flex gap-2">
-                                  <span className="bg-zinc-800 px-2 py-0.5 rounded text-xs text-zinc-400 border border-zinc-700">{selectedUser.kycTier}</span>
-                               </div>
-                             </div>
+                <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-zinc-800/50">
+                  {(activeTab === 'KYC' ? pendingKYCUsers : filteredUsers).map(u => (
+                    <div
+                      key={u.id}
+                      onClick={() => setSelectedUser(u)}
+                      className={`p-4 cursor-pointer hover:bg-black/50 transition-colors ${selectedUser?.id === u.id ? 'bg-black border-l-2 border-l-[#00e599]' : ''}`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <div className="overflow-hidden pr-2">
+                          <div className="font-bold text-white truncate">{u.name}</div>
+                          <div className="text-[10px] text-zinc-500 font-mono truncate">{u.id}</div>
+                        </div>
+                        <div className="text-xs">
+                          {u.kycStatus}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* User Details */}
+              <div className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl p-6 overflow-y-auto custom-scrollbar">
+                {selectedUser ? (
+                  <div className="space-y-8 animate-fade-in">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-6">
+                        <div className="w-24 h-24 bg-black rounded-full flex items-center justify-center border-4 border-zinc-800 relative">
+                          <div className="w-20 h-20">
+                            <ScoreGauge score={selectedUser.reputationScore} />
                           </div>
+                          {selectedUser.avatarUrl && <img src={selectedUser.avatarUrl} className="absolute inset-0 w-full h-full object-cover rounded-full opacity-50" />}
+                        </div>
+                        <div>
+                          <h2 className="text-3xl font-bold text-white tracking-tight">{selectedUser.name}</h2>
+                          <p className="text-zinc-500 font-mono text-xs mb-2">{selectedUser.id}</p>
                           <div className="flex gap-2">
-                             {(currentAdmin.role === 'RISK_OFFICER' || currentAdmin.role === 'ADMIN') && (
-                               <Button 
-                                 size="sm" 
-                                 variant={selectedUser.isFrozen ? "primary" : "danger"}
-                                 className={selectedUser.isFrozen ? "bg-[#00e599] text-black border-none" : "bg-red-900/30 text-red-400 border-red-900"}
-                                 onClick={() => handleFreezeAccount(selectedUser.id)}
-                               >
-                                 {selectedUser.isFrozen ? "Unfreeze Account" : "Freeze Account"}
-                               </Button>
-                             )}
+                            <span className="bg-zinc-800 px-2 py-0.5 rounded text-xs text-zinc-400 border border-zinc-700">{selectedUser.kycTier}</span>
                           </div>
-                       </div>
-                       
-                       <div className="bg-black border border-zinc-800 rounded-xl overflow-hidden p-4">
-                          <div className="flex justify-between items-center mb-4">
-                             <h3 className="font-bold text-white text-sm">KYC Status</h3>
-                             <div className="flex gap-2">
-                                <Button size="sm" className="bg-green-600 hover:bg-green-500 text-white" onClick={() => handleKYCAction(selectedUser.id, 'APPROVE')}>Approve</Button>
-                                <Button size="sm" variant="danger" className="bg-red-900 hover:bg-red-800" onClick={() => handleKYCAction(selectedUser.id, 'REJECT')}>Reject</Button>
-                             </div>
-                          </div>
-                          <pre className="text-xs text-zinc-500 overflow-x-auto bg-zinc-900 p-2 rounded">{JSON.stringify(selectedUser.documents, null, 2)}</pre>
-                       </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {(currentAdmin.role === 'RISK_OFFICER' || currentAdmin.role === 'ADMIN') && (
+                          <Button
+                            size="sm"
+                            variant={selectedUser.isFrozen ? "primary" : "danger"}
+                            className={selectedUser.isFrozen ? "bg-[#00e599] text-black border-none" : "bg-red-900/30 text-red-400 border-red-900"}
+                            onClick={() => handleFreezeAccount(selectedUser.id)}
+                          >
+                            {selectedUser.isFrozen ? "Unfreeze Account" : "Freeze Account"}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
 
-                       <div>
-                          <div className="flex justify-between items-center mb-2">
-                             <h3 className="font-bold text-zinc-500 text-xs uppercase tracking-wide">Admin Notes</h3>
-                             <Button size="sm" variant="ghost" onClick={() => handleAddAdminNote(selectedUser.id)}>+ Add Note</Button>
-                          </div>
-                          <div className="bg-black border border-zinc-800 rounded-lg p-4 min-h-[100px] text-sm text-zinc-400 whitespace-pre-wrap font-mono">
-                             {selectedUser.adminNotes || "No notes on file."}
-                          </div>
-                       </div>
-                     </div>
-                   ) : (
-                     <div className="h-full flex flex-col items-center justify-center text-zinc-600">
-                        <p>Select a user to view details.</p>
-                     </div>
-                   )}
-                </div>
-             </div>
+                    <div className="bg-black border border-zinc-800 rounded-xl overflow-hidden p-4">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-bold text-white text-sm">KYC Status</h3>
+                        <div className="flex gap-2">
+                          <Button size="sm" className="bg-green-600 hover:bg-green-500 text-white" onClick={() => handleKYCAction(selectedUser.id, 'APPROVE')}>Approve</Button>
+                          <Button size="sm" variant="danger" className="bg-red-900 hover:bg-red-800" onClick={() => handleKYCAction(selectedUser.id, 'REJECT')}>Reject</Button>
+                        </div>
+                      </div>
+                      <pre className="text-xs text-zinc-500 overflow-x-auto bg-zinc-900 p-2 rounded">{JSON.stringify(selectedUser.documents, null, 2)}</pre>
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <h3 className="font-bold text-zinc-500 text-xs uppercase tracking-wide">Admin Notes</h3>
+                        <Button size="sm" variant="ghost" onClick={() => handleAddAdminNote(selectedUser.id)}>+ Add Note</Button>
+                      </div>
+                      <div className="bg-black border border-zinc-800 rounded-lg p-4 min-h-[100px] text-sm text-zinc-400 whitespace-pre-wrap font-mono">
+                        {selectedUser.adminNotes || "No notes on file."}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-zinc-600">
+                    <p>Select a user to view details.</p>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
 
           {activeTab === 'DISPUTES' && (
-             <div className="space-y-6 animate-fade-in">
-                <h3 className="text-xl font-bold text-white mb-6">Open Disputes</h3>
-                <div className="grid grid-cols-1 gap-4">
-                  {disputes.length === 0 ? (
-                    <div className="text-zinc-500 text-center py-10">No active disputes.</div>
-                  ) : disputes.map(dispute => (
-                     <div key={dispute.id} className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl flex justify-between items-start">
-                        <div>
-                           <div className="flex items-center gap-3 mb-2">
-                              <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${dispute.status === 'OPEN' ? 'bg-red-500/20 text-red-500' : 'bg-green-500/20 text-green-500'}`}>{dispute.status}</span>
-                              <span className="text-xs text-zinc-500">Created: {new Date(dispute.createdAt).toLocaleDateString()}</span>
-                           </div>
-                           <h4 className="text-white font-bold text-lg mb-1">{dispute.reason}</h4>
-                           <p className="text-sm text-zinc-400">
-                              Reporter: <span className="text-white">{dispute.reporterName}</span> vs Accused: <span className="text-white">{dispute.accusedName}</span>
-                           </p>
-                        </div>
-                        <div className="flex gap-2">
-                           {dispute.status === 'OPEN' && (
-                              <Button size="sm" onClick={() => handleResolveDispute(dispute.id, 'Resolved by Admin')}>Resolve</Button>
-                           )}
-                        </div>
-                     </div>
-                  ))}
-                </div>
-             </div>
+            <div className="space-y-6 animate-fade-in">
+              <h3 className="text-xl font-bold text-white mb-6">Open Disputes</h3>
+              <div className="grid grid-cols-1 gap-4">
+                {disputes.length === 0 ? (
+                  <div className="text-zinc-500 text-center py-10">No active disputes.</div>
+                ) : disputes.map(dispute => (
+                  <div key={dispute.id} className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${dispute.status === 'OPEN' ? 'bg-red-500/20 text-red-500' : 'bg-green-500/20 text-green-500'}`}>{dispute.status}</span>
+                        <span className="text-xs text-zinc-500">Created: {new Date(dispute.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      <h4 className="text-white font-bold text-lg mb-1">{dispute.reason}</h4>
+                      <p className="text-sm text-zinc-400">
+                        Reporter: <span className="text-white">{dispute.reporterName}</span> vs Accused: <span className="text-white">{dispute.accusedName}</span>
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      {dispute.status === 'OPEN' && (
+                        <Button size="sm" onClick={() => handleResolveDispute(dispute.id, 'Resolved by Admin')}>Resolve</Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
           {activeTab === 'KNOWLEDGE' && (
             <div className="grid grid-cols-12 gap-6 h-full animate-fade-in">
               <div className="col-span-4 bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden flex flex-col">
-                 <div className="p-4 border-b border-zinc-800 bg-black/20">
-                   <h3 className="font-bold text-white text-sm uppercase tracking-wide">SOPs</h3>
-                 </div>
-                 <div className="flex-1 p-4 space-y-4 text-zinc-400 text-sm">
-                    <p>Standard Operating Procedures are available here.</p>
-                 </div>
+                <div className="p-4 border-b border-zinc-800 bg-black/20">
+                  <h3 className="font-bold text-white text-sm uppercase tracking-wide">SOPs</h3>
+                </div>
+                <div className="flex-1 p-4 space-y-4 text-zinc-400 text-sm">
+                  <p>Standard Operating Procedures are available here.</p>
+                </div>
               </div>
               <div className="col-span-8 flex flex-col gap-6">
-                 <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-                    <h3 className="font-bold text-white mb-4">Create Ticket</h3>
-                    <form onSubmit={handleCreateTicket} className="flex gap-4">
-                       <input 
-                         required
-                         type="text" 
-                         placeholder="Subject" 
-                         className="flex-1 bg-black border border-zinc-800 rounded p-2 text-white"
-                         value={newTicket.subject}
-                         onChange={e => setNewTicket({...newTicket, subject: e.target.value})}
-                       />
-                       <Button type="submit" size="sm">Create</Button>
-                    </form>
-                 </div>
-                 <div className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden p-4 space-y-2">
-                    {internalTickets.map(ticket => (
-                       <div key={ticket.id} className="bg-black/40 border border-zinc-800 p-3 rounded flex justify-between">
-                          <div>
-                             <div className="text-white font-bold">{ticket.subject}</div>
-                             <div className="text-xs text-zinc-500">{ticket.status}</div>
-                          </div>
-                          {ticket.status === 'OPEN' && <Button size="sm" onClick={() => handleResolveInternalTicket(ticket.id)}>Resolve</Button>}
-                       </div>
-                    ))}
-                 </div>
+                <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+                  <h3 className="font-bold text-white mb-4">Create Ticket</h3>
+                  <form onSubmit={handleCreateTicket} className="flex gap-4">
+                    <input
+                      required
+                      type="text"
+                      placeholder="Subject"
+                      className="flex-1 bg-black border border-zinc-800 rounded p-2 text-white"
+                      value={newTicket.subject}
+                      onChange={e => setNewTicket({ ...newTicket, subject: e.target.value })}
+                    />
+                    <Button type="submit" size="sm">Create</Button>
+                  </form>
+                </div>
+                <div className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden p-4 space-y-2">
+                  {internalTickets.map(ticket => (
+                    <div key={ticket.id} className="bg-black/40 border border-zinc-800 p-3 rounded flex justify-between">
+                      <div>
+                        <div className="text-white font-bold">{ticket.subject}</div>
+                        <div className="text-xs text-zinc-500">{ticket.status}</div>
+                      </div>
+                      {ticket.status === 'OPEN' && <Button size="sm" onClick={() => handleResolveInternalTicket(ticket.id)}>Resolve</Button>}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -641,44 +640,44 @@ export const AdminDashboard: React.FC<Props> = ({ currentAdmin, onLogout }) => {
           {activeTab === 'TEAM' && currentAdmin.role === 'ADMIN' && (
             <div className="space-y-6 animate-fade-in">
               <div className="flex justify-between items-center">
-                 <h2 className="text-xl font-bold text-white">Employee Management</h2>
-                 <Button onClick={() => setShowAddEmployee(true)}>+ Onboard Employee</Button>
+                <h2 className="text-xl font-bold text-white">Employee Management</h2>
+                <Button onClick={() => setShowAddEmployee(true)}>+ Onboard Employee</Button>
               </div>
               {showAddEmployee && (
                 <div className="bg-zinc-900 p-4 rounded-xl border border-zinc-800">
-                   <form onSubmit={handleAddEmployee} className="flex gap-4">
-                      <input 
-                        type="text" 
-                        placeholder="Name" 
-                        className="bg-black border border-zinc-800 rounded p-2 text-white"
-                        value={newEmpData.name}
-                        onChange={e => setNewEmpData({...newEmpData, name: e.target.value})}
-                      />
-                      <input 
-                        type="email" 
-                        placeholder="Email" 
-                        className="bg-black border border-zinc-800 rounded p-2 text-white"
-                        value={newEmpData.email}
-                        onChange={e => setNewEmpData({...newEmpData, email: e.target.value})}
-                      />
-                      <Button type="submit">Create</Button>
-                   </form>
+                  <form onSubmit={handleAddEmployee} className="flex gap-4">
+                    <input
+                      type="text"
+                      placeholder="Name"
+                      className="bg-black border border-zinc-800 rounded p-2 text-white"
+                      value={newEmpData.name}
+                      onChange={e => setNewEmpData({ ...newEmpData, name: e.target.value })}
+                    />
+                    <input
+                      type="email"
+                      placeholder="Email"
+                      className="bg-black border border-zinc-800 rounded p-2 text-white"
+                      value={newEmpData.email}
+                      onChange={e => setNewEmpData({ ...newEmpData, email: e.target.value })}
+                    />
+                    <Button type="submit">Create</Button>
+                  </form>
                 </div>
               )}
               <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
                 <table className="w-full text-left text-sm text-zinc-400">
-                   <thead className="bg-black text-white">
-                     <tr><th className="p-4">Name</th><th className="p-4">Role</th><th className="p-4">Action</th></tr>
-                   </thead>
-                   <tbody>
-                     {employees.map(emp => (
-                       <tr key={emp.id} className="border-t border-zinc-800">
-                         <td className="p-4">{emp.name}</td>
-                         <td className="p-4">{emp.role}</td>
-                         <td className="p-4"><Button size="sm" variant="ghost" onClick={() => handleResetPasswordLink(emp)}>Reset PW</Button></td>
-                       </tr>
-                     ))}
-                   </tbody>
+                  <thead className="bg-black text-white">
+                    <tr><th className="p-4">Name</th><th className="p-4">Role</th><th className="p-4">Action</th></tr>
+                  </thead>
+                  <tbody>
+                    {employees.map(emp => (
+                      <tr key={emp.id} className="border-t border-zinc-800">
+                        <td className="p-4">{emp.name}</td>
+                        <td className="p-4">{emp.role}</td>
+                        <td className="p-4"><Button size="sm" variant="ghost" onClick={() => handleResetPasswordLink(emp)}>Reset PW</Button></td>
+                      </tr>
+                    ))}
+                  </tbody>
                 </table>
               </div>
             </div>

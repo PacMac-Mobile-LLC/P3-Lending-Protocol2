@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Button } from './Button';
-import { performComplianceCheck } from '../services/geminiService';
+import { performComplianceCheck } from '../client-services/geminiService';
 import { KYCTier } from '../types';
 
 interface Props {
@@ -12,7 +12,7 @@ interface Props {
 export const KYCVerificationModal: React.FC<Props> = ({ currentTier, onClose, onUpgradeComplete }) => {
   const [step, setStep] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
-  
+
   const idInputRef = useRef<HTMLInputElement>(null);
   const faceInputRef = useRef<HTMLInputElement>(null);
 
@@ -28,11 +28,11 @@ export const KYCVerificationModal: React.FC<Props> = ({ currentTier, onClose, on
     faceFile: null as string | null
   });
 
-  const nextTier = currentTier === KYCTier.TIER_0 ? KYCTier.TIER_1 : 
-                   currentTier === KYCTier.TIER_1 ? KYCTier.TIER_2 : KYCTier.TIER_3;
+  const nextTier = currentTier === KYCTier.TIER_0 ? KYCTier.TIER_1 :
+    currentTier === KYCTier.TIER_1 ? KYCTier.TIER_2 : KYCTier.TIER_3;
 
   const getTierInfo = (tier: KYCTier) => {
-    switch(tier) {
+    switch (tier) {
       case KYCTier.TIER_1: return { title: 'Basic Verification', limit: '$1,000', req: 'Legal Name, DOB, Address' };
       case KYCTier.TIER_2: return { title: 'Verified Identity', limit: '$50,000', req: 'Government ID, Facial Scan' };
       case KYCTier.TIER_3: return { title: 'Enhanced Due Diligence', limit: 'Unlimited', req: 'Source of Funds, Financial Statements' };
@@ -55,7 +55,7 @@ export const KYCVerificationModal: React.FC<Props> = ({ currentTier, onClose, on
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
-    
+
     // Simulate API delay and AI check
     try {
       const result = await performComplianceCheck({
@@ -67,19 +67,19 @@ export const KYCVerificationModal: React.FC<Props> = ({ currentTier, onClose, on
       });
 
       if (result.passed) {
-         setTimeout(() => {
-            const newLimit = nextTier === KYCTier.TIER_1 ? 1000 : nextTier === KYCTier.TIER_2 ? 50000 : 1000000;
-            
-            const docData = {
-              idType: formData.docType,
-              idFile: formData.idFile,
-              faceFile: formData.faceFile,
-              submittedAt: Date.now()
-            };
+        setTimeout(() => {
+          const newLimit = nextTier === KYCTier.TIER_1 ? 1000 : nextTier === KYCTier.TIER_2 ? 50000 : 1000000;
 
-            onUpgradeComplete(nextTier, newLimit, docData);
-            setIsProcessing(false);
-         }, 2000);
+          const docData = {
+            idType: formData.docType,
+            idFile: formData.idFile,
+            faceFile: formData.faceFile,
+            submittedAt: Date.now()
+          };
+
+          onUpgradeComplete(nextTier, newLimit, docData);
+          setIsProcessing(false);
+        }, 2000);
       } else {
         alert(`Verification Failed: ${result.reasoning}`);
         setIsProcessing(false);
@@ -93,7 +93,7 @@ export const KYCVerificationModal: React.FC<Props> = ({ currentTier, onClose, on
   return (
     <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[100] p-4">
       <div className="bg-[#0a0a0a] border border-zinc-800 rounded-3xl max-w-lg w-full shadow-[0_0_50px_rgba(0,229,153,0.05)] overflow-hidden animate-fade-in relative max-h-[90vh] overflow-y-auto custom-scrollbar">
-        
+
         {/* Decorative Grid Background */}
         <div className="absolute inset-0 bg-grid-pattern opacity-10 pointer-events-none"></div>
 
@@ -110,11 +110,11 @@ export const KYCVerificationModal: React.FC<Props> = ({ currentTier, onClose, on
         <div className="p-8 relative z-10">
           <div className="mb-8 bg-gradient-to-br from-[#00e599]/10 to-emerald-900/10 border border-[#00e599]/20 rounded-2xl p-5 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-20 h-20 bg-[#00e599]/10 blur-2xl rounded-full"></div>
-            
+
             <h3 className="text-[#00e599] font-bold uppercase text-[10px] tracking-widest mb-2">Upgrading to</h3>
             <div className="flex justify-between items-end">
-               <span className="text-2xl font-bold text-white">{targetInfo.title}</span>
-               <span className="text-[#00e599] font-mono font-bold bg-[#00e599]/10 border border-[#00e599]/20 px-2 py-0.5 rounded text-sm">{targetInfo.limit} Limit</span>
+              <span className="text-2xl font-bold text-white">{targetInfo.title}</span>
+              <span className="text-[#00e599] font-mono font-bold bg-[#00e599]/10 border border-[#00e599]/20 px-2 py-0.5 rounded text-sm">{targetInfo.limit} Limit</span>
             </div>
             <p className="text-xs text-zinc-400 mt-3 flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-[#00e599] shadow-[0_0_5px_#00e599]"></span>
@@ -128,82 +128,82 @@ export const KYCVerificationModal: React.FC<Props> = ({ currentTier, onClose, on
                 <div className="grid grid-cols-2 gap-5">
                   <div>
                     <label className="block text-xs text-zinc-500 mb-2 uppercase tracking-wide font-bold">First Name</label>
-                    <input 
+                    <input
                       required
-                      type="text" 
+                      type="text"
                       className="w-full bg-black border border-zinc-800 rounded-xl p-3 text-white text-sm focus:border-[#00e599] outline-none transition-colors"
                       value={formData.firstName}
-                      onChange={e => setFormData({...formData, firstName: e.target.value})}
+                      onChange={e => setFormData({ ...formData, firstName: e.target.value })}
                     />
                   </div>
                   <div>
                     <label className="block text-xs text-zinc-500 mb-2 uppercase tracking-wide font-bold">Last Name</label>
-                    <input 
+                    <input
                       required
-                      type="text" 
+                      type="text"
                       className="w-full bg-black border border-zinc-800 rounded-xl p-3 text-white text-sm focus:border-[#00e599] outline-none transition-colors"
                       value={formData.lastName}
-                      onChange={e => setFormData({...formData, lastName: e.target.value})}
+                      onChange={e => setFormData({ ...formData, lastName: e.target.value })}
                     />
                   </div>
                 </div>
                 <div>
-                   <label className="block text-xs text-zinc-500 mb-2 uppercase tracking-wide font-bold">Date of Birth</label>
-                   <input 
-                      required
-                      type="date" 
-                      className="w-full bg-black border border-zinc-800 rounded-xl p-3 text-white text-sm focus:border-[#00e599] outline-none transition-colors"
-                      value={formData.dob}
-                      onChange={e => setFormData({...formData, dob: e.target.value})}
-                    />
+                  <label className="block text-xs text-zinc-500 mb-2 uppercase tracking-wide font-bold">Date of Birth</label>
+                  <input
+                    required
+                    type="date"
+                    className="w-full bg-black border border-zinc-800 rounded-xl p-3 text-white text-sm focus:border-[#00e599] outline-none transition-colors"
+                    value={formData.dob}
+                    onChange={e => setFormData({ ...formData, dob: e.target.value })}
+                  />
                 </div>
                 <div>
-                   <label className="block text-xs text-zinc-500 mb-2 uppercase tracking-wide font-bold">Residential Address</label>
-                   <input 
-                      required
-                      type="text" 
-                      className="w-full bg-black border border-zinc-800 rounded-xl p-3 text-white text-sm focus:border-[#00e599] outline-none transition-colors"
-                      value={formData.address}
-                      onChange={e => setFormData({...formData, address: e.target.value})}
-                    />
+                  <label className="block text-xs text-zinc-500 mb-2 uppercase tracking-wide font-bold">Residential Address</label>
+                  <input
+                    required
+                    type="text"
+                    className="w-full bg-black border border-zinc-800 rounded-xl p-3 text-white text-sm focus:border-[#00e599] outline-none transition-colors"
+                    value={formData.address}
+                    onChange={e => setFormData({ ...formData, address: e.target.value })}
+                  />
                 </div>
                 <div>
-                   <label className="block text-xs text-zinc-500 mb-2 uppercase tracking-wide font-bold">SSN / TIN (Last 4)</label>
-                   <input 
-                      required
-                      type="password" 
-                      maxLength={4}
-                      placeholder="••••"
-                      className="w-32 bg-black border border-zinc-800 rounded-xl p-3 text-white text-sm focus:border-[#00e599] outline-none tracking-[0.5em] text-center"
-                      value={formData.ssn}
-                      onChange={e => setFormData({...formData, ssn: e.target.value})}
-                    />
+                  <label className="block text-xs text-zinc-500 mb-2 uppercase tracking-wide font-bold">SSN / TIN (Last 4)</label>
+                  <input
+                    required
+                    type="password"
+                    maxLength={4}
+                    placeholder="••••"
+                    className="w-32 bg-black border border-zinc-800 rounded-xl p-3 text-white text-sm focus:border-[#00e599] outline-none tracking-[0.5em] text-center"
+                    value={formData.ssn}
+                    onChange={e => setFormData({ ...formData, ssn: e.target.value })}
+                  />
                 </div>
 
                 {nextTier >= KYCTier.TIER_2 && (
                   <div className="border-t border-zinc-800 pt-5 mt-5">
                     <h4 className="text-white font-bold text-sm mb-4">Document Uploads</h4>
-                    
+
                     {/* ID Upload */}
                     <div className="mb-4">
                       <label className="block text-xs text-zinc-500 mb-2 uppercase tracking-wide font-bold">Government ID (Driver's License / Passport)</label>
-                      <div 
+                      <div
                         onClick={() => idInputRef.current?.click()}
                         className="border border-dashed border-zinc-700 bg-black/50 rounded-xl p-4 cursor-pointer hover:border-[#00e599] transition-colors flex items-center justify-center gap-3"
                       >
-                         {formData.idFile ? (
-                           <div className="text-[#00e599] flex items-center gap-2 text-sm font-bold">
-                             ✓ Document Loaded
-                           </div>
-                         ) : (
-                           <span className="text-zinc-500 text-sm">Click to upload ID</span>
-                         )}
+                        {formData.idFile ? (
+                          <div className="text-[#00e599] flex items-center gap-2 text-sm font-bold">
+                            ✓ Document Loaded
+                          </div>
+                        ) : (
+                          <span className="text-zinc-500 text-sm">Click to upload ID</span>
+                        )}
                       </div>
-                      <input 
-                        type="file" 
-                        ref={idInputRef} 
-                        className="hidden" 
-                        accept="image/*" 
+                      <input
+                        type="file"
+                        ref={idInputRef}
+                        className="hidden"
+                        accept="image/*"
                         onChange={(e) => handleFileChange(e, 'idFile')}
                       />
                     </div>
@@ -211,39 +211,39 @@ export const KYCVerificationModal: React.FC<Props> = ({ currentTier, onClose, on
                     {/* Face Scan */}
                     <div>
                       <label className="block text-xs text-zinc-500 mb-2 uppercase tracking-wide font-bold">Selfie / Face Scan</label>
-                      <div 
+                      <div
                         onClick={() => faceInputRef.current?.click()}
                         className="border border-dashed border-zinc-700 bg-black/50 rounded-xl p-4 cursor-pointer hover:border-[#00e599] transition-colors flex items-center justify-center gap-3"
                       >
-                         {formData.faceFile ? (
-                           <div className="text-[#00e599] flex items-center gap-2 text-sm font-bold">
-                             ✓ Face Scanned
-                           </div>
-                         ) : (
-                           <span className="text-zinc-500 text-sm">Click to upload Selfie</span>
-                         )}
+                        {formData.faceFile ? (
+                          <div className="text-[#00e599] flex items-center gap-2 text-sm font-bold">
+                            ✓ Face Scanned
+                          </div>
+                        ) : (
+                          <span className="text-zinc-500 text-sm">Click to upload Selfie</span>
+                        )}
                       </div>
-                      <input 
-                        type="file" 
-                        ref={faceInputRef} 
-                        className="hidden" 
-                        accept="image/*" 
+                      <input
+                        type="file"
+                        ref={faceInputRef}
+                        className="hidden"
+                        accept="image/*"
                         onChange={(e) => handleFileChange(e, 'faceFile')}
                       />
                     </div>
                   </div>
                 )}
-                
+
                 <p className="text-[10px] text-zinc-600 mt-4 text-center max-w-xs mx-auto">
                   Your data is encrypted and used solely for CIP (Customer Identification Program) compliance checks.
                 </p>
               </>
             )}
 
-            <Button 
-               type="submit" 
-               className="w-full mt-6" 
-               isLoading={isProcessing}
+            <Button
+              type="submit"
+              className="w-full mt-6"
+              isLoading={isProcessing}
             >
               {isProcessing ? 'Verifying Identity...' : (nextTier >= KYCTier.TIER_2 ? 'Submit for Review' : 'Confirm & Upgrade')}
             </Button>

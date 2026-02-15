@@ -26,6 +26,13 @@ The application features a high-contrast "Neon Green & Dark Zinc" aesthetic (ins
 
 ---
 
+## 🛠️ Development
+
+**Open in VS Code Dev:**
+[https://vscode.dev/github/PacMac-Mobile-LLC/P3-Lending-Protocol2/blob/main](https://vscode.dev/github/PacMac-Mobile-LLC/P3-Lending-Protocol2/blob/main)
+
+---
+
 ## 🔐 Google OAuth Setup (Required for Login)
 
 To enable the "Sign in with Google" button, you must set up a project in Google Cloud:

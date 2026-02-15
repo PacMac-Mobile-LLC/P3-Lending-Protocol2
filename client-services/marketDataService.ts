@@ -2,13 +2,17 @@
 // CoinGecko Public API
 const API_BASE = 'https://api.coingecko.com/api/v3';
 
+// Reversible obfuscation helper
+const reverseString = (str: string) => str.split('').reverse().join('');
+
+declare const __COINGECKO_KEY__: string;
+
 // Safely retrieve API Key
 let API_KEY = '';
 try {
-  // @ts-ignore
-  API_KEY = process.env.COINGECKO_API_KEY || '';
+  const rawKey = typeof __COINGECKO_KEY__ !== 'undefined' ? __COINGECKO_KEY__ : '';
+  API_KEY = reverseString(rawKey);
 } catch (e) {
-  // Ignore ReferenceError if process is not defined
   console.warn("Using public CoinGecko endpoints (No API Key detected)");
 }
 
@@ -39,7 +43,7 @@ export const MarketDataService = {
         `${API_BASE}/simple/price?ids=${ids.join(',')}&vs_currencies=usd&include_24hr_change=true&include_market_cap=true${apiKeyParam}`,
         { method: 'GET', headers: { 'Accept': 'application/json' } }
       );
-      
+
       if (!response.ok) throw new Error(`API Error: ${response.status}`);
       return await response.json();
     } catch (error) {
@@ -66,7 +70,7 @@ export const MarketDataService = {
       );
 
       if (!response.ok) throw new Error(`Chart API Error: ${response.status}`);
-      
+
       const data = await response.json();
       // CoinGecko returns [timestamp, price] arrays
       return data.prices.map((p: [number, number]) => ({
