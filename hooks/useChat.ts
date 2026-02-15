@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { ChatMessage } from '../types';
-import { PersistenceService } from '../services/persistence';
+import { PersistenceService } from '../client-services/persistence';
 
 interface UseChatProps {
   userId?: string;

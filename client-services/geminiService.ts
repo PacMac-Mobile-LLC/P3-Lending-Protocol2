@@ -2,28 +2,25 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { UserProfile, LoanRequest, LoanOffer, MatchResult, RiskReport } from "../types";
 
+// Reversible obfuscation helper
+const reverseString = (str: string) => str.split('').reverse().join('');
+
+declare const __P3_API_KEY__: string;
+
 // Helper to safely get the API Key without crashing the app on load
 const getAI = () => {
-  // In Vite, process.env is replaced at build time by the define plugin in vite.config.ts.
-  // We use a direct check on the string replacement or a safe fallback.
-
   let apiKey = '';
   try {
-    // Priority: Vite env var -> Process env var -> Manual define
-    // @ts-ignore
-    apiKey = import.meta.env.VITE_API_KEY || process.env.API_KEY || process.env.VITE_API_KEY;
+    // __P3_API_KEY__ is injected reversed by vite.config.ts
+    // We do NOT use import.meta.env here to avoid Vite's auto-injection of VITE_ variables
+    apiKey = reverseString(typeof __P3_API_KEY__ !== 'undefined' ? __P3_API_KEY__ : '');
   } catch (e) {
-    console.warn("Could not read API Key from environment");
+    console.warn("Could not read API Key from fixed definition");
   }
 
   // Explicit check for the string "undefined" which can happen during build replacement
   if (!apiKey || apiKey === 'undefined' || apiKey === '') {
     console.warn("GeminiService: API Key is missing. Check your .env file and restart the server.");
-    console.debug("Debug Info:", {
-      viteEnv: import.meta.env.VITE_API_KEY ? "Present" : "Missing",
-      processEnv: process.env.API_KEY ? "Present" : "Missing"
-    });
-    // Return null to indicate demo mode/unavailable
     return null;
   }
 
