@@ -1,11 +1,10 @@
--- Enable Extensions
+-- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- 1. Users Table
 CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    wallet_address TEXT UNIQUE NOT NULL CHECK (wallet_address = LOWER(wallet_address)),
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    wallet_address TEXT UNIQUE NOT NULL,
     kyc_tier INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -15,7 +14,7 @@ CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
 
 -- 2. Behavioral Signals Table
 CREATE TABLE IF NOT EXISTS behavioral_signals (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     signal_type TEXT NOT NULL,
     severity INTEGER CHECK (severity >= 1 AND severity <= 10),
@@ -28,7 +27,7 @@ CREATE INDEX IF NOT EXISTS idx_behavioral_signals_created_at ON behavioral_signa
 
 -- 3. Loan Activity Table
 CREATE TABLE IF NOT EXISTS loan_activity (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     borrower_id UUID NOT NULL REFERENCES users(id),
     lender_id UUID NOT NULL REFERENCES users(id),
     amount_usd NUMERIC NOT NULL,
@@ -43,7 +42,7 @@ CREATE INDEX IF NOT EXISTS idx_loan_activity_created_at ON loan_activity(created
 
 -- 4. Repayment History Table
 CREATE TABLE IF NOT EXISTS repayment_history (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     loan_id UUID NOT NULL REFERENCES loan_activity(id) ON DELETE CASCADE,
     amount NUMERIC NOT NULL,
     is_late BOOLEAN DEFAULT FALSE,
@@ -56,13 +55,13 @@ CREATE INDEX IF NOT EXISTS idx_repayment_history_created_at ON repayment_history
 
 -- 5. Trust Score Snapshots Table
 CREATE TABLE IF NOT EXISTS trust_score_snapshots (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     score INTEGER CHECK (score >= 0 AND score <= 100),
     risk_tier INTEGER,
     model_version TEXT NOT NULL,
     feature_vector_hash TEXT NOT NULL,
-    snapshot_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    snapshot_time TIMESTAMPTZ NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -70,12 +69,9 @@ CREATE INDEX IF NOT EXISTS idx_trust_score_snapshots_user_id ON trust_score_snap
 CREATE INDEX IF NOT EXISTS idx_trust_score_snapshots_snapshot_time ON trust_score_snapshots(snapshot_time);
 CREATE INDEX IF NOT EXISTS idx_trust_score_snapshots_created_at ON trust_score_snapshots(created_at);
 
--- Performance Index for Scoring Lookups
-CREATE INDEX IF NOT EXISTS idx_trust_snapshots_user_time ON trust_score_snapshots(user_id, snapshot_time DESC);
-
 -- 6. Fraud Flags Table
 CREATE TABLE IF NOT EXISTS fraud_flags (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     reason_code TEXT NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
@@ -88,7 +84,7 @@ CREATE INDEX IF NOT EXISTS idx_fraud_flags_created_at ON fraud_flags(created_at)
 
 -- 7. Audit Log Table
 CREATE TABLE IF NOT EXISTS audit_log (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     actor_id UUID REFERENCES users(id),
     action TEXT NOT NULL,
     resource_type TEXT NOT NULL,

@@ -9,16 +9,13 @@ const findKey = (obj: Record<string, string>, target: string) => {
   return key ? obj[key] : undefined;
 };
 
-// Reversible obfuscation to bypass Netlify's secret scanner
-const reverseString = (str: string) => str.split('').reverse().join('');
-
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
   const env = loadEnv(mode, (process as any).cwd(), '');
   const processEnv = process.env;
 
-  // ROBUST KEY LOADING
+  // ROBUST KEY LOADING: Check various names AND case-insensitive variations
   const apiKey =
     findKey(env, 'API_KEY') ||
     findKey(processEnv, 'API_KEY') ||
@@ -34,35 +31,33 @@ export default defineConfig(({ mode }) => {
     findKey(processEnv, 'COINGECKO_API') ||
     '';
 
-  const backendUrl = env.VITE_BACKEND_URL || '';
-  const anchorRegistry = env.REPUTATION_ANCHOR_REGISTRY || env.P3_PROTOCOL_ADDRESS || '';
-
-  // Obfuscate keys for the bundle
-  const obfuscatedApiKey = reverseString(apiKey);
-  const obfuscatedCoinGeckoKey = reverseString(coinGeckoKey);
-
-  // Debugging logs (Safe: keys are not printed literally)
+  // Debugging logs during build/start (visible in terminal)
   console.log(`\n--- P3 PROTOCOL CONFIGURATION ---`);
-  console.log(`✅ API Configuration Loaded (Obfuscated for Security)`);
-  console.log(`✅ Backend URL: ${backendUrl || 'Relative (Default)'}`);
+  if (apiKey) {
+    console.log(`✅ API Key Loaded: ${apiKey.substring(0, 4)}... (Length: ${apiKey.length})`);
+  } else {
+    console.warn("⚠️  API Key MISSING (Gemini AI features will be disabled)");
+  }
   console.log(`---------------------------------\n`);
 
   return {
     plugins: [
       react(),
       nodePolyfills({
+        // Whether to polyfill `node:` protocol imports.
         protocolImports: true,
       }),
     ],
     resolve: {
-      alias: {},
+      alias: {
+        // No manual aliases needed with the plugin
+      },
     },
     define: {
-      // Inject obfuscated keys via custom globals (User requested naming)
-      '__GEMINI_KEY__': JSON.stringify(obfuscatedApiKey),
-      '__COINGECKO_KEY__': JSON.stringify(obfuscatedCoinGeckoKey),
-      '__BACKEND_URL__': JSON.stringify(backendUrl),
-      '__P3_PROTOCOL_ADDRESS__': JSON.stringify(anchorRegistry),
+      // Securely inject the keys during build
+      'process.env.API_KEY': JSON.stringify(apiKey),
+      'process.env.COINGECKO_API_KEY': JSON.stringify(coinGeckoKey),
+      // Ensure global is available
       'global': 'window',
     },
     build: {
@@ -70,11 +65,6 @@ export default defineConfig(({ mode }) => {
       commonjsOptions: {
         transformMixedEsModules: true,
       },
-    },
-    test: {
-      globals: true,
-      environment: 'jsdom',
-      setupFiles: './src/test/setup.ts',
     }
   };
 });

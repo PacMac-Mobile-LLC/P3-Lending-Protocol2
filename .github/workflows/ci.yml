@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install backend dependencies
+        run: npm --prefix server ci
+
+      - name: Install contract dependencies
+        run: npm --prefix contracts ci
+
+      - name: Frontend typecheck/lint
+        run: npm run lint
+
+      - name: Frontend unit tests
+        run: npm run test
+
+      - name: Backend unit/integration tests
+        run: npm --prefix server run test
+
+      - name: Contract tests
+        run: npm --prefix contracts test
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E smoke
+        run: npm run e2e

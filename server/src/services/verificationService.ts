@@ -1,82 +1,14 @@
-import { ethers } from 'ethers';
-import { supabase } from '../config/supabase';
-import { BlockchainService } from './blockchainService';
-import logger from '../utils/logger';
+import { getDbClient } from './dbClient';
 
 export const VerificationService = {
     /**
-     * Reconstructs the Keccak256 hash of a snapshot using a deterministic sequence.
-     * FROZEN SPEC: [user_id|score|risk_tier|snapshot_time|model_version|feature_vector_hash]
+     * Verifies if a snapshot hash corresponds to a valid trust score snapshot.
+     * @param hash The feature_vector_hash to verify
      */
-    reconstructSnapshotHash: (snapshot: any): string => {
-        const payload = [
-            snapshot.user_id,
-            snapshot.score,
-            snapshot.risk_tier,
-            new Date(snapshot.snapshot_time).toISOString(), // Rule: Force ISO UTC normalization
-            snapshot.model_version,
-            snapshot.feature_vector_hash
-        ].join('|');
+    verifySnapshotHash: async (hash: string, accessToken?: string) => {
+        const client = getDbClient(accessToken);
 
-        return ethers.keccak256(ethers.toUtf8Bytes(payload));
-    },
-
-    /**
-     * Orchestrates the Pull-Verification bridge.
-     * Resolves userId -> wallet, reconstructs local hash, and compares with Ethereum anchor.
-     */
-    verifyTrustSnapshot: async (userId: string) => {
-        // 1. Fetch latest snapshot AND user wallet address
-        const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select(`
-        wallet_address,
-        trust_score_snapshots (
-          user_id,
-          score,
-          risk_tier,
-          snapshot_time,
-          model_version,
-          feature_vector_hash
-        )
-      `)
-            .eq('id', userId)
-            .order('snapshot_time', { foreignTable: 'trust_score_snapshots', ascending: false })
-            .limit(1, { foreignTable: 'trust_score_snapshots' })
-            .single();
-
-        if (userError || !userData) {
-            throw new Error(`User or snapshot not found: ${userError?.message || 'None'}`);
-        }
-
-        const snapshot = userData.trust_score_snapshots[0];
-        if (!snapshot) {
-            return { verified: false, localHash: null, onChainHash: null, error: 'No snapshot found for user' };
-        }
-
-        // 2. Local Reconstruction
-        const localHash = VerificationService.reconstructSnapshotHash(snapshot);
-
-        // 3. Chain Resolution
-        const onChainHash = await BlockchainService.getAnchoredHash(userData.wallet_address);
-
-        // 4. Strict Equality Comparison
-        const verified = !!onChainHash && (localHash.toLowerCase() === onChainHash.toLowerCase());
-
-        logger.info({ userId, verified, localHash, onChainHash }, 'Hash Bridge Verification Complete');
-
-        return {
-            verified,
-            localHash,
-            onChainHash
-        };
-    },
-
-    /**
-     * (Legacy/Simple) Verifies if a raw hash corresponds to a valid trust score snapshot in DB.
-     */
-    verifySnapshotHash: async (hash: string) => {
-        const { data, error } = await supabase
+        const { data, error } = await client
             .from('trust_score_snapshots')
             .select('snapshot_time')
             .eq('feature_vector_hash', hash)
@@ -89,7 +21,129 @@ export const VerificationService = {
 
         return {
             isValid: !!data,
-            snapshotTime: data ? data.snapshot_time : null
+            snapshotTime: data ? data.snapshot_time : null,
+            isChainVerified: false,
         };
-    }
+    },
+
+    submitKYC: async (
+        payload: {
+            userId: string;
+            requestedTier: number;
+            provider?: string;
+            rawResponse?: Record<string, unknown>;
+        },
+        accessToken?: string
+    ) => {
+        const client = getDbClient(accessToken);
+
+        const { data: updatedUser, error: updateError } = await client
+            .from('users')
+            .update({
+                kyc_tier: payload.requestedTier,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', payload.userId)
+            .select('id, wallet_address, kyc_tier, created_at, updated_at')
+            .single();
+
+        if (updateError) {
+            throw new Error(`Failed to update KYC tier: ${updateError.message}`);
+        }
+
+        const { error: auditError } = await client
+            .from('audit_log')
+            .insert({
+                actor_id: payload.userId,
+                action: 'kyc_submission',
+                resource_type: 'users',
+                resource_id: payload.userId,
+                metadata: {
+                    provider: payload.provider || 'manual',
+                    requested_tier: payload.requestedTier,
+                    raw_response: payload.rawResponse || null,
+                },
+            });
+
+        if (auditError) {
+            throw new Error(`Failed to write KYC audit log: ${auditError.message}`);
+        }
+
+        return updatedUser;
+    },
+
+    getVerificationStatus: async (userId: string, accessToken?: string) => {
+        const client = getDbClient(accessToken);
+
+        const { data: userData, error: userError } = await client
+            .from('users')
+            .select('id, kyc_tier, updated_at')
+            .eq('id', userId)
+            .maybeSingle();
+
+        if (userError) {
+            throw new Error(`Failed to fetch verification status: ${userError.message}`);
+        }
+
+        if (!userData) {
+            return null;
+        }
+
+        const { data: latestSnapshot, error: snapshotError } = await client
+            .from('trust_score_snapshots')
+            .select('score, risk_tier, snapshot_time, model_version')
+            .eq('user_id', userId)
+            .order('snapshot_time', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (snapshotError) {
+            throw new Error(`Failed to fetch trust snapshot status: ${snapshotError.message}`);
+        }
+
+        return {
+            user_id: userData.id,
+            kyc_tier: userData.kyc_tier,
+            status_updated_at: userData.updated_at,
+            latest_trust_snapshot: latestSnapshot,
+        };
+    },
+
+    createAttestation: async (
+        payload: {
+            actorId: string;
+            userId: string;
+            snapshotHash: string;
+            note?: string;
+        },
+        accessToken?: string
+    ) => {
+        const client = getDbClient(accessToken);
+
+        const attestationRef = `att_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+        const { error } = await client
+            .from('audit_log')
+            .insert({
+                actor_id: payload.actorId,
+                action: 'snapshot_attestation_anchor',
+                resource_type: 'trust_score_snapshots',
+                resource_id: payload.userId,
+                metadata: {
+                    attestation_reference: attestationRef,
+                    snapshot_hash: payload.snapshotHash,
+                    note: payload.note || null,
+                },
+            });
+
+        if (error) {
+            throw new Error(`Failed to create attestation audit record: ${error.message}`);
+        }
+
+        return {
+            attestation_reference: attestationRef,
+            snapshot_hash: payload.snapshotHash,
+            anchored_at: new Date().toISOString(),
+        };
+    },
 };

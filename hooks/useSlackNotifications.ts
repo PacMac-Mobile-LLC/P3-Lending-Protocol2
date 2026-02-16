@@ -1,7 +1,7 @@
-import { sendSlackNotification, SlackField } from '../client-services/slackService';
+import { sendSlackNotification, SlackField } from '../services/slackService';
 
 export const useSlackNotifications = () => {
-
+  
   const notifyLoanCreated = async (loan: { id: string; amount: number; purpose: string; borrower: string }) => {
     return sendSlackNotification({
       title: 'New Loan Request Created',
