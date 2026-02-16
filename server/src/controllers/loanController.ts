@@ -41,7 +41,7 @@ export const LoanController = {
             if (error instanceof z.ZodError) {
                 return res.status(400).json({
                     success: false,
-                    error: error.errors[0]?.message || 'Invalid request body'
+                    error: error.issues[0]?.message || 'Invalid request body'
                 });
             }
 
