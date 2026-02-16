@@ -13,6 +13,9 @@ import adminRoutes from './routes/adminRoutes';
 
 const app = express();
 
+// Trust proxy for Render/Load Balancers
+app.set('trust proxy', 1);
+
 // Security Middleware
 app.use(helmet());
 app.use(cors({
