@@ -4,9 +4,17 @@ import { LoanRequest } from '../types';
 
 declare const __P3_PROTOCOL_ADDRESS__: string;
 
-// A dynamic address representing the P3 Protocol Smart Contract
-// Injected via vite.config.ts from REPUTATION_ANCHOR_REGISTRY env var
-const PROTOCOL_ESCROW_ADDRESS = typeof __P3_PROTOCOL_ADDRESS__ !== 'undefined' ? __P3_PROTOCOL_ADDRESS__ : '';
+// Validate that the address is actually an Ethereum address (0x...) and not a URL
+const isValidEthAddress = (addr: string): boolean => {
+  return /^0x[a-fA-F0-9]{40}$/.test(addr);
+};
+
+const rawProtocolAddress = typeof __P3_PROTOCOL_ADDRESS__ !== 'undefined' ? __P3_PROTOCOL_ADDRESS__ : '';
+const PROTOCOL_ESCROW_ADDRESS = isValidEthAddress(rawProtocolAddress) ? rawProtocolAddress : '';
+
+if (!PROTOCOL_ESCROW_ADDRESS) {
+  console.warn('⚠️  P3 Protocol address not configured or invalid. Smart contract features will be disabled.');
+}
 
 export const ContractService = {
   /**
