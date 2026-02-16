@@ -9,6 +9,7 @@ interface Props {
   myOffers: LoanOffer[];
   communityRequests: LoanRequest[];
   onCreateOffer: (offer: LoanOffer) => void;
+  onFundRequest: (request: LoanRequest) => void;
 }
 
 interface Notification {
@@ -19,7 +20,7 @@ interface Notification {
   score: number;
 }
 
-export const LenderDashboard: React.FC<Props> = ({ user, myOffers, communityRequests, onCreateOffer }) => {
+export const LenderDashboard: React.FC<Props> = ({ user, myOffers, communityRequests, onCreateOffer, onFundRequest }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
   const [matches, setMatches] = useState<MatchResult[]>([]);
@@ -275,7 +276,7 @@ export const LenderDashboard: React.FC<Props> = ({ user, myOffers, communityRequ
                         <div className="mb-4 text-xs text-zinc-400 italic border-l-2 border-[#00e599]/30 pl-3 leading-relaxed flex-1">
                           "{match.reasoning}"
                         </div>
-                        <Button className="w-full mt-auto">Fund Loan</Button>
+                        <Button className="w-full mt-auto" onClick={() => onFundRequest(req)}>Fund Loan</Button>
                       </div>
                     );
                   })}

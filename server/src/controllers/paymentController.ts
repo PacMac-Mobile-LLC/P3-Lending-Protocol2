@@ -16,6 +16,10 @@ export const PaymentController = {
         try {
             const { amount, userId, userEmail } = req.body;
 
+            if (!config.stripe.secretKey) {
+                return res.status(500).json({ success: false, error: 'Stripe is not configured on the server. Please add STRIPE_SECRET_KEY to .env' });
+            }
+
             if (!amount || !userId) {
                 return res.status(400).json({ success: false, error: 'Missing amount or userId' });
             }
@@ -36,13 +40,15 @@ export const PaymentController = {
                     },
                 ],
                 mode: 'payment',
-                success_url: `${req.headers.origin}/profile?session_id={CHECKOUT_SESSION_ID}`,
-                cancel_url: `${req.headers.origin}/profile`,
+                success_url: `${req.headers.origin || 'https://p3-lending-protocol.netlify.app'}/profile?session_id={CHECKOUT_SESSION_ID}`,
+                cancel_url: `${req.headers.origin || 'https://p3-lending-protocol.netlify.app'}/profile`,
                 customer_email: userEmail,
                 metadata: {
                     userId,
                     amount: amount.toString(),
                 },
+                // Disable automatic tax for wallet deposits
+                automatic_tax: { enabled: false },
             });
 
             return res.status(200).json({ success: true, url: session.url });

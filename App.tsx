@@ -621,7 +621,7 @@ const App: React.FC = () => {
 
               {activeView === 'lend' && (
                 <div className="max-w-6xl mx-auto animate-fade-in">
-                  <LenderDashboard user={user} myOffers={myOffers} communityRequests={communityRequests} onCreateOffer={handleCreateOffer} />
+                  <LenderDashboard user={user} myOffers={myOffers} communityRequests={communityRequests} onCreateOffer={handleCreateOffer} onFundRequest={handleFundRequest} />
                 </div>
               )}
 
