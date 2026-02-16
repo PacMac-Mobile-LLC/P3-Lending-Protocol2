@@ -13,9 +13,10 @@ The application features a high-contrast "Neon Green & Dark Zinc" aesthetic (ins
     ```
 
 2.  **Environment Setup**
-    Create a `.env` file in the root directory:
+    Create a `.env` file in the root directory (see `.env.example`):
     ```env
     API_KEY=your_google_genai_api_key_here
+    GOOGLE_CLIENT_ID=your_google_cloud_client_id
     ```
 
 3.  **Run Application**
@@ -25,61 +26,28 @@ The application features a high-contrast "Neon Green & Dark Zinc" aesthetic (ins
 
 ---
 
-## 🔐 OAuth Integration Guide
+## 🛠️ Development
 
-Currently, the app uses a mock `INITIAL_USER` in `App.tsx`. To integrate real-world authentication (OAuth 2.0 / OIDC), follow these steps:
+**Open in VS Code Dev:**
+[https://vscode.dev/github/PacMac-Mobile-LLC/P3-Lending-Protocol2/blob/main](https://vscode.dev/github/PacMac-Mobile-LLC/P3-Lending-Protocol2/blob/main)
 
-### 1. Choose an Identity Provider
-We recommend **Auth0**, **Clerk**, or **Firebase Auth** for React applications.
+---
 
-### 2. Frontend Implementation (Example: Auth0)
+## 🔐 Google OAuth Setup (Required for Login)
 
-**Install SDK:**
-```bash
-npm install @auth0/auth0-react
-```
+To enable the "Sign in with Google" button, you must set up a project in Google Cloud:
 
-**Configure Provider (`index.tsx`):**
-Wrap your root component with the provider.
-```tsx
-import { Auth0Provider } from "@auth0/auth0-react";
-
-root.render(
-  <Auth0Provider
-    domain="YOUR_AUTH0_DOMAIN"
-    clientId="YOUR_CLIENT_ID"
-    authorizationParams={{ redirect_uri: window.location.origin }}
-  >
-    <App />
-  </Auth0Provider>
-);
-```
-
-**Replace Mock User (`App.tsx`):**
-Use the hook to hydrate user data.
-```tsx
-import { useAuth0 } from "@auth0/auth0-react";
-
-const App = () => {
-  const { user, isAuthenticated, loginWithRedirect } = useAuth0();
-
-  // Map Auth0 user to UserProfile type
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      setUser({
-        id: user.sub,
-        name: user.name,
-        // ... fetch remaining profile data from your database
-      });
-    }
-  }, [user]);
-  
-  // ...
-}
-```
-
-### 3. Backend Token Verification
-Ensure every request to your API includes the `Authorization: Bearer <token>` header. Verify this token on your backend using JWKS.
+1.  Go to [Google Cloud Console](https://console.cloud.google.com/).
+2.  **Create a Project**.
+3.  Go to **APIs & Services > OAuth consent screen**.
+    *   Select **External**.
+    *   Fill in App Name and Support Email.
+    *   Save.
+4.  Go to **Credentials > Create Credentials > OAuth client ID**.
+    *   Type: **Web application**.
+    *   **Authorized JavaScript origins**: `http://localhost:5173`
+    *   **Authorized redirect URIs**: `http://localhost:5173`
+5.  Copy the **Client ID** and paste it into your `.env` file as `GOOGLE_CLIENT_ID`.
 
 ---
 
