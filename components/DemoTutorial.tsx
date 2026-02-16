@@ -140,6 +140,12 @@ export const DemoTutorial: React.FC<{ onClose: () => void }> = ({ onClose }) => 
     };
 
     const handleSkip = () => {
+        localStorage.setItem('p3_tutorial_completed', 'true');
+        onClose();
+    };
+
+    const handleComplete = () => {
+        localStorage.setItem('p3_tutorial_completed', 'true');
         onClose();
     };
 
@@ -214,10 +220,10 @@ export const DemoTutorial: React.FC<{ onClose: () => void }> = ({ onClose }) => 
                                 key={index}
                                 onClick={() => setCurrentStep(index)}
                                 className={`w-2 h-2 rounded-full transition-all ${index === currentStep
-                                        ? 'bg-emerald-500 w-8'
-                                        : completedSteps.has(index)
-                                            ? 'bg-emerald-500/50'
-                                            : 'bg-gray-600'
+                                    ? 'bg-emerald-500 w-8'
+                                    : completedSteps.has(index)
+                                        ? 'bg-emerald-500/50'
+                                        : 'bg-gray-600'
                                     }`}
                             />
                         ))}
@@ -225,7 +231,7 @@ export const DemoTutorial: React.FC<{ onClose: () => void }> = ({ onClose }) => 
 
                     {currentStep === tutorialSteps.length - 1 ? (
                         <button
-                            onClick={onClose}
+                            onClick={handleComplete}
                             className="flex items-center gap-2 px-6 py-2 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold hover:from-emerald-500 hover:to-teal-500 transition-all"
                         >
                             Get Started

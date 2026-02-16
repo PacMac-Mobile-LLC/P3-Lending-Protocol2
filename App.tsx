@@ -105,6 +105,20 @@ const App: React.FC = () => {
   const [isCharityGuaranteed, setIsCharityGuaranteed] = useState(false);
   const [selectedCharity, setSelectedCharity] = useState<string>(PRODUCTION_CHARITIES[0].id);
 
+  // Auto-launch tutorial for first-time users
+  useEffect(() => {
+    if (isAuthenticated && user && !showLanding) {
+      const hasSeenTutorial = localStorage.getItem('p3_tutorial_completed');
+      if (!hasSeenTutorial) {
+        // Delay slightly to let the dashboard load first
+        const timer = setTimeout(() => {
+          setShowTutorial(true);
+        }, 1500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [isAuthenticated, user, showLanding]);
+
   // Helper to refresh global data
   const refreshGlobalData = async () => {
     try {
