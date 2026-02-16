@@ -11,8 +11,7 @@
     ],
     "skipLibCheck": true,
     "types": [
-      "node",
-      "vite/client"
+      "node"
     ],
     "moduleResolution": "bundler",
     "isolatedModules": true,
@@ -26,5 +25,27 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "include": [
+    "App.tsx",
+    "index.tsx",
+    "config.ts",
+    "supabaseClient.ts",
+    "types.ts",
+    "components/**/*.ts",
+    "components/**/*.tsx",
+    "hooks/**/*.ts",
+    "services/**/*.ts",
+    "serviceWorkerRegistration.ts",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts"
+  ],
+  "exclude": [
+    "P3Guide/**",
+    "server/**",
+    "tests/**",
+    "dist/**",
+    "node_modules/**"
+  ]
 }

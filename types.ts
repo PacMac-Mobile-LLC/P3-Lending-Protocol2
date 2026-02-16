@@ -40,19 +40,18 @@ export interface ReferralData {
 
 export interface UserProfile {
   id: string;
-  email: string;
   name: string;
   avatarUrl?: string; // New field for Profile Pic
   income: number;
   balance: number; // Platform balance
   employmentStatus: string;
-  financialHistory: string;
-  reputationScore: number;
+  financialHistory: string; 
+  reputationScore: number; 
   riskAnalysis?: string;
   successfulRepayments: number;
   currentStreak: number;
   badges: string[];
-
+  
   // KYC / AML Data
   kycTier: KYCTier;
   kycStatus: KYCStatus;
@@ -69,15 +68,15 @@ export interface UserProfile {
   // Mentorship Stats
   mentorshipsCount?: number;
   totalSponsored?: number;
-
+  
   // Referral System
   referredBy?: string; // ID of the user who referred this profile
   referrals: ReferralData[]; // List of people I have referred
-
+  
   // Blockchain Data (Simulated for Risk Engine)
   walletAgeDays?: number;
   txCount?: number;
-
+  
   // Trading Portfolio
   portfolio?: PortfolioItem[];
 }
@@ -122,7 +121,7 @@ export interface LoanRequest {
   isSponsorship?: boolean; // If true, this is a microloan funded by a mentor
   mentorId?: string;
   isCharityGuaranteed?: boolean; // Fresh Start protocol
-
+  
   // Smart Contract Escrow Data
   smartContractAddress?: string;
   escrowTxHash?: string;
@@ -191,7 +190,7 @@ export interface EmployeeProfile {
   role: AdminRole;
   isActive: boolean;
   lastLogin?: string;
-
+  
   // Security Features
   passwordHash: string; // Simulated hash
   passwordLastSet: number; // Timestamp

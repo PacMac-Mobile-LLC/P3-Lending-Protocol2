@@ -4,13 +4,23 @@
   "version": "2.4.0",
   "type": "module",
   "engines": {
-    "node": ">=20.0.0"
+    "node": "18.x"
   },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "vite"
+    "start": "vite",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:contracts": "npm --prefix contracts test",
+    "test:watch": "vitest",
+    "e2e": "playwright test",
+    "e2e-ui": "playwright test --ui",
+    "lint": "npm run typecheck",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css,html}\"",
+    "ci": "npm run lint && npm run test && npm --prefix server run test && npm run test:contracts && npm run e2e"
   },
   "dependencies": {
     "@coinbase/wallet-sdk": "^3.7.2",
@@ -31,27 +41,26 @@
     "semver": "^7.6.0",
     "siwe": "^2.1.4",
     "stream-browserify": "^3.0.0",
-    "util": "^0.12.5"
+    "util": "^0.12.5",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
-    "@testing-library/user-event": "^14.6.1",
+    "@playwright/test": "^1.55.0",
     "@types/netlify-identity-widget": "^1.9.6",
     "@types/react": "^18.2.56",
     "@types/react-dom": "^18.2.19",
     "@vitejs/plugin-react": "^4.2.1",
-    "autoprefixer": "^10.4.24",
-    "jsdom": "^28.1.0",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^3.4.19",
+    "autoprefixer": "^10.4.17",
+    "prettier": "^3.3.3",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
     "typescript": "^5.2.2",
     "vite": "^5.1.4",
     "vite-plugin-node-polyfills": "^0.25.0",
-    "vitest": "^4.0.18"
+    "vitest": "^2.1.9"
   },
   "optionalDependencies": {
-    "@esbuild/linux-x64": "0.21.5",
-    "@rollup/rollup-linux-x64-gnu": "4.9.5"
+    "@rollup/rollup-linux-x64-gnu": "4.9.5",
+    "@esbuild/linux-x64": "0.21.5"
   }
 }

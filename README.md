@@ -24,12 +24,39 @@ The application features a high-contrast "Neon Green & Dark Zinc" aesthetic (ins
     npm start
     ```
 
----
+## 🧪 Standardized Local Workflow
 
-## 🛠️ Development
+The repository now includes a top-level `Justfile` to keep local and CI commands consistent.
 
-**Open in VS Code Dev:**
-[https://vscode.dev/github/PacMac-Mobile-LLC/P3-Lending-Protocol2/blob/main](https://vscode.dev/github/PacMac-Mobile-LLC/P3-Lending-Protocol2/blob/main)
+1.  **Bootstrap everything**
+    ```bash
+    just bootstrap
+    ```
+2.  **Run full local stack**
+    ```bash
+    just dev
+    ```
+3.  **Run unit + integration suites**
+    ```bash
+    just test
+    ```
+4.  **Run Playwright smoke/e2e**
+    ```bash
+    just e2e
+    ```
+5.  **Run full CI sequence locally**
+    ```bash
+    just ci
+    ```
+
+Notes:
+- `scripts/dev-up.sh` conditionally starts local Supabase/Anvil/Stripe listener only if those tools/configs are available.
+- `just supabase-reset` will execute `supabase db reset` once a local Supabase project exists at `supabase/config.toml`.
+- `just supabase-test` runs SQL RLS policy tests from `supabase/tests/rls.sql`.
+- `supabase test db` will run SQL RLS tests from `supabase/tests/rls.sql` after local Supabase is running.
+- Contract tests run from `contracts/` with `npm --prefix contracts test`.
+- Frontend env validation now requires `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+- Backend env validation now requires `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`.
 
 ---
 

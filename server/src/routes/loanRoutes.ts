@@ -1,14 +1,13 @@
 import { Router } from 'express';
 import { LoanController } from '../controllers/loanController';
-import { sensitiveApiLimiter, publicApiLimiter } from '../middleware/rateLimiter';
+import { requireAuth } from '../middleware/auth';
 
 const router = Router();
 
-// Gated Loan Request
-router.post('/request', sensitiveApiLimiter, LoanController.requestLoan);
+router.use(requireAuth);
 
-// Production endpoints with rate limiting
-router.get('/', publicApiLimiter, (req, res) => res.json({ message: 'Active loans list route' }));
-router.post('/repay', sensitiveApiLimiter, (req, res) => res.json({ message: 'Loan repayment route' }));
+router.get('/', LoanController.listLoans);
+router.post('/request', LoanController.createRequest);
+router.post('/repay', LoanController.repayLoan);
 
 export default router;

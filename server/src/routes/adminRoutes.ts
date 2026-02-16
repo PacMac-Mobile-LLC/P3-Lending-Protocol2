@@ -1,10 +1,14 @@
 import { Router } from 'express';
+import { AdminController } from '../controllers/adminController';
+import { requireAuth, requireRoles } from '../middleware/auth';
 
 const router = Router();
 
-// Placeholder endpoints
-router.get('/stats', (req, res) => res.json({ message: 'Protocol statistics route' }));
-router.post('/override', (req, res) => res.json({ message: 'Score override route' }));
-router.get('/audit', (req, res) => res.json({ message: 'System audit logs route' }));
+router.use(requireAuth);
+router.use(requireRoles('admin', 'risk_officer', 'service_role'));
+
+router.get('/stats', AdminController.getStats);
+router.post('/override', AdminController.createOverride);
+router.get('/audit', AdminController.getAuditLogs);
 
 export default router;
