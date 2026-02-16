@@ -31,34 +31,81 @@ export interface Charity {
   color: string;
 }
 
+export interface ReferralData {
+  userId: string;
+  date: string;
+  status: 'PENDING' | 'COMPLETED'; // PENDING = Signed up, COMPLETED = Added > $100
+  earnings: number;
+}
+
 export interface UserProfile {
   id: string;
+  email: string;
   name: string;
   avatarUrl?: string; // New field for Profile Pic
   income: number;
   balance: number; // Platform balance
   employmentStatus: string;
-  financialHistory: string; 
-  reputationScore: number; 
+  financialHistory: string;
+  reputationScore: number;
   riskAnalysis?: string;
   successfulRepayments: number;
   currentStreak: number;
   badges: string[];
-  
+
   // KYC / AML Data
   kycTier: KYCTier;
   kycStatus: KYCStatus;
   kycLimit: number; // Max loan amount allowed
+  documents?: {
+    idType: string;
+    idFile?: string; // Base64 or URL
+    faceFile?: string; // Base64 or URL
+    submittedAt: number;
+  };
   isFrozen?: boolean; // Admin action
   adminNotes?: string;
 
   // Mentorship Stats
   mentorshipsCount?: number;
   totalSponsored?: number;
-  
+
+  // Referral System
+  referredBy?: string; // ID of the user who referred this profile
+  referrals: ReferralData[]; // List of people I have referred
+
   // Blockchain Data (Simulated for Risk Engine)
   walletAgeDays?: number;
   txCount?: number;
+
+  // Trading Portfolio
+  portfolio?: PortfolioItem[];
+}
+
+export interface PortfolioItem {
+  assetId: string;
+  symbol: string;
+  amount: number;
+  avgBuyPrice: number;
+}
+
+export interface Asset {
+  id: string;
+  symbol: string;
+  name: string;
+  currentPrice: number;
+  priceChange24h: number;
+  marketCap?: string;
+  description?: string;
+  color: string;
+}
+
+export interface WaitlistEntry {
+  id: string;
+  name: string;
+  email: string;
+  status: 'PENDING' | 'INVITED' | 'ONBOARDED';
+  created_at: string;
 }
 
 export interface LoanRequest {
@@ -75,7 +122,7 @@ export interface LoanRequest {
   isSponsorship?: boolean; // If true, this is a microloan funded by a mentor
   mentorId?: string;
   isCharityGuaranteed?: boolean; // Fresh Start protocol
-  
+
   // Smart Contract Escrow Data
   smartContractAddress?: string;
   escrowTxHash?: string;
@@ -144,10 +191,51 @@ export interface EmployeeProfile {
   role: AdminRole;
   isActive: boolean;
   lastLogin?: string;
-  
+
   // Security Features
   passwordHash: string; // Simulated hash
   passwordLastSet: number; // Timestamp
   previousPasswords: string[]; // History of last 10
   certificateData?: SecurityCertificate; // The active cert required
+}
+
+// Arbitration
+export type DisputeStatus = 'OPEN' | 'RESOLVED' | 'DISMISSED';
+
+export interface Dispute {
+  id: string;
+  reporterId: string;
+  reporterName: string;
+  accusedId: string;
+  accusedName: string;
+  reason: string;
+  evidence?: string;
+  status: DisputeStatus;
+  createdAt: number;
+  resolution?: string;
+}
+
+// Internal Knowledge Base
+export interface InternalTicket {
+  id: string;
+  authorId: string;
+  authorName: string;
+  subject: string;
+  description: string;
+  priority: 'LOW' | 'MEDIUM' | 'HIGH';
+  status: 'OPEN' | 'RESOLVED';
+  createdAt: number;
+}
+
+export type ChatType = 'INTERNAL' | 'CUSTOMER_SUPPORT';
+
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  role: AdminRole | 'CUSTOMER';
+  message: string;
+  timestamp: number;
+  type: ChatType;
+  threadId?: string; // For grouping customer support tickets
 }

@@ -1,0 +1,16 @@
+node_modules
+dist
+server/dist
+server/node_modules
+.env
+.env.local
+.DS_Store
+*.log
+.git
+.github
+.vscode
+.gemini
+brain
+*.md
+Dockerfile
+.dockerignore

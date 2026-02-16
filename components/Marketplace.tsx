@@ -1,8 +1,9 @@
+
 import React, { useState } from 'react';
 import { LoanRequest, LoanOffer, MatchResult, Charity } from '../types';
 import { Button } from './Button';
-import { matchLoanOffers } from '../services/geminiService';
-import { shortenAddress } from '../services/walletService';
+import { matchLoanOffers } from '../client-services/geminiService';
+import { shortenAddress } from '../client-services/walletService';
 
 interface Props {
   activeRequests: LoanRequest[];
@@ -15,15 +16,15 @@ interface Props {
   isMatching: boolean;
 }
 
-export const Marketplace: React.FC<Props> = ({ 
-  activeRequests, 
-  availableOffers, 
+export const Marketplace: React.FC<Props> = ({
+  activeRequests,
+  availableOffers,
   charities,
-  onRequestMatch, 
+  onRequestMatch,
   onFundRequest,
   onReleaseEscrow,
   onRepayLoan,
-  isMatching 
+  isMatching
 }) => {
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [matches, setMatches] = useState<Record<string, MatchResult[]>>({});
@@ -36,7 +37,7 @@ export const Marketplace: React.FC<Props> = ({
   };
 
   const getStatusColor = (status: string) => {
-    switch(status) {
+    switch (status) {
       case 'MATCHED': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
       case 'ESCROW_LOCKED': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
       case 'ACTIVE': return 'bg-[#00e599]/10 text-[#00e599] border-[#00e599]/20';
@@ -67,12 +68,12 @@ export const Marketplace: React.FC<Props> = ({
             </div>
           ) : (
             activeRequests.map(req => (
-              <div 
-                key={req.id} 
+              <div
+                key={req.id}
                 className={`
                   relative rounded-xl p-5 border transition-all duration-200
-                  ${selectedRequest === req.id 
-                    ? 'bg-zinc-800 border-zinc-600' 
+                  ${selectedRequest === req.id
+                    ? 'bg-zinc-800 border-zinc-600'
                     : 'bg-black border-zinc-800 hover:border-zinc-700'}
                 `}
               >
@@ -100,7 +101,7 @@ export const Marketplace: React.FC<Props> = ({
                     )}
                   </div>
                 </div>
-                
+
                 {req.status === 'ESCROW_LOCKED' && (
                   <div className="mb-4 bg-amber-900/10 border border-amber-900/30 rounded-lg p-3 space-y-2">
                     <div className="flex items-start gap-3">
@@ -116,7 +117,7 @@ export const Marketplace: React.FC<Props> = ({
                         </p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center justify-between pl-7 border-t border-amber-500/10 pt-2">
                       <div className="text-[10px] text-zinc-500">
                         Contract: <span className="font-mono text-zinc-400">{req.smartContractAddress ? shortenAddress(req.smartContractAddress) : 'Pending...'}</span>
@@ -127,12 +128,12 @@ export const Marketplace: React.FC<Props> = ({
                     </div>
                   </div>
                 )}
-                
+
                 <div className="flex gap-3 mt-4">
                   {req.status === 'PENDING' && (
-                     <>
-                      <Button 
-                        size="sm" 
+                    <>
+                      <Button
+                        size="sm"
                         variant="outline"
                         className="flex-1"
                         onClick={() => handleFindMatches(req)}
@@ -140,35 +141,35 @@ export const Marketplace: React.FC<Props> = ({
                       >
                         Find Matches
                       </Button>
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         variant="secondary"
                         className="flex-1 group"
                         onClick={() => onFundRequest(req)}
                       >
                         <span className="group-hover:text-[#00e599] transition-colors">⚡ Execute Smart Contract</span>
                       </Button>
-                     </>
+                    </>
                   )}
                   {req.status === 'ESCROW_LOCKED' && (
-                    <Button 
-                      size="sm" 
-                      className="w-full bg-amber-600 hover:bg-amber-500 text-white border-none" 
+                    <Button
+                      size="sm"
+                      className="w-full bg-amber-600 hover:bg-amber-500 text-white border-none"
                       onClick={() => onReleaseEscrow(req)}
                     >
                       Sign Release (Wallet)
                     </Button>
                   )}
                   {req.status === 'ACTIVE' && (
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       className="w-full"
                       onClick={() => onRepayLoan(req)}
                     >
                       Repay + Donate
                     </Button>
                   )}
-                   {req.status === 'REPAID' && (
+                  {req.status === 'REPAID' && (
                     <div className="w-full flex justify-center items-center gap-2 text-xs text-zinc-500 font-medium bg-zinc-900 py-2 rounded-lg border border-zinc-800">
                       <span>✓ Repayment Complete</span>
                     </div>
@@ -182,68 +183,107 @@ export const Marketplace: React.FC<Props> = ({
 
       {/* Matches/Offers Column */}
       <div className="bg-zinc-900 rounded-2xl border border-zinc-800 flex flex-col h-[650px] shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-zinc-800 bg-zinc-900/50">
+        <div className="p-6 border-b border-zinc-800 bg-zinc-900/50 flex justify-between items-center">
           <h3 className="font-bold text-white flex items-center gap-3">
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
-            Marketplace Matches
+            <span className={`w-2.5 h-2.5 rounded-full ${selectedRequest ? 'bg-blue-500' : 'bg-[#00e599]'}`}></span>
+            {selectedRequest ? 'Algorithmic Matches' : 'Live Market Offers'}
           </h3>
+          {!selectedRequest && <span className="text-[10px] bg-zinc-800 px-2 py-1 rounded text-zinc-400">{availableOffers.length} Active</span>}
         </div>
-        <div className="overflow-y-auto p-6 flex-1 custom-scrollbar">
+
+        <div className="overflow-y-auto p-6 flex-1 custom-scrollbar bg-black/20">
           {!selectedRequest ? (
-            <div className="flex flex-col items-center justify-center h-full text-zinc-600 space-y-4">
-              <div className="w-16 h-16 rounded-2xl bg-black border border-zinc-800 flex items-center justify-center">
-                 <svg className="w-6 h-6 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-              </div>
-              <p className="font-medium text-sm">Select a pending request to view AI matches.</p>
+            // VIEW A: Show All Available Offers (Browsing Mode)
+            <div className="space-y-4">
+              {availableOffers.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-zinc-600 space-y-4">
+                  <p>No public offers available right now.</p>
+                </div>
+              ) : (
+                availableOffers.map((offer) => (
+                  <div key={offer.id} className="bg-black rounded-xl p-5 border border-zinc-800 hover:border-zinc-600 transition-all group">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Lender</div>
+                        <h4 className="text-white font-bold text-base">{offer.lenderName}</h4>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[#00e599] font-mono font-bold">{offer.interestRate}% APR</div>
+                        <div className="text-[10px] text-zinc-500">Max: ${offer.maxAmount}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="bg-zinc-900 text-zinc-400 text-[10px] px-2 py-1 rounded border border-zinc-800">
+                        Min Score: {offer.minReputationScore}
+                      </span>
+                      <span className="bg-zinc-900 text-zinc-400 text-[10px] px-2 py-1 rounded border border-zinc-800">
+                        {offer.terms}
+                      </span>
+                    </div>
+                    <div className="text-center pt-2 border-t border-zinc-800/50">
+                      <p className="text-[10px] text-zinc-500 italic">
+                        Create a request matching these terms to get funded instantly.
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           ) : (
+            // VIEW B: Show Matches for Selected Request
             <div className="space-y-4">
               {matches[selectedRequest]?.length > 0 ? (
                 matches[selectedRequest].map((match, idx) => {
                   const offer = availableOffers.find(o => o.id === match.offerId);
                   if (!offer) return null;
                   return (
-                    <div key={idx} className="bg-black rounded-xl p-5 border border-zinc-800 hover:border-zinc-600 transition-all group">
-                      <div className="flex justify-between items-start mb-3">
-                        <h4 className="text-white font-bold">{offer.lenderName}</h4>
-                        <div className="text-[10px] font-bold text-black bg-[#00e599] px-2 py-1 rounded">
-                           {match.matchScore}% Match
-                         </div>
-                      </div>
-                      
-                      <div className="flex gap-6 text-sm mb-4">
-                        <div>
-                          <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold">APR</p>
-                          <p className="text-white font-mono">{offer.interestRate}%</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold">Max</p>
-                          <p className="text-white font-mono">${offer.maxAmount}</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold">Term</p>
-                          <p className="text-zinc-300">{offer.terms}</p>
+                    <div key={idx} className="bg-black rounded-xl p-5 border border-zinc-800 hover:border-[#00e599]/50 hover:shadow-[0_0_15px_rgba(0,229,153,0.1)] transition-all group relative overflow-hidden">
+                      <div className="absolute top-0 right-0 p-3">
+                        <div className="bg-[#00e599]/10 text-[#00e599] text-[10px] font-bold px-2 py-1 rounded border border-[#00e599]/20">
+                          {match.matchScore}% Match
                         </div>
                       </div>
-                      
+
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Lender</div>
+                          <h4 className="text-white font-bold text-lg">{offer.lenderName}</h4>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-4 mb-4 bg-zinc-900/50 p-3 rounded-lg border border-zinc-800">
+                        <div className="text-center border-r border-zinc-800">
+                          <p className="text-[9px] text-zinc-500 uppercase tracking-wider font-bold">APR</p>
+                          <p className="text-white font-mono text-sm">{offer.interestRate}%</p>
+                        </div>
+                        <div className="text-center border-r border-zinc-800">
+                          <p className="text-[9px] text-zinc-500 uppercase tracking-wider font-bold">Max</p>
+                          <p className="text-white font-mono text-sm">${offer.maxAmount}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[9px] text-zinc-500 uppercase tracking-wider font-bold">Term</p>
+                          <p className="text-zinc-300 text-sm truncate">{offer.terms}</p>
+                        </div>
+                      </div>
+
                       <div className="mb-4 pl-3 border-l-2 border-zinc-700">
-                        <p className="text-xs text-zinc-400">
-                          {match.reasoning}
+                        <p className="text-xs text-zinc-400 italic">
+                          "{match.reasoning}"
                         </p>
                       </div>
-                      
-                      <Button size="sm" className="w-full">Accept Offer</Button>
+
+                      <Button size="sm" className="w-full group-hover:bg-[#00e599] group-hover:text-black transition-colors">Accept Offer</Button>
                     </div>
                   );
                 })
               ) : (
                 <div className="flex flex-col items-center justify-center h-40 text-zinc-500 text-sm">
-                   {isMatching && selectedRequest ? (
-                     <div className="flex flex-col items-center gap-2">
-                       <div className="w-6 h-6 border-2 border-[#00e599] border-t-transparent rounded-full animate-spin"></div>
-                       <span>AI Analysis in progress...</span>
-                     </div>
-                   ) : 'No matching offers found.'}
+                  {isMatching && selectedRequest ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="w-6 h-6 border-2 border-[#00e599] border-t-transparent rounded-full animate-spin"></div>
+                      <span>Analyzing Reputation Score...</span>
+                    </div>
+                  ) : 'No matching offers found based on current criteria.'}
                 </div>
               )}
             </div>

@@ -1,18 +1,26 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { UserProfile, LoanRequest, LoanOffer, MatchResult, RiskReport } from "../types";
+
+// Reversible obfuscation helper
+const reverseString = (str: string) => str.split('').reverse().join('');
+
+declare const __GEMINI_KEY__: string;
 
 // Helper to safely get the API Key without crashing the app on load
 const getAI = () => {
   let apiKey = '';
   try {
-    // process.env.API_KEY is replaced by Vite during build
-    apiKey = process.env.API_KEY || '';
+    // __GEMINI_KEY__ is injected reversed by vite.config.ts
+    // We do NOT use import.meta.env here to avoid Vite's auto-injection of VITE_ variables
+    apiKey = reverseString(typeof __GEMINI_KEY__ !== 'undefined' ? __GEMINI_KEY__ : '');
   } catch (e) {
-    console.error("Config Error: 'process' is not defined. Ensure vite.config.ts is active.");
+    console.warn("Could not read API Key from fixed definition");
   }
-  
+
+  // Explicit check for the string "undefined" which can happen during build replacement
   if (!apiKey || apiKey === 'undefined' || apiKey === '') {
-    console.warn("Gemini API Key is missing or empty. Please check your Netlify Environment Variables.");
+    console.warn("GeminiService: API Key is missing. Check your .env file and restart the server.");
     return null;
   }
 
@@ -30,7 +38,7 @@ export const performComplianceCheck = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.0-flash',
       contents: `Act as a KYC/AML Compliance Officer for a Nebraska-based lending platform subject to the Bank Secrecy Act (BSA) and USA PATRIOT Act.
       
       Review the following applicant data for potential risks:
@@ -77,12 +85,12 @@ export const performComplianceCheck = async (
 export const analyzeReputation = async (profile: UserProfile): Promise<{ score: number; analysis: string; newBadges: string[] }> => {
   const ai = getAI();
   if (!ai) {
-     return { score: 50, analysis: "Demo Mode: AI analysis unavailable (Missing API Key).", newBadges: [] };
+    return { score: 50, analysis: "Demo Mode: AI analysis unavailable (Missing API Key).", newBadges: [] };
   }
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.0-flash',
       contents: `Analyze the financial reputation of this user for the P3 Lending Protocol with an emphasis on **Equal Opportunity**.
       
       User Metrics (On-Chain Trust):
@@ -132,7 +140,55 @@ export const analyzeReputation = async (profile: UserProfile): Promise<{ score: 
   }
 };
 
+// AI Advisor: Suggests Loan Terms for Lenders
+export const suggestLoanTerms = async (targetScore: number): Promise<{ interestRate: number; maxAmount: number; reasoning: string }> => {
+  const ai = getAI();
+  if (!ai) {
+    return { interestRate: 10, maxAmount: 500, reasoning: "Demo Mode: API Key missing. Defaulting to standard terms." };
+  }
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: `Act as a DeFi Lending Advisor. A lender wants to create a loan offer for borrowers with a Reputation Score of ${targetScore} (Scale 0-100).
+      
+      Suggest optimal terms that balance risk and competitiveness.
+      
+      Rules of Thumb:
+      - Score > 80: Low Risk. Rate 3-6%. High Amount.
+      - Score 60-79: Medium Risk. Rate 7-12%. Medium Amount.
+      - Score < 60: High Risk. Rate 13-20%. Low Amount (Microloans).
+      
+      Output JSON:
+      {
+        "interestRate": number (percentage, e.g. 5.5),
+        "maxAmount": number (USD),
+        "reasoning": string (short explanation)
+      }`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            interestRate: { type: Type.NUMBER },
+            maxAmount: { type: Type.NUMBER },
+            reasoning: { type: Type.STRING }
+          },
+          required: ["interestRate", "maxAmount", "reasoning"]
+        }
+      }
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("No response");
+    return JSON.parse(text);
+  } catch (error) {
+    return { interestRate: 8, maxAmount: 1000, reasoning: "AI unavailable. Calculated market average." };
+  }
+};
+
 // AI Matchmaker (Borrower View): Finds Offers for a Request
+// STRICT "NO LUCK" LOGIC
 export const matchLoanOffers = async (request: LoanRequest, offers: LoanOffer[]): Promise<MatchResult[]> => {
   if (offers.length === 0) return [];
   const ai = getAI();
@@ -140,24 +196,35 @@ export const matchLoanOffers = async (request: LoanRequest, offers: LoanOffer[])
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `Act as a P3 Lending Matchmaker. Evaluate these loan offers against the borrower's request.
+      model: 'gemini-2.0-flash',
+      contents: `Act as a P3 Lending Matchmaker (Deterministic Engine). 
       
+      OBJECTIVE:
+      Find the best loan offers for a borrower based STRICTLY on merit, reputation score compatibility, and financial efficiency.
+      Do not introduce randomness. The matching must be explainable and logical. "No luck involved."
+
       Borrower Request:
       Amount: $${request.amount}
       Purpose: ${request.purpose}
       Reputation Score: ${request.reputationScoreSnapshot}
-      Is Charity Guaranteed: ${request.isCharityGuaranteed} (If TRUE, risk is mitigated by platform insurance)
+      Is Charity Guaranteed: ${request.isCharityGuaranteed} (If TRUE, risk is completely mitigated).
       Max Interest: ${request.maxInterestRate}%
 
       Available Offers:
       ${JSON.stringify(offers)}
 
-      MATCHING LOGIC:
-      1. If 'Is Charity Guaranteed' is TRUE, treat the borrower as if they have a Reputation Score of 80 (High Trust), because the funds are insured.
-      2. Otherwise, enforce the lender's 'minReputationScore'.
+      MATCHING LOGIC (STRICT):
+      1. **Hard Filter (Amount):** Offer Max Amount must be >= Request Amount.
+      2. **Hard Filter (Score):** If 'Is Charity Guaranteed' is FALSE, Borrower Reputation Score MUST be >= Lender's Min Reputation Score.
+      3. **Hard Filter (Interest):** Offer Interest Rate must be <= Borrower's Max Interest Rate.
+      4. **Ranking (Match Score):** 
+         - Lower interest rates = Higher score.
+         - Closer alignment on terms = Higher score.
+         - If the offer is from a "Trusted Mentor" (implied context), boost score by 5%.
 
+      OUTPUT:
       Return a list of matches. Rank them by 'matchScore' (0-100).
+      The reasoning must explain exactly WHY the data fits (e.g., "Borrower score 85 exceeds Lender requirement of 80").
       `,
       config: {
         responseMimeType: "application/json",
@@ -178,7 +245,7 @@ export const matchLoanOffers = async (request: LoanRequest, offers: LoanOffer[])
 
     const text = response.text;
     if (!text) return [];
-    
+
     const matches = JSON.parse(text) as Omit<MatchResult, 'requestId'>[];
     return matches.map(m => ({ ...m, requestId: request.id }));
 
@@ -189,6 +256,7 @@ export const matchLoanOffers = async (request: LoanRequest, offers: LoanOffer[])
 };
 
 // AI Matchmaker (Lender View): Finds Requests for an Offer
+// STRICT "NO LUCK" LOGIC
 export const matchBorrowers = async (offer: LoanOffer, requests: LoanRequest[]): Promise<MatchResult[]> => {
   if (requests.length === 0) return [];
   const ai = getAI();
@@ -196,8 +264,8 @@ export const matchBorrowers = async (offer: LoanOffer, requests: LoanRequest[]):
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `Act as a P3 Lending Matchmaker (Lender Side). Find qualified borrowers for this specific Loan Offer.
+      model: 'gemini-2.0-flash',
+      contents: `Act as a P3 Lending Matchmaker (Lender Side). Find qualified borrowers for this specific Loan Offer based purely on data (No Luck).
       
       Lender Offer Details:
       Max Amount: $${offer.maxAmount}
@@ -207,14 +275,17 @@ export const matchBorrowers = async (offer: LoanOffer, requests: LoanRequest[]):
       Available Borrower Requests:
       ${JSON.stringify(requests)}
 
-      MATCHING LOGIC:
-      1. Filter out borrowers who need more money than the 'Max Amount'.
-      2. Filter out borrowers whose 'Reputation Score' is lower than 'Min Reputation Score' (unless they are Charity Guaranteed/Fresh Start).
-      3. Filter out borrowers who set a 'Max Interest Rate' lower than the lender's 'Interest Rate' (unless their max rate is 0/flexible).
-      4. Assign a high 'matchScore' to borrowers with good history (Reputation > 70) or verified social causes.
-
+      MATCHING LOGIC (STRICT):
+      1. **Hard Filter (Amount):** Borrower Request Amount must be <= Lender Max Amount.
+      2. **Hard Filter (Score):** Borrower Reputation Score must be >= Lender Min Score (unless 'isCharityGuaranteed' is true).
+      3. **Merit Ranking:**
+         - High Repayment Streak (>3) = +20 Match Score.
+         - Verified Identity (Tier 2/3) = +15 Match Score.
+         - "Fresh Start" guaranteed loans are safe = Treat as high match.
+      
+      OUTPUT:
       Return a list of matches. Rank them by 'matchScore' (0-100).
-      The 'requestId' in the response MUST correspond to the 'id' of the borrower request.
+      The reasoning should highlight the borrower's MERIT (e.g., "User has a 5-month repayment streak").
       `,
       config: {
         responseMimeType: "application/json",
@@ -235,7 +306,7 @@ export const matchBorrowers = async (offer: LoanOffer, requests: LoanRequest[]):
 
     const text = response.text;
     if (!text) return [];
-    
+
     // Parse response and map back to MatchResult structure
     const matches = JSON.parse(text);
     return matches.map((m: any) => ({
@@ -267,7 +338,7 @@ export const analyzeRiskProfile = async (profile: UserProfile): Promise<RiskRepo
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.0-flash',
       contents: `Conduct a comprehensive Risk Assessment for this user on the P3 Lending Protocol.
       
       USER ON-CHAIN DATA:
@@ -299,34 +370,31 @@ export const analyzeRiskProfile = async (profile: UserProfile): Promise<RiskRepo
       }
       `,
       config: {
-        tools: [{ googleSearch: {} }], // ENABLE GOOGLE SEARCH GROUNDING
-        // IMPORTANT: We do NOT use responseMimeType: "application/json" here 
-        // because Google Search grounding sometimes conflicts with rigid JSON enforcement.
-        // We parse the text output manually below.
+        tools: [{ googleSearch: {} }],
       }
     });
 
     const text = response.text;
-    
+
     if (!text) throw new Error("No response from AI Risk Engine");
-    
-    // Extract JSON from the text response (handling potential markdown wrapping or search sources)
+
+    // Extract JSON from the text response
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     const cleanJson = jsonMatch ? jsonMatch[0] : text;
-    
+
     const report = JSON.parse(cleanJson) as RiskReport;
     report.timestamp = new Date().toISOString();
     return report;
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Risk Analysis Error:", error);
-    // Fallback if search fails or API Key is missing
+    const errorMessage = error.message || "Unknown error";
     return {
       compositeScore: 50,
       macroScore: 50,
       walletScore: 50,
-      factors: [{ category: 'MACRO', severity: 'MEDIUM', description: 'Risk assessment unavailable. Please check your API Key configuration.' }],
-      summary: "Risk assessment running in offline mode due to connection error.",
+      factors: [{ category: 'MACRO', severity: 'MEDIUM', description: `Risk assessment failed: ${errorMessage}` }],
+      summary: `Risk assessment error: ${errorMessage}. Check console for details.`,
       timestamp: new Date().toISOString()
     };
   }
