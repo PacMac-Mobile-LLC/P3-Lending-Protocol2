@@ -29,6 +29,7 @@ import { KnowledgeBase } from './components/KnowledgeBase';
 import { CustomerChatWidget } from './components/CustomerChatWidget';
 import { TradingDashboard } from './components/TradingDashboard';
 import { PitchDeck } from './components/PitchDeck';
+import { DemoTutorial } from './components/DemoTutorial';
 
 declare const __BACKEND_URL__: string;
 const BACKEND_URL = typeof __BACKEND_URL__ !== 'undefined' ? __BACKEND_URL__ : 'http://localhost:3001';
@@ -84,6 +85,7 @@ const App: React.FC = () => {
 
   // New: Pitch Deck State
   const [showPitchDeck, setShowPitchDeck] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   const [riskReport, setRiskReport] = useState<RiskReport | null>(null);
   const [isRiskLoading, setIsRiskLoading] = useState(false);
@@ -513,6 +515,7 @@ const App: React.FC = () => {
         <WalletConnectModal isOpen={showWalletModal} onClose={() => setShowWalletModal(false)} onConnect={(info) => setWallet(info)} />
         <LegalModal type={activeLegalDoc} onClose={() => setActiveLegalDoc(null)} />
         <ReferralModal isOpen={showReferralModal} onClose={() => setShowReferralModal(false)} referralCode={user.id} onOpenTerms={() => setActiveLegalDoc('REFERRAL_TERMS' as LegalDocType)} />
+        {showTutorial && <DemoTutorial onClose={() => setShowTutorial(false)} />}
 
         <aside className="w-64 bg-[#0a0a0a] border-r border-zinc-900 flex flex-col z-50">
           <div className="p-6"><Logo /></div>
@@ -523,6 +526,16 @@ const App: React.FC = () => {
             <NavItem view="mentorship" label="Mentorship" icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>} />
             <NavItem view="knowledge_base" label="Knowledge Base" icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>} />
             <NavItem view="profile" label="Profile" icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>} />
+
+            <button
+              onClick={() => setShowTutorial(true)}
+              className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-500 hover:to-teal-500 mt-4"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+              </svg>
+              Start Tutorial
+            </button>
           </nav>
 
           <div onClick={() => setShowReferralModal(true)} className="p-4 mx-4 mb-4 bg-gradient-to-br from-zinc-900 to-[#00e599]/10 rounded-xl border border-zinc-800 cursor-pointer hover:border-[#00e599]/50 transition-colors group">
