@@ -4,9 +4,21 @@ import { config } from '../config/config';
 import logger from '../utils/logger';
 import { supabase } from '../config/supabase';
 
-const stripe = new Stripe(config.stripe.secretKey, {
-    apiVersion: '2023-10-16' as any,
-});
+let stripeClient: Stripe | null = null;
+
+const getStripeClient = () => {
+    if (!config.stripe.secretKey) {
+        return null;
+    }
+
+    if (!stripeClient) {
+        stripeClient = new Stripe(config.stripe.secretKey, {
+            apiVersion: '2023-10-16' as any,
+        });
+    }
+
+    return stripeClient;
+};
 
 export const PaymentController = {
     /**
@@ -15,8 +27,9 @@ export const PaymentController = {
     createCheckoutSession: async (req: Request, res: Response, next: NextFunction) => {
         try {
             const { amount, userId, userEmail } = req.body;
+            const stripe = getStripeClient();
 
-            if (!config.stripe.secretKey) {
+            if (!stripe) {
                 return res.status(500).json({ success: false, error: 'Stripe is not configured on the server. Please add STRIPE_SECRET_KEY to .env' });
             }
 
@@ -62,8 +75,17 @@ export const PaymentController = {
      * Handles Stripe Webhooks.
      */
     handleWebhook: async (req: Request, res: Response) => {
+        const stripe = getStripeClient();
         const sig = req.headers['stripe-signature'] as string;
         let event: Stripe.Event;
+
+        if (!stripe) {
+            return res.status(500).json({ received: false, error: 'Stripe is not configured on the server.' });
+        }
+
+        if (!config.stripe.webhookSecret) {
+            return res.status(500).json({ received: false, error: 'Stripe webhook secret is not configured on the server.' });
+        }
 
         try {
             event = stripe.webhooks.constructEvent(

@@ -21,4 +21,6 @@ export const validatedEnv = cleanEnv(process.env, {
   SUPABASE_SERVICE_ROLE_KEY: str({ desc: 'Supabase service role key for privileged server access' }),
   ETH_RPC_URL: str({ default: 'http://127.0.0.1:8545' }),
   P3_PROTOCOL_ADDRESS: str({ default: '0x0000000000000000000000000000000000000000' }),
+  STRIPE_SECRET_KEY: str({ default: '' }),
+  STRIPE_WEBHOOK_SECRET: str({ default: '' }),
 });
